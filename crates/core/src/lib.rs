@@ -1,4 +1,7 @@
-use pixel_ssh_view::{Color, Cursor, Element, InputEvent, Key, RectElement, TextElement, TextStyle, View};
+use pixel_ssh_view::{
+    word_wrap, Color, Cursor, Element, InputEvent, Key, LinkElement, RectElement, TextElement,
+    TextStyle, View,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -152,7 +155,7 @@ impl App {
             current_tab: Tab::Projects,
             selected_project: 0,
             show_detail: false,
-            status: String::from("Ready. [1-4] Tabs | [Up/Down] Select | [Enter] Detail | [Esc] Back"),
+            status: String::from("Ready. [1-4] Tabs | [Click/Select] | [Enter] Detail | [Esc] Back"),
             scroll_offset: 0,
         }
     }
@@ -208,8 +211,8 @@ impl App {
                     if self.current_tab == Tab::Projects && !self.show_detail {
                         if self.selected_project + 1 < PROJECTS.len() {
                             self.selected_project += 1;
-                            if self.selected_project >= self.scroll_offset + 8 {
-                                self.scroll_offset = self.selected_project - 7;
+                            if self.selected_project >= self.scroll_offset + 12 {
+                                self.scroll_offset = self.selected_project - 11;
                             }
                             return true;
                         }
@@ -234,8 +237,48 @@ impl App {
                 }
                 _ => false,
             },
-            InputEvent::PointerDown(_) => {
-                // Future interactive pointer support
+            InputEvent::PointerDown { x, y, .. } => {
+                // 1. Tab clicks (y: 24..48)
+                if y >= 24 && y <= 48 {
+                    if x >= 8 && x < 135 {
+                        self.current_tab = Tab::Projects;
+                        self.show_detail = false;
+                        return true;
+                    } else if x >= 135 && x < 255 {
+                        self.current_tab = Tab::Resume;
+                        self.show_detail = false;
+                        return true;
+                    } else if x >= 255 && x < 375 {
+                        self.current_tab = Tab::Contact;
+                        self.show_detail = false;
+                        return true;
+                    } else if x >= 375 && x < 495 {
+                        self.current_tab = Tab::Help;
+                        self.show_detail = false;
+                        return true;
+                    }
+                }
+                // 2. Project list interaction
+                if self.current_tab == Tab::Projects {
+                    if self.show_detail {
+                        // Click on back link / button (y: 330..365)
+                        if y >= 330 && y <= 365 && x < 320 {
+                            self.show_detail = false;
+                            return true;
+                        }
+                    } else if y >= 56 && y < 350 {
+                        let row_idx = ((y - 56) / 24) as usize;
+                        let project_idx = self.scroll_offset + row_idx;
+                        if project_idx < PROJECTS.len() {
+                            if self.selected_project == project_idx {
+                                self.show_detail = true;
+                            } else {
+                                self.selected_project = project_idx;
+                            }
+                            return true;
+                        }
+                    }
+                }
                 false
             }
             InputEvent::Resize { .. } => true,
@@ -243,39 +286,56 @@ impl App {
         }
     }
 
-    /// Renders the platform-independent `View` model.
+    /// Renders the platform-independent `View` model at 640x400.
     pub fn render(&self) -> View {
-        // Standard logical resolution: 40 cols x 12 rows (in 8x16 font = 320x192 / 320x200)
-        let mut view = View::new(320, 200);
+        let mut view = View::new(640, 400);
 
         // Header background (palette index 1 = dark card)
         view.add(Element::Rect(RectElement {
             x: 0,
             y: 0,
-            width: 320,
-            height: 18,
+            width: 640,
+            height: 24,
             color: Color::from_palette(1),
             filled: true,
         }));
 
         // Title text
         view.add(Element::Text(TextElement {
-            x: 4,
-            y: 1,
-            text: "DMYTRO YEMELIANOV - SYSTEMS & AI".to_string(),
+            x: 12,
+            y: 4,
+            text: "DMYTRO YEMELIANOV - SYSTEMS & AI ARCHITECT".to_string(),
             style: TextStyle::new(Color::from_palette(7)).bold(), // Accent blue
         }));
 
-        // Tab bar
+        // Header link to personal website
+        view.add(Element::Link(LinkElement::new(
+            470,
+            4,
+            "[ yemelianov.dev ]",
+            "https://yemelianov.dev",
+            TextStyle::new(Color::from_palette(12)),
+        )));
+
+        // Tab bar background
+        view.add(Element::Rect(RectElement {
+            x: 0,
+            y: 25,
+            width: 640,
+            height: 23,
+            color: Color::from_palette(0),
+            filled: true,
+        }));
+
+        // Tab bar buttons
         let tabs = [
-            (Tab::Projects, "[1] Projects"),
-            (Tab::Resume, "[2] Resume"),
-            (Tab::Contact, "[3] Contact"),
-            (Tab::Help, "[4] Help"),
+            (Tab::Projects, "[1] Projects", 12),
+            (Tab::Resume, "[2] Resume", 140),
+            (Tab::Contact, "[3] Contact", 260),
+            (Tab::Help, "[4] Help", 380),
         ];
 
-        let mut tab_x = 4;
-        for (tab, label) in tabs {
+        for (tab, label, tx) in tabs {
             let active = self.current_tab == tab;
             let style = if active {
                 TextStyle::new(Color::from_palette(6))
@@ -285,25 +345,24 @@ impl App {
                 TextStyle::new(Color::from_palette(4))
             };
             view.add(Element::Text(TextElement {
-                x: tab_x,
-                y: 18,
+                x: tx,
+                y: 28,
                 text: label.to_string(),
                 style,
             }));
-            tab_x += (label.len() as u16 + 2) * 8;
         }
 
         // Horizontal line separator
         view.add(Element::Rect(RectElement {
             x: 0,
-            y: 35,
-            width: 320,
+            y: 49,
+            width: 640,
             height: 1,
             color: Color::from_palette(3), // Border gray
             filled: true,
         }));
 
-        // Content Area (y: 38 to 180)
+        // Content Area (y: 54 to 370)
         match self.current_tab {
             Tab::Projects => self.render_projects(&mut view),
             Tab::Resume => self.render_resume(&mut view),
@@ -311,26 +370,26 @@ impl App {
             Tab::Help => self.render_help(&mut view),
         }
 
-        // Footer status bar
+        // Footer status bar background
         view.add(Element::Rect(RectElement {
             x: 0,
-            y: 185,
-            width: 320,
-            height: 15,
+            y: 376,
+            width: 640,
+            height: 24,
             color: Color::from_palette(1),
             filled: true,
         }));
 
         view.add(Element::Text(TextElement {
-            x: 4,
-            y: 186,
+            x: 12,
+            y: 382,
             text: self.status.clone(),
             style: TextStyle::new(Color::from_palette(8)), // Green prompt
         }));
 
         view.cursor = Some(Cursor {
-            x: 310,
-            y: 186,
+            x: 620,
+            y: 382,
             visible: true,
         });
 
@@ -340,80 +399,100 @@ impl App {
     fn render_projects(&self, view: &mut View) {
         if self.show_detail {
             let p = &PROJECTS[self.selected_project];
+
             view.add(Element::Text(TextElement {
-                x: 8,
-                y: 40,
-                text: format!("PROJECT: {}", p.title),
-                style: TextStyle::new(Color::from_palette(6)).bold(),
+                x: 16,
+                y: 58,
+                text: format!("PROJECT // {}", p.title),
+                style: TextStyle::new(Color::from_palette(12)).bold(),
             }));
+
+            let status_badge = if p.wip {
+                "STATUS: In Active Development"
+            } else {
+                "STATUS: Production-Ready / Stable Open-Source"
+            };
             view.add(Element::Text(TextElement {
-                x: 8,
-                y: 56,
-                text: format!("Tags: {}", p.tags.join(", ")),
-                style: TextStyle::new(Color::from_palette(7)),
+                x: 16,
+                y: 76,
+                text: status_badge.to_string(),
+                style: TextStyle::new(if p.wip { Color::from_palette(10) } else { Color::from_palette(8) }),
             }));
+
+            view.add(Element::Text(TextElement {
+                x: 16,
+                y: 94,
+                text: format!("TAGS: {}", p.tags.join(", ")),
+                style: TextStyle::new(Color::from_palette(11)),
+            }));
+
+            // Clickable repository link
+            let gh_url = format!("https://github.com/dmytro-yemelianov/{}", p.slug);
+            view.add(Element::Link(LinkElement::new(
+                16,
+                116,
+                format!("[ Open Repository: {} ]", gh_url),
+                gh_url,
+                TextStyle::new(Color::from_palette(7)),
+            )));
+
+            // Divider line
             view.add(Element::Rect(RectElement {
-                x: 8,
-                y: 72,
-                width: 304,
+                x: 16,
+                y: 136,
+                width: 608,
                 height: 1,
                 color: Color::from_palette(3),
                 filled: true,
             }));
 
-            // Word wrap TL;DR description into 36-char lines
-            let words: Vec<&str> = p.tldr.split_whitespace().collect();
-            let mut line = String::new();
-            let mut y = 78;
-            for word in words {
-                if line.len() + word.len() + 1 > 36 {
-                    view.add(Element::Text(TextElement {
-                        x: 8,
-                        y,
-                        text: line.clone(),
-                        style: TextStyle::new(Color::from_palette(5)),
-                    }));
-                    line.clear();
-                    y += 14;
-                }
-                if !line.is_empty() {
-                    line.push(' ');
-                }
-                line.push_str(word);
-            }
-            if !line.is_empty() {
+            view.add(Element::Text(TextElement {
+                x: 16,
+                y: 148,
+                text: "ARCHITECTURAL OVERVIEW & SPECIFICATION:".to_string(),
+                style: TextStyle::new(Color::from_palette(6)).bold(),
+            }));
+
+            // Word wrap TL;DR description across 74 columns
+            let wrapped_lines = word_wrap(p.tldr, 74);
+            let mut y = 170;
+            for line in wrapped_lines {
                 view.add(Element::Text(TextElement {
-                    x: 8,
+                    x: 16,
                     y,
                     text: line,
                     style: TextStyle::new(Color::from_palette(5)),
                 }));
+                y += 18;
             }
 
-            view.add(Element::Text(TextElement {
-                x: 8,
-                y: 165,
-                text: "<Press [ESC] to return to list>".to_string(),
-                style: TextStyle::new(Color::from_palette(9)),
-            }));
+            // Clickable Return button
+            view.add(Element::Link(LinkElement::new(
+                16,
+                340,
+                "< [ESC] Return to Project List >",
+                "#back",
+                TextStyle::new(Color::from_palette(9)).bold(),
+            )));
             return;
         }
 
-        let max_visible = 8;
+        // Project List (Up to 12 visible at 640x400)
+        let max_visible = 12;
         let start = self.scroll_offset;
         let end = (start + max_visible).min(PROJECTS.len());
 
         for (i, p) in PROJECTS[start..end].iter().enumerate() {
             let idx = start + i;
             let is_sel = idx == self.selected_project;
-            let y = 40 + (i as u16) * 17;
+            let y = 56 + (i as u16) * 24;
 
             if is_sel {
                 view.add(Element::Rect(RectElement {
-                    x: 4,
-                    y: y - 1,
-                    width: 312,
-                    height: 16,
+                    x: 8,
+                    y: y - 2,
+                    width: 624,
+                    height: 22,
                     color: Color::from_palette(2),
                     filled: true,
                 }));
@@ -421,33 +500,57 @@ impl App {
 
             let marker = if is_sel { ">" } else { " " };
             let fg = if is_sel {
-                Color::from_palette(6) // White
+                Color::from_palette(6)
             } else if p.wip {
-                Color::from_palette(10) // Red
+                Color::from_palette(10)
             } else {
-                Color::from_palette(5) // Light gray
+                Color::from_palette(5)
             };
 
             let num = format!("{:02}", idx + 1);
-            let title = if p.title.len() > 18 {
-                &p.title[..18]
+            let title = if p.title.len() > 22 {
+                &p.title[..22]
             } else {
                 p.title
             };
 
             view.add(Element::Text(TextElement {
-                x: 8,
-                y,
-                text: format!("{} [{}] {:<18}", marker, num, title),
+                x: 16,
+                y: y + 2,
+                text: format!("{} [{}] {:<22}", marker, num, title),
                 style: TextStyle::new(fg).bold(),
             }));
 
-            // Tags
-            let tag_str = p.tags.iter().take(2).map(|t| format!("<{}>", t)).collect::<Vec<_>>().join(" ");
+            // Tags formatted with full width
+            let tag_str = p.tags.iter().map(|t| format!("<{}>", t)).collect::<Vec<_>>().join(" ");
+            let tag_display = if tag_str.len() > 34 {
+                &tag_str[..34]
+            } else {
+                &tag_str
+            };
+
             view.add(Element::Text(TextElement {
-                x: 215,
-                y,
-                text: tag_str,
+                x: 260,
+                y: y + 2,
+                text: tag_display.to_string(),
+                style: TextStyle::new(Color::from_palette(4)),
+            }));
+
+            // Detail arrow
+            view.add(Element::Text(TextElement {
+                x: 550,
+                y: y + 2,
+                text: if is_sel { "[Enter] ->" } else { "  Details " }.to_string(),
+                style: TextStyle::new(if is_sel { Color::from_palette(7) } else { Color::from_palette(3) }),
+            }));
+        }
+
+        // Scroll guidance note if more items exist
+        if PROJECTS.len() > max_visible {
+            view.add(Element::Text(TextElement {
+                x: 16,
+                y: 352,
+                text: format!("Showing {}-{} of {} projects. Use [Up/Down] or [k/j] to scroll.", start + 1, end, PROJECTS.len()),
                 style: TextStyle::new(Color::from_palette(4)),
             }));
         }
@@ -455,131 +558,231 @@ impl App {
 
     fn render_resume(&self, view: &mut View) {
         view.add(Element::Text(TextElement {
-            x: 8,
-            y: 40,
-            text: "PROFILE: Dmytro Yemelianov".to_string(),
+            x: 16,
+            y: 58,
+            text: "DMYTRO YEMELIANOV - SENIOR SYSTEMS & AI INFRASTRUCTURE ENGINEER".to_string(),
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 56,
-            text: "Role: Systems & Agentic Workflows Engineer".to_string(),
-            style: TextStyle::new(Color::from_palette(7)),
+
+        // Clickable header links
+        view.add(Element::Link(LinkElement::new(
+            16,
+            78,
+            "[ Web: yemelianov.dev ]",
+            "https://yemelianov.dev",
+            TextStyle::new(Color::from_palette(12)),
+        )));
+        view.add(Element::Link(LinkElement::new(
+            232,
+            78,
+            "[ GitHub: dmytro-yemelianov ]",
+            "https://github.com/dmytro-yemelianov",
+            TextStyle::new(Color::from_palette(7)),
+        )));
+        view.add(Element::Link(LinkElement::new(
+            504,
+            78,
+            "[ LinkedIn ]",
+            "https://linkedin.com/in/dmytro-yemelianov",
+            TextStyle::new(Color::from_palette(7)),
+        )));
+
+        // Divider
+        view.add(Element::Rect(RectElement {
+            x: 16,
+            y: 96,
+            width: 608,
+            height: 1,
+            color: Color::from_palette(3),
+            filled: true,
         }));
+
+        // Section 1: Track Record
         view.add(Element::Text(TextElement {
-            x: 8,
-            y: 72,
-            text: "Exp: 3+ years Azure OpenAI RAG in production".to_string(),
-            style: TextStyle::new(Color::from_palette(5)),
+            x: 16,
+            y: 106,
+            text: "PRODUCTION AI & RAG TRACK RECORD (2023 - 2026):".to_string(),
+            style: TextStyle::new(Color::from_palette(8)).bold(),
         }));
+
+        let r1 = "Built and operated an Azure OpenAI (GPT) RAG expert system over internal documentation and CI/CD build logs at Sitecore, used daily by 5 engineering teams to triage build failures and query compliance documentation. HIPAA-compliant, zero-data-leakage architecture with deterministic verification checks.";
+        let mut y = 126;
+        for line in word_wrap(r1, 74) {
+            view.add(Element::Text(TextElement {
+                x: 16,
+                y,
+                text: line,
+                style: TextStyle::new(Color::from_palette(5)),
+            }));
+            y += 16;
+        }
+
+        // Section 2: Agentic Systems & Infrastructure
+        y += 8;
         view.add(Element::Text(TextElement {
-            x: 8,
-            y: 88,
-            text: "Stack: Rust, Python, TypeScript, Lean 4, C#".to_string(),
-            style: TextStyle::new(Color::from_palette(5)),
+            x: 16,
+            y,
+            text: "AGENTIC SYSTEMS, PROTOCOLS & COMPILERS (2026):".to_string(),
+            style: TextStyle::new(Color::from_palette(11)).bold(),
         }));
+        y += 18;
+
+        let r2 = "Author of RAPS: an open-core Rust platform with 51 Model Context Protocol tools exposing 16 Autodesk APIs. Developer of Dry (typed motion compiler IR for 3D/CNC) and Glueball (CAD routed-assembly solver). Primary environment: Claude Code with bounded tool budgets, deterministic test suites, and typed schema contracts.";
+        for line in word_wrap(r2, 74) {
+            view.add(Element::Text(TextElement {
+                x: 16,
+                y,
+                text: line,
+                style: TextStyle::new(Color::from_palette(5)),
+            }));
+            y += 16;
+        }
+
+        // Section 3: Core Competencies
+        y += 8;
         view.add(Element::Text(TextElement {
-            x: 8,
-            y: 104,
-            text: "Core: Compilers, Toolpaths, CAD/PLM, MCP".to_string(),
-            style: TextStyle::new(Color::from_palette(5)),
+            x: 16,
+            y,
+            text: "CORE COMPETENCIES & TECH STACK:".to_string(),
+            style: TextStyle::new(Color::from_palette(7)).bold(),
         }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 124,
-            text: "\"I bridge deterministic engineering with".to_string(),
-            style: TextStyle::new(Color::from_palette(9)),
-        }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 140,
-            text: "generative AI via typed schema contracts\"".to_string(),
-            style: TextStyle::new(Color::from_palette(9)),
-        }));
+        y += 18;
+
+        let r3 = "Languages: Rust, Python, TypeScript, Lean 4, C# | Platforms: Cloudflare Workers, PostgreSQL, Azure, WebGL, WebGPU | Focus: Compilers, MCP Tools, Formal Verification, Real-Time Distributed Systems.";
+        for line in word_wrap(r3, 74) {
+            view.add(Element::Text(TextElement {
+                x: 16,
+                y,
+                text: line,
+                style: TextStyle::new(Color::from_palette(4)),
+            }));
+            y += 16;
+        }
     }
 
     fn render_contact(&self, view: &mut View) {
         view.add(Element::Text(TextElement {
-            x: 8,
-            y: 40,
-            text: "CONTACT & LINKS:".to_string(),
+            x: 16,
+            y: 58,
+            text: "CONNECT & DIRECT CONTACT:".to_string(),
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
+
         view.add(Element::Text(TextElement {
-            x: 8,
-            y: 60,
-            text: "Email:    dmytro@yemelianov.dev".to_string(),
-            style: TextStyle::new(Color::from_palette(7)),
+            x: 16,
+            y: 78,
+            text: "Click any underlined link below to open directly in a new tab:".to_string(),
+            style: TextStyle::new(Color::from_palette(4)),
         }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 80,
-            text: "GitHub:   github.com/dmytro-yemelianov".to_string(),
-            style: TextStyle::new(Color::from_palette(7)),
+
+        // Divider
+        view.add(Element::Rect(RectElement {
+            x: 16,
+            y: 96,
+            width: 608,
+            height: 1,
+            color: Color::from_palette(3),
+            filled: true,
         }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 100,
-            text: "LinkedIn: in/dmytro-yemelianov".to_string(),
-            style: TextStyle::new(Color::from_palette(7)),
-        }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 120,
-            text: "Web:      https://yemelianov.dev".to_string(),
-            style: TextStyle::new(Color::from_palette(7)),
-        }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 140,
-            text: "SSH:      ssh guest@yemelianov.dev".to_string(),
-            style: TextStyle::new(Color::from_palette(8)).bold(),
-        }));
+
+        // Clickable contact cards
+        let links = [
+            ("Email:    dyemelianov@icloud.com", "mailto:dyemelianov@icloud.com", 112),
+            ("GitHub:   https://github.com/dmytro-yemelianov", "https://github.com/dmytro-yemelianov", 144),
+            ("LinkedIn: https://linkedin.com/in/dmytro-yemelianov", "https://linkedin.com/in/dmytro-yemelianov", 176),
+            ("Website:  https://yemelianov.dev", "https://yemelianov.dev", 208),
+            ("SSH:      ssh guest@yemelianov.dev (Port 2222)", "ssh://guest@yemelianov.dev:2222", 240),
+        ];
+
+        for (label, url, ly) in links {
+            view.add(Element::Rect(RectElement {
+                x: 16,
+                y: ly - 4,
+                width: 608,
+                height: 24,
+                color: Color::from_palette(1),
+                filled: true,
+            }));
+            view.add(Element::Link(LinkElement::new(
+                24,
+                ly,
+                label,
+                url,
+                TextStyle::new(Color::from_palette(12)).bold(),
+            )));
+        }
+
+        // Additional information wrapped
+        let mut y = 280;
+        let info = "Location: Vinnytsia, Ukraine / Remote worldwide\nAvailability: Full-time Senior / Lead / Architect roles in Systems, AI Infrastructure, and Agentic Engineering.";
+        for line in word_wrap(info, 74) {
+            view.add(Element::Text(TextElement {
+                x: 16,
+                y,
+                text: line,
+                style: TextStyle::new(Color::from_palette(5)),
+            }));
+            y += 18;
+        }
     }
 
     fn render_help(&self, view: &mut View) {
         view.add(Element::Text(TextElement {
-            x: 8,
-            y: 40,
-            text: "NAVIGATION & SHORTCUTS:".to_string(),
+            x: 16,
+            y: 58,
+            text: "INTERACTION GUIDE & PLATFORM ARCHITECTURE:".to_string(),
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 60,
-            text: "[1, 2, 3, 4]  Switch tabs directly".to_string(),
-            style: TextStyle::new(Color::from_palette(5)),
-        }));
-        view.add(Element::Text(TextElement {
-            x: 8,
+
+        view.add(Element::Rect(RectElement {
+            x: 16,
             y: 78,
-            text: "[Tab]         Cycle next tab".to_string(),
-            style: TextStyle::new(Color::from_palette(5)),
+            width: 608,
+            height: 1,
+            color: Color::from_palette(3),
+            filled: true,
         }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 96,
-            text: "[Up / k]      Previous project".to_string(),
-            style: TextStyle::new(Color::from_palette(5)),
-        }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 114,
-            text: "[Down / j]    Next project".to_string(),
-            style: TextStyle::new(Color::from_palette(5)),
-        }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 132,
-            text: "[Enter]       Open/close project detail".to_string(),
-            style: TextStyle::new(Color::from_palette(5)),
-        }));
-        view.add(Element::Text(TextElement {
-            x: 8,
-            y: 150,
-            text: "[Esc / q]     Close detail".to_string(),
-            style: TextStyle::new(Color::from_palette(5)),
-        }));
+
+        let mut y = 92;
+
+        let sections = [
+            ("KEYBOARD SHORTCUTS:", vec![
+                "[1, 2, 3, 4]       Directly switch between Projects, Resume, Contact, and Help",
+                "[Tab]              Cycle forward to the next tab",
+                "[Up/Down] or [k/j] Navigate and select project in the list view",
+                "[Enter]            Open detailed project architecture view",
+                "[Esc] or [q]       Close project detail and return to list",
+            ]),
+            ("MOUSE & TOUCH INTERACTION:", vec![
+                "Tabs & Buttons:    Click any tab header or button to activate it immediately",
+                "Project Rows:      Click any project row to select it; click again to view details",
+                "Hyperlinks:        Click any underlined link to open repository, email, or profile",
+            ]),
+            ("TERMINAL SSH ACCESS:", vec![
+                "Connect command:   ssh -p 2222 guest@yemelianov.dev (or localhost:2222)",
+                "Full ANSI 256:     Supports terminal box-drawing, true color palettes, and OSC 8 links",
+            ]),
+        ];
+
+        for (header, lines) in sections {
+            view.add(Element::Text(TextElement {
+                x: 16,
+                y,
+                text: header.to_string(),
+                style: TextStyle::new(Color::from_palette(7)).bold(),
+            }));
+            y += 16;
+            for line in lines {
+                view.add(Element::Text(TextElement {
+                    x: 24,
+                    y,
+                    text: line.to_string(),
+                    style: TextStyle::new(Color::from_palette(5)),
+                }));
+                y += 14;
+            }
+            y += 8;
+        }
     }
 }
 

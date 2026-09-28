@@ -6,7 +6,7 @@ use std::rc::Rc;
 use pixel_ssh_core::App;
 use pixel_ssh_framebuffer::{Framebuffer, DEFAULT_HEIGHT, DEFAULT_WIDTH};
 use pixel_ssh_render_web::WebGlRenderer;
-use pixel_ssh_view::{InputEvent, Key};
+use pixel_ssh_view::{Button, InputEvent, Key};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -39,7 +39,20 @@ pub fn start() -> Result<(), JsValue> {
     let renderer = WebGlRenderer::new(canvas.clone(), DEFAULT_WIDTH, DEFAULT_HEIGHT)
         .map_err(|e| JsValue::from_str(&e))?;
     let framebuffer = Framebuffer::new(DEFAULT_WIDTH, DEFAULT_HEIGHT);
-    let app = App::new();
+    let mut app = App::new();
+
+    if let Ok(search) = window.location().search() {
+        if search.contains("tab=resume") {
+            app.current_tab = pixel_ssh_core::Tab::Resume;
+        } else if search.contains("tab=contact") {
+            app.current_tab = pixel_ssh_core::Tab::Contact;
+        } else if search.contains("tab=help") {
+            app.current_tab = pixel_ssh_core::Tab::Help;
+        }
+        if search.contains("detail=1") {
+            app.show_detail = true;
+        }
+    }
 
     let state = Rc::new(RefCell::new(ClientState {
         app,
@@ -91,6 +104,83 @@ pub fn start() -> Result<(), JsValue> {
         });
 
         window.add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref())?;
+        closure.forget();
+    }
+
+    // Mouse / Pointer click listener for interactive links, tabs, and project rows
+    {
+        let state = Rc::clone(&state);
+        let canvas_clone = canvas.clone();
+        let closure = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |event: web_sys::MouseEvent| {
+            let rect = canvas_clone.get_bounding_client_rect();
+            let rect_width = rect.width();
+            let rect_height = rect.height();
+            if rect_width <= 0.0 || rect_height <= 0.0 {
+                return;
+            }
+
+            let client_x = event.client_x() as f64 - rect.left();
+            let client_y = event.client_y() as f64 - rect.top();
+
+            let fb_x = ((client_x / rect_width) * DEFAULT_WIDTH as f64).clamp(0.0, (DEFAULT_WIDTH - 1) as f64) as u16;
+            let fb_y = ((client_y / rect_height) * DEFAULT_HEIGHT as f64).clamp(0.0, (DEFAULT_HEIGHT - 1) as f64) as u16;
+
+            let mut s = state.borrow_mut();
+            let view = s.app.render();
+
+            // Check if user clicked on a link
+            if let Some(link) = view.link_at(fb_x, fb_y) {
+                if !link.url.starts_with('#') {
+                    if let Some(w) = web_sys::window() {
+                        let _ = w.open_with_url_and_target(&link.url, "_blank");
+                    }
+                }
+            }
+
+            // Also update app state (e.g. tabs, project selection, back button)
+            if s.app.update(InputEvent::PointerDown {
+                x: fb_x,
+                y: fb_y,
+                button: Button::Left,
+            }) {
+                s.dirty = true;
+            }
+        });
+
+        canvas.add_event_listener_with_callback("pointerdown", closure.as_ref().unchecked_ref())?;
+        closure.forget();
+    }
+
+    // Mouse move cursor styling listener (shows pointer on hover over links/tabs)
+    {
+        let state = Rc::clone(&state);
+        let canvas_clone = canvas.clone();
+        let closure = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |event: web_sys::MouseEvent| {
+            let rect = canvas_clone.get_bounding_client_rect();
+            let rect_width = rect.width();
+            let rect_height = rect.height();
+            if rect_width <= 0.0 || rect_height <= 0.0 {
+                return;
+            }
+
+            let client_x = event.client_x() as f64 - rect.left();
+            let client_y = event.client_y() as f64 - rect.top();
+
+            let fb_x = ((client_x / rect_width) * DEFAULT_WIDTH as f64).clamp(0.0, (DEFAULT_WIDTH - 1) as f64) as u16;
+            let fb_y = ((client_y / rect_height) * DEFAULT_HEIGHT as f64).clamp(0.0, (DEFAULT_HEIGHT - 1) as f64) as u16;
+
+            let s = state.borrow();
+            let view = s.app.render();
+
+            let is_interactive = view.link_at(fb_x, fb_y).is_some()
+                || (fb_y >= 24 && fb_y <= 48 && fb_x < 500)
+                || (!s.app.show_detail && fb_y >= 56 && fb_y < 350);
+
+            let cursor_style = if is_interactive { "pointer" } else { "default" };
+            let _ = canvas_clone.style().set_property("cursor", cursor_style);
+        });
+
+        canvas.add_event_listener_with_callback("pointermove", closure.as_ref().unchecked_ref())?;
         closure.forget();
     }
 

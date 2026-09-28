@@ -6,6 +6,7 @@ pub struct AnsiCell {
     pub fg_index: u8,
     pub bg_index: u8,
     pub bold: bool,
+    pub underline: bool,
 }
 
 impl Default for AnsiCell {
@@ -15,6 +16,7 @@ impl Default for AnsiCell {
             fg_index: 7, // Default white/light gray
             bg_index: 0, // Default black
             bold: false,
+            underline: false,
         }
     }
 }
@@ -132,6 +134,31 @@ impl AnsiRenderer {
                         start_col += 1;
                     }
                 }
+                Element::Link(l) => {
+                    let sanitized = Self::sanitize_text(&l.text);
+                    let mut start_col = ((l.x as f32) * col_scale) as u16;
+                    let row = ((l.y as f32) * row_scale) as u16;
+
+                    let fg = Self::color_to_ansi_fg(l.style.fg.palette_index);
+                    let bg = l.style.bg.map(|c| Self::color_to_ansi_bg(c.palette_index));
+
+                    for ch in sanitized.chars() {
+                        if start_col >= self.cols || row >= self.rows {
+                            break;
+                        }
+                        let idx = (row as usize) * (self.cols as usize) + (start_col as usize);
+                        if idx < self.grid.len() {
+                            self.grid[idx].ch = ch;
+                            self.grid[idx].fg_index = fg;
+                            if let Some(bg_color) = bg {
+                                self.grid[idx].bg_index = bg_color;
+                            }
+                            self.grid[idx].bold = l.style.bold;
+                            self.grid[idx].underline = true;
+                        }
+                        start_col += 1;
+                    }
+                }
                 Element::Sprite(_) => {}
             }
         }
@@ -144,21 +171,26 @@ impl AnsiRenderer {
         let mut current_fg = 255;
         let mut current_bg = 255;
         let mut current_bold = false;
+        let mut current_underline = false;
 
         for r in 0..self.rows {
             for c in 0..self.cols {
                 let idx = (r as usize) * (self.cols as usize) + (c as usize);
                 let cell = self.grid[idx];
 
-                if cell.fg_index != current_fg || cell.bg_index != current_bg || cell.bold != current_bold {
+                if cell.fg_index != current_fg || cell.bg_index != current_bg || cell.bold != current_bold || cell.underline != current_underline {
                     out.push_str("\x1b[0;");
                     if cell.bold {
                         out.push_str("1;");
+                    }
+                    if cell.underline {
+                        out.push_str("4;");
                     }
                     out.push_str(&format!("38;5;{};48;5;{}m", cell.fg_index, cell.bg_index));
                     current_fg = cell.fg_index;
                     current_bg = cell.bg_index;
                     current_bold = cell.bold;
+                    current_underline = cell.underline;
                 }
                 out.push(cell.ch);
             }

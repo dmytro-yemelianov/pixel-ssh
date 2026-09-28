@@ -3,8 +3,8 @@ pub mod font;
 use font::{FONT_8X8, FONT_HEIGHT, FONT_WIDTH};
 use pixel_ssh_view::{Element, View};
 
-pub const DEFAULT_WIDTH: u16 = 320;
-pub const DEFAULT_HEIGHT: u16 = 200;
+pub const DEFAULT_WIDTH: u16 = 640;
+pub const DEFAULT_HEIGHT: u16 = 400;
 
 #[derive(Debug, Clone)]
 pub struct Framebuffer {
@@ -175,6 +175,13 @@ impl Framebuffer {
                             }
                             i += 1;
                         }
+                    }
+                }
+                Element::Link(l) => {
+                    let bg = l.style.bg.map(|c| c.palette_index);
+                    self.draw_text(l.x, l.y, &l.text, l.style.fg.palette_index, bg);
+                    if l.style.underline && l.y + 8 < self.height {
+                        self.fill_rect(l.x, l.y + 8, l.width, 1, l.style.fg.palette_index);
                     }
                 }
             }

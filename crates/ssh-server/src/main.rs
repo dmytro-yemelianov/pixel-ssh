@@ -66,9 +66,9 @@ impl Handler for AppSession {
             self.id,
             ClientHandler {
                 app: App::new(),
-                renderer: AnsiRenderer::new(80, 24),
+                renderer: AnsiRenderer::new(80, 50),
                 cols: 80,
-                rows: 24,
+                rows: 50,
             },
         );
         Ok(true)
@@ -88,8 +88,8 @@ impl Handler for AppSession {
         info!("PTY request: term={}, cols={}, rows={}", term, col_width, row_height);
         let mut clients = self.clients.lock().await;
         if let Some(client) = clients.get_mut(&self.id) {
-            client.cols = (col_width as u16).clamp(40, 200);
-            client.rows = (row_height as u16).clamp(10, 100);
+            client.cols = if col_width >= 40 { (col_width as u16).clamp(40, 240) } else { 80 };
+            client.rows = if row_height >= 10 { (row_height as u16).clamp(10, 100) } else { 50 };
             client.renderer.resize(client.cols, client.rows);
 
             // Render and show initial view
@@ -111,8 +111,8 @@ impl Handler for AppSession {
     ) -> Result<(), Self::Error> {
         let mut clients = self.clients.lock().await;
         if let Some(client) = clients.get_mut(&self.id) {
-            client.cols = (col_width as u16).clamp(40, 200);
-            client.rows = (row_height as u16).clamp(10, 100);
+            client.cols = if col_width >= 40 { (col_width as u16).clamp(40, 240) } else { 80 };
+            client.rows = if row_height >= 10 { (row_height as u16).clamp(10, 100) } else { 50 };
             client.renderer.resize(client.cols, client.rows);
 
             // Re-render and send

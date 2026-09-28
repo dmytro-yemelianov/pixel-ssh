@@ -19,6 +19,18 @@ impl View {
     pub fn add(&mut self, element: Element) {
         self.elements.push(element);
     }
+
+    /// Finds any clickable link at coordinate (x, y)
+    pub fn link_at(&self, x: u16, y: u16) -> Option<&LinkElement> {
+        for element in &self.elements {
+            if let Element::Link(link) = element {
+                if x >= link.x && x < link.x + link.width && y >= link.y && y <= link.y + link.height + 2 {
+                    return Some(link);
+                }
+            }
+        }
+        None
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,6 +38,7 @@ pub enum Element {
     Text(TextElement),
     Rect(RectElement),
     Sprite(SpriteElement),
+    Link(LinkElement),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,6 +96,11 @@ impl TextStyle {
         self.bold = true;
         self
     }
+
+    pub const fn underline(mut self) -> Self {
+        self.underline = true;
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,6 +109,34 @@ pub struct TextElement {
     pub y: u16,
     pub text: String,
     pub style: TextStyle,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LinkElement {
+    pub x: u16,
+    pub y: u16,
+    pub width: u16,
+    pub height: u16,
+    pub text: String,
+    pub url: String,
+    pub style: TextStyle,
+}
+
+impl LinkElement {
+    pub fn new(x: u16, y: u16, text: impl Into<String>, url: impl Into<String>, style: TextStyle) -> Self {
+        let text = text.into();
+        let width = (text.len() as u16) * 8;
+        let height = 8;
+        Self {
+            x,
+            y,
+            width,
+            height,
+            text,
+            url: url.into(),
+            style: style.underline(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -148,8 +194,37 @@ pub enum InputEvent {
     KeyDown(Key),
     KeyUp(Key),
     PointerMove { x: u16, y: u16 },
-    PointerDown(Button),
-    PointerUp(Button),
+    PointerDown { x: u16, y: u16, button: Button },
+    PointerUp { x: u16, y: u16, button: Button },
     Wheel { dx: i16, dy: i16 },
     Resize { width: u16, height: u16 },
+}
+
+/// Word wrap utility that wraps text to fit within `max_chars` per line.
+pub fn word_wrap(text: &str, max_chars: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    for paragraph in text.split('\n') {
+        let trimmed = paragraph.trim();
+        if trimmed.is_empty() {
+            lines.push(String::new());
+            continue;
+        }
+        let words: Vec<&str> = trimmed.split_whitespace().collect();
+        let mut cur_line = String::new();
+        for word in words {
+            if cur_line.is_empty() {
+                cur_line.push_str(word);
+            } else if cur_line.len() + 1 + word.len() <= max_chars {
+                cur_line.push(' ');
+                cur_line.push_str(word);
+            } else {
+                lines.push(cur_line);
+                cur_line = word.to_string();
+            }
+        }
+        if !cur_line.is_empty() {
+            lines.push(cur_line);
+        }
+    }
+    lines
 }
