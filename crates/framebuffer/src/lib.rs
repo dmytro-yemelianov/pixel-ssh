@@ -1,6 +1,6 @@
 pub mod font;
 
-use font::{CP437_FONT_8X8, FONT_HEIGHT, FONT_WIDTH, unicode_to_cp437};
+use font::{font_for_mode, FONT_HEIGHT, FONT_WIDTH, unicode_to_cp437};
 use pixel_ssh_view::{Element, PaletteMode, View};
 
 pub const DEFAULT_WIDTH: u16 = 640;
@@ -12,6 +12,7 @@ pub struct Framebuffer {
     pub height: u16,
     pub pixels: Vec<u8>,
     pub palette: [[u8; 4]; 256],
+    pub font_mode: PaletteMode,
 }
 
 impl Default for Framebuffer {
@@ -28,6 +29,7 @@ impl Framebuffer {
             height,
             pixels: vec![0; size],
             palette: Self::default_palette(),
+            font_mode: PaletteMode::default(),
         }
     }
 
@@ -207,7 +209,8 @@ impl Framebuffer {
 
     pub fn draw_char(&mut self, x: u16, y: u16, ch: char, fg: u8, bg: Option<u8>) {
         let code = unicode_to_cp437(ch);
-        let glyph = CP437_FONT_8X8[code as usize];
+        let font = font_for_mode(self.font_mode);
+        let glyph = font[code as usize];
 
         for row in 0..FONT_HEIGHT {
             let py = y + row;
@@ -254,6 +257,7 @@ impl Framebuffer {
             self.resize(view.width, view.height);
         }
         self.set_palette_mode(view.palette_mode);
+        self.font_mode = view.palette_mode;
         self.clear(0); // clear to background
 
         for element in &view.elements {
@@ -298,6 +302,51 @@ impl Framebuffer {
             if cursor.visible && cursor.x < self.width && cursor.y < self.height {
                 self.fill_rect(cursor.x, cursor.y, 6, 8, 8); // Green block cursor
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::font::{font_for_mode, unicode_to_cp437};
+
+    #[test]
+    fn test_fonts_are_unique_and_authentic_per_system() {
+        let vga = font_for_mode(PaletteMode::Vga);
+        let zx = font_for_mode(PaletteMode::ZxSpectrum);
+        let c64 = font_for_mode(PaletteMode::C64);
+        let atari = font_for_mode(PaletteMode::Atari);
+
+        let code_a = unicode_to_cp437('A') as usize;
+        let code_0 = unicode_to_cp437('0') as usize;
+        let code_s = unicode_to_cp437('S') as usize;
+
+        // Each retro system has distinct glyph bitmaps for 'A'
+        assert_ne!(vga[code_a], zx[code_a], "ZX 'A' should differ from VGA");
+        assert_ne!(vga[code_a], c64[code_a], "C64 'A' should differ from VGA");
+        assert_ne!(c64[code_a], zx[code_a], "C64 'A' should differ from ZX");
+
+        // Each retro system has distinct glyph bitmaps for '0'
+        assert_ne!(zx[code_0], c64[code_0]);
+        assert_ne!(zx[code_0], vga[code_0]);
+
+        // Each retro system has distinct glyph bitmaps for 'S'
+        assert_ne!(zx[code_s], c64[code_s]);
+        assert_ne!(c64[code_s], atari[code_s]);
+    }
+
+    #[test]
+    fn test_framebuffer_draws_text_with_system_fonts() {
+        for mode in PaletteMode::ALL {
+            let (w, h) = mode.resolution();
+            let mut fb = Framebuffer::new(w, h);
+            fb.font_mode = mode;
+            fb.draw_text(0, 0, "HELLO WORLD", 1, None);
+
+            // Verify non-zero pixels were drawn
+            let non_zero_count = fb.pixels.iter().filter(|&&p| p == 1).count();
+            assert!(non_zero_count > 0, "Mode {:?} should render pixel data", mode);
         }
     }
 }
