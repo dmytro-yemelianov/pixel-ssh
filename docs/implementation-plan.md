@@ -11,5 +11,5 @@ The first three steps can proceed in parallel. The integration step depends on t
 
 - ZX Projects uses eight two-row items per window; title and tags have separate horizontal scroll regions. The selection, pointer mapping, wheel movement, and scroll limits use the same row count.
 - ZX CV uses short role sections and blank separators. Browser `End` reaches the final contact line; keyboard Home/End/PageUp/PageDown are now passed through to the Rust app.
-- The provenance audit is in `font-palette-provenance.md`. Unsupported original-ROM and exact-hardware claims were removed from code and About copy. Unverified source and reuse rights for older bundled fonts remain documented gaps.
+- The provenance audit is in `font-palette-provenance.md`. Unsupported original-ROM and exact-hardware claims were removed from code and About copy. The CP437 8×8, VGA 8×16, and EGA 8×14 bitmaps now have pinned source comparisons; source and reuse rights for the ZX, C64, and Atari themed tables remain documented gaps.
 - Verification: 49 workspace tests, formatting, strict Clippy, WASM target check, and release WebAssembly build passed. ZX Projects and CV were captured at 390×844 and 1280×900; keyboard End and a touch drag were exercised in the portrait browser. The browser console was empty.

@@ -1,7 +1,7 @@
 use pixel_ssh_view::PaletteMode;
 
-// CP437-ordered 8x8 glyph data. The historic source and reuse rights for this
-// table have not been verified; see docs/font-palette-provenance.md.
+// Oldschool BIOS CP437 8x8 bitmap, CC BY-SA 4.0. Its bytes match the pinned
+// pcface source exactly; see assets/README.md and tools/verify_font_provenance.py.
 pub const FONT_WIDTH: u16 = 8;
 pub const FONT_HEIGHT: u16 = 8;
 
@@ -1051,8 +1051,8 @@ pub static ATARI_FONT_8X8: [[u8; 8]; 256] = [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // 0xFF
 ];
 
-// CP437-ordered 8x16 glyph data. The historic source and reuse rights for this
-// table have not been verified; see docs/font-palette-provenance.md.
+// Oldschool VGA CP437 8x16 bitmap, CC BY-SA 4.0. Ten scanline bytes were
+// changed to join box-drawing strokes; see assets/README.md and the verifier.
 pub static CP437_FONT_8X16: [[u8; 16]; 256] = [
     [
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
