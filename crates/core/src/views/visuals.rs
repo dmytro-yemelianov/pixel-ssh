@@ -4,15 +4,14 @@
 //! 100% out of valid CP437 retro characters (█, ▓, ▒, ░, ┌, ─, ┐, │, └, ┘, ◄, ►, ▲, ▼, ☼, •, ♠, ♣, ♥, ♦).
 #![allow(dead_code)]
 
-use pixel_ssh_view::{
-    Color, Element, TextElement, TextStyle, View, VisualEffects,
-};
 use crate::state::App;
+use pixel_ssh_view::{Color, Element, TextElement, TextStyle, View, VisualEffects};
 
 /// Composes a retro character-mode gauge/slider out of valid CP437 block characters (█, ▓, ▒, ░).
 /// Returns `(filled_blocks, empty_track)`.
 fn compose_char_slider(val: f32, width_chars: usize) -> (String, String) {
-    let total_quarters = ((val.clamp(0.0, 1.0) * (width_chars * 4) as f32).round() as usize).min(width_chars * 4);
+    let total_quarters =
+        ((val.clamp(0.0, 1.0) * (width_chars * 4) as f32).round() as usize).min(width_chars * 4);
     let full = total_quarters / 4;
     let rem = total_quarters % 4;
     let partial = match rem {
@@ -50,24 +49,51 @@ impl App {
         view.add(Element::Text(TextElement {
             x: 16,
             y: 64,
-            text: "Real-time GPU fragment shader pipeline: Click presets or effect rows to tune:".to_string(),
+            text: "Real-time GPU fragment shader pipeline: Click presets or effect rows to tune:"
+                .to_string(),
             style: TextStyle::new(Color::from_palette(4)),
         }));
 
         // Presets row at Row 5: y = 80 composed of character buttons
         let presets = [
-            ("A: Clean", 16, self.visual_effects == VisualEffects::clean()),
-            ("W: CRT", 112, self.visual_effects == VisualEffects::crt_trinitron()),
-            ("C: Arcade", 208, self.visual_effects == VisualEffects::crt_arcade()),
-            ("D: Bloom", 312, self.visual_effects == VisualEffects::phosphor_bloom()),
-            ("E: Glitch", 408, self.visual_effects == VisualEffects::retro_glitch()),
-            ("R: Reset", 512, self.visual_effects == VisualEffects::default()),
+            (
+                "A: Clean",
+                16,
+                self.visual_effects == VisualEffects::clean(),
+            ),
+            (
+                "W: CRT",
+                112,
+                self.visual_effects == VisualEffects::crt_trinitron(),
+            ),
+            (
+                "C: Arcade",
+                208,
+                self.visual_effects == VisualEffects::crt_arcade(),
+            ),
+            (
+                "D: Bloom",
+                312,
+                self.visual_effects == VisualEffects::phosphor_bloom(),
+            ),
+            (
+                "E: Glitch",
+                408,
+                self.visual_effects == VisualEffects::retro_glitch(),
+            ),
+            (
+                "R: Reset",
+                512,
+                self.visual_effects == VisualEffects::default(),
+            ),
         ];
 
         for (label, bx, active) in presets {
-            let text = format!("[ {} ]", label);
+            let text = format!("[ {label} ]");
             let style = if active {
-                TextStyle::new(Color::from_palette(0)).with_bg(Color::from_palette(6)).bold()
+                TextStyle::new(Color::from_palette(0))
+                    .with_bg(Color::from_palette(6))
+                    .bold()
             } else {
                 TextStyle::new(Color::from_palette(7)).with_bg(Color::from_palette(1))
             };
@@ -90,13 +116,19 @@ impl App {
         // 9 Sliders at Rows 7..15: y = 112..240 (16px per row)
         let sliders = [
             ("[Z] Scanline Density:      ", self.visual_effects.scanlines),
-            ("[X] Pixel Grid Separation: ", self.visual_effects.pixel_grid),
+            (
+                "[X] Pixel Grid Separation: ",
+                self.visual_effects.pixel_grid,
+            ),
             ("[M] Chromatic Aberration:  ", self.visual_effects.chromatic),
             ("[V] Phosphor Afterglow:    ", self.visual_effects.afterglow),
             ("[B] CRT Barrel Curvature:  ", self.visual_effects.curvature),
             ("[N] Signal Jitter:         ", self.visual_effects.jitter),
             ("[G] Magnet Deflection:     ", self.visual_effects.magnet),
-            ("[H] Sporadic Antenna Hum:  ", self.visual_effects.antenna_hum),
+            (
+                "[H] Sporadic Antenna Hum:  ",
+                self.visual_effects.antenna_hum,
+            ),
             ("[Y] White Noise Snow:      ", self.visual_effects.noise),
         ];
 
@@ -109,7 +141,7 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 16,
                 y: sy,
-                text: format!("{}{}", prefix, label),
+                text: format!("{prefix}{label}"),
                 style: if is_sel {
                     TextStyle::new(Color::from_palette(14)).bold()
                 } else {
@@ -126,7 +158,11 @@ impl App {
                 x: slider_x,
                 y: sy,
                 text: "[".to_string(),
-                style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(7) }),
+                style: TextStyle::new(if is_sel {
+                    Color::from_palette(14)
+                } else {
+                    Color::from_palette(7)
+                }),
             }));
 
             // Filled gauge blocks
@@ -135,7 +171,12 @@ impl App {
                     x: slider_x + 8,
                     y: sy,
                     text: filled_str.clone(),
-                    style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(6) }).bold(),
+                    style: TextStyle::new(if is_sel {
+                        Color::from_palette(14)
+                    } else {
+                        Color::from_palette(6)
+                    })
+                    .bold(),
                 }));
             }
 
@@ -146,7 +187,11 @@ impl App {
                     x: empty_x,
                     y: sy,
                     text: empty_str,
-                    style: TextStyle::new(if is_sel { Color::from_palette(3) } else { Color::from_palette(1) }),
+                    style: TextStyle::new(if is_sel {
+                        Color::from_palette(3)
+                    } else {
+                        Color::from_palette(1)
+                    }),
                 }));
             }
 
@@ -155,7 +200,11 @@ impl App {
                 x: slider_x + 8 + 20 * 8,
                 y: sy,
                 text: "]".to_string(),
-                style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(7) }),
+                style: TextStyle::new(if is_sel {
+                    Color::from_palette(14)
+                } else {
+                    Color::from_palette(7)
+                }),
             }));
 
             // Percentage value
@@ -163,7 +212,11 @@ impl App {
                 x: 428,
                 y: sy,
                 text: format!("{:3.0}%", val * 100.0),
-                style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(5) }),
+                style: TextStyle::new(if is_sel {
+                    Color::from_palette(14)
+                } else {
+                    Color::from_palette(5)
+                }),
             }));
 
             // Click hint
@@ -171,17 +224,33 @@ impl App {
                 x: 476,
                 y: sy,
                 text: "[Click / ◄ ► Tune]".to_string(),
-                style: TextStyle::new(if is_sel { Color::from_palette(12) } else { Color::from_palette(8) }),
+                style: TextStyle::new(if is_sel {
+                    Color::from_palette(12)
+                } else {
+                    Color::from_palette(8)
+                }),
             }));
         }
 
         let border_color = Color::from_palette(7);
 
         // Visual Calibration Test Card container composed entirely of valid CP437 box-drawing characters
-        let card_title = format!(" CALIBRATION TEST CARD & COLOR RAMP - SYSTEM: {} ", self.system_mode.name());
+        let card_title = format!(
+            " CALIBRATION TEST CARD & COLOR RAMP - SYSTEM: {} ",
+            self.system_mode.name()
+        );
         let total_cols: usize = 76;
         let dashes = total_cols.saturating_sub(card_title.chars().count() + 4);
-        let top_border = format!("┌──{}{}{}┐", card_title, "─".repeat(dashes), if (card_title.chars().count() + 4 + dashes) < total_cols { "─" } else { "" });
+        let top_border = format!(
+            "┌──{}{}{}┐",
+            card_title,
+            "─".repeat(dashes),
+            if (card_title.chars().count() + 4 + dashes) < total_cols {
+                "─"
+            } else {
+                ""
+            }
+        );
         view.add(Element::Text(TextElement {
             x: 16,
             y: 272,
@@ -221,7 +290,8 @@ impl App {
         view.add(Element::Text(TextElement {
             x: 24,
             y: 304,
-            text: " ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789 !@#$%^&*()_+-=~[];',./             ".to_string(),
+            text: " ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789 !@#$%^&*()_+-=~[];',./             "
+                .to_string(),
             style: TextStyle::new(Color::from_palette(5)),
         }));
         view.add(Element::Text(TextElement {
@@ -241,7 +311,8 @@ impl App {
         view.add(Element::Text(TextElement {
             x: 24,
             y: 320,
-            text: " Raster glyphs: ░▒▓█ │┤┐└┴┬├─┼ ◄► ▲▼ ☼• ♠♣♥♦ (Hardware ROM Matrix)        ".to_string(),
+            text: " Raster glyphs: ░▒▓█ │┤┐└┴┬├─┼ ◄► ▲▼ ☼• ♠♣♥♦ (Hardware ROM Matrix)        "
+                .to_string(),
             style: TextStyle::new(Color::from_palette(6)),
         }));
         view.add(Element::Text(TextElement {
@@ -261,7 +332,8 @@ impl App {
         view.add(Element::Text(TextElement {
             x: 24,
             y: 336,
-            text: " Presets [A-R] │ FX [Z-N, G, H, Y] │ [▲/▼] Select │ [◄/►] Tune            ".to_string(),
+            text: " Presets [A-R] │ FX [Z-N, G, H, Y] │ [▲/▼] Select │ [◄/►] Tune            "
+                .to_string(),
             style: TextStyle::new(Color::from_palette(12)).bold(),
         }));
         view.add(Element::Text(TextElement {
@@ -290,16 +362,34 @@ impl App {
 
         let presets = [
             ("CLN", 4, self.visual_effects == VisualEffects::clean()),
-            ("CRT", 68, self.visual_effects == VisualEffects::crt_trinitron()),
-            ("ARC", 132, self.visual_effects == VisualEffects::crt_arcade()),
-            ("BLM", 196, self.visual_effects == VisualEffects::phosphor_bloom()),
-            ("GLT", 260, self.visual_effects == VisualEffects::retro_glitch()),
+            (
+                "CRT",
+                68,
+                self.visual_effects == VisualEffects::crt_trinitron(),
+            ),
+            (
+                "ARC",
+                132,
+                self.visual_effects == VisualEffects::crt_arcade(),
+            ),
+            (
+                "BLM",
+                196,
+                self.visual_effects == VisualEffects::phosphor_bloom(),
+            ),
+            (
+                "GLT",
+                260,
+                self.visual_effects == VisualEffects::retro_glitch(),
+            ),
         ];
 
         for (label, bx, active) in presets {
-            let text = format!("[{}]", label);
+            let text = format!("[{label}]");
             let style = if active {
-                TextStyle::new(Color::from_palette(0)).with_bg(Color::from_palette(6)).bold()
+                TextStyle::new(Color::from_palette(0))
+                    .with_bg(Color::from_palette(6))
+                    .bold()
             } else {
                 TextStyle::new(Color::from_palette(7)).with_bg(Color::from_palette(1))
             };
@@ -330,7 +420,7 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 2,
                 y: sy,
-                text: format!("{}{}", prefix, label),
+                text: format!("{prefix}{label}"),
                 style: if is_sel {
                     TextStyle::new(Color::from_palette(14)).bold()
                 } else {
@@ -346,7 +436,11 @@ impl App {
                 x: slider_x,
                 y: sy,
                 text: "[".to_string(),
-                style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(7) }),
+                style: TextStyle::new(if is_sel {
+                    Color::from_palette(14)
+                } else {
+                    Color::from_palette(7)
+                }),
             }));
 
             if !filled_str.is_empty() {
@@ -354,7 +448,12 @@ impl App {
                     x: slider_x + 8,
                     y: sy,
                     text: filled_str.clone(),
-                    style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(6) }).bold(),
+                    style: TextStyle::new(if is_sel {
+                        Color::from_palette(14)
+                    } else {
+                        Color::from_palette(6)
+                    })
+                    .bold(),
                 }));
             }
 
@@ -364,7 +463,11 @@ impl App {
                     x: empty_x,
                     y: sy,
                     text: empty_str,
-                    style: TextStyle::new(if is_sel { Color::from_palette(3) } else { Color::from_palette(1) }),
+                    style: TextStyle::new(if is_sel {
+                        Color::from_palette(3)
+                    } else {
+                        Color::from_palette(1)
+                    }),
                 }));
             }
 
@@ -372,7 +475,11 @@ impl App {
                 x: slider_x + 8 + 10 * 8,
                 y: sy,
                 text: "]".to_string(),
-                style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(7) }),
+                style: TextStyle::new(if is_sel {
+                    Color::from_palette(14)
+                } else {
+                    Color::from_palette(7)
+                }),
             }));
 
             view.add(Element::Text(TextElement {
@@ -420,16 +527,34 @@ impl App {
 
         let presets = [
             ("CLN", 2, self.visual_effects == VisualEffects::clean()),
-            ("CRT", 52, self.visual_effects == VisualEffects::crt_trinitron()),
-            ("ARC", 102, self.visual_effects == VisualEffects::crt_arcade()),
-            ("BLM", 152, self.visual_effects == VisualEffects::phosphor_bloom()),
-            ("GLT", 202, self.visual_effects == VisualEffects::retro_glitch()),
+            (
+                "CRT",
+                52,
+                self.visual_effects == VisualEffects::crt_trinitron(),
+            ),
+            (
+                "ARC",
+                102,
+                self.visual_effects == VisualEffects::crt_arcade(),
+            ),
+            (
+                "BLM",
+                152,
+                self.visual_effects == VisualEffects::phosphor_bloom(),
+            ),
+            (
+                "GLT",
+                202,
+                self.visual_effects == VisualEffects::retro_glitch(),
+            ),
         ];
 
         for (label, bx, active) in presets {
-            let text = format!("[{}]", label);
+            let text = format!("[{label}]");
             let style = if active {
-                TextStyle::new(Color::from_palette(0)).with_bg(Color::from_palette(6)).bold()
+                TextStyle::new(Color::from_palette(0))
+                    .with_bg(Color::from_palette(6))
+                    .bold()
             } else {
                 TextStyle::new(Color::from_palette(7)).with_bg(Color::from_palette(1))
             };
@@ -460,7 +585,7 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 1,
                 y: sy,
-                text: format!("{}{}", prefix, label),
+                text: format!("{prefix}{label}"),
                 style: if is_sel {
                     TextStyle::new(Color::from_palette(14)).bold()
                 } else {
@@ -476,7 +601,11 @@ impl App {
                 x: slider_x,
                 y: sy,
                 text: "[".to_string(),
-                style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(7) }),
+                style: TextStyle::new(if is_sel {
+                    Color::from_palette(14)
+                } else {
+                    Color::from_palette(7)
+                }),
             }));
 
             if !filled_str.is_empty() {
@@ -484,7 +613,12 @@ impl App {
                     x: slider_x + 8,
                     y: sy,
                     text: filled_str.clone(),
-                    style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(6) }).bold(),
+                    style: TextStyle::new(if is_sel {
+                        Color::from_palette(14)
+                    } else {
+                        Color::from_palette(6)
+                    })
+                    .bold(),
                 }));
             }
 
@@ -494,7 +628,11 @@ impl App {
                     x: empty_x,
                     y: sy,
                     text: empty_str,
-                    style: TextStyle::new(if is_sel { Color::from_palette(3) } else { Color::from_palette(1) }),
+                    style: TextStyle::new(if is_sel {
+                        Color::from_palette(3)
+                    } else {
+                        Color::from_palette(1)
+                    }),
                 }));
             }
 
@@ -502,7 +640,11 @@ impl App {
                 x: slider_x + 8 + 8 * 8,
                 y: sy,
                 text: "]".to_string(),
-                style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(7) }),
+                style: TextStyle::new(if is_sel {
+                    Color::from_palette(14)
+                } else {
+                    Color::from_palette(7)
+                }),
             }));
 
             view.add(Element::Text(TextElement {

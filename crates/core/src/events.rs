@@ -1,10 +1,10 @@
 //! Event handling and user input processing for the application.
 
+use crate::data::PROJECTS;
+use crate::state::{App, Tab};
 use pixel_ssh_view::{
     ActiveModal, ColorTheme, InputEvent, Key, Platform, ResolutionMode, VisualEffects,
 };
-use crate::data::PROJECTS;
-use crate::state::{App, Tab};
 
 impl App {
     /// Updates the application state with a normalized input event.
@@ -37,8 +37,14 @@ impl App {
                                 }
                                 Key::Char(c @ 'a'..='h') | Key::Char(c @ 'A'..='H') => {
                                     let idx = match c.to_ascii_uppercase() {
-                                        'A' => 0, 'B' => 1, 'C' => 2, 'D' => 3,
-                                        'E' => 4, 'F' => 5, 'G' => 6, _ => 7,
+                                        'A' => 0,
+                                        'B' => 1,
+                                        'C' => 2,
+                                        'D' => 3,
+                                        'E' => 4,
+                                        'F' => 5,
+                                        'G' => 6,
+                                        _ => 7,
                                     };
                                     if idx < ColorTheme::ALL.len() {
                                         self.set_color_theme(ColorTheme::ALL[idx]);
@@ -104,38 +110,98 @@ impl App {
                                 }
                                 Key::Char('z') | Key::Char('Z') => {
                                     self.selected_fx_slider = 0;
-                                    self.visual_effects.scanlines = if self.visual_effects.scanlines < 0.15 { 0.35 } else if self.visual_effects.scanlines < 0.50 { 0.70 } else { 0.0 };
-                                    self.status = format!("Scanlines: {:.0}%", self.visual_effects.scanlines * 100.0);
+                                    self.visual_effects.scanlines =
+                                        if self.visual_effects.scanlines < 0.15 {
+                                            0.35
+                                        } else if self.visual_effects.scanlines < 0.50 {
+                                            0.70
+                                        } else {
+                                            0.0
+                                        };
+                                    self.status = format!(
+                                        "Scanlines: {:.0}%",
+                                        self.visual_effects.scanlines * 100.0
+                                    );
                                     return true;
                                 }
                                 Key::Char('x') | Key::Char('X') => {
                                     self.selected_fx_slider = 1;
-                                    self.visual_effects.pixel_grid = if self.visual_effects.pixel_grid < 0.10 { 0.20 } else if self.visual_effects.pixel_grid < 0.30 { 0.40 } else { 0.0 };
-                                    self.status = format!("Pixel Grid: {:.0}%", self.visual_effects.pixel_grid * 100.0);
+                                    self.visual_effects.pixel_grid =
+                                        if self.visual_effects.pixel_grid < 0.10 {
+                                            0.20
+                                        } else if self.visual_effects.pixel_grid < 0.30 {
+                                            0.40
+                                        } else {
+                                            0.0
+                                        };
+                                    self.status = format!(
+                                        "Pixel Grid: {:.0}%",
+                                        self.visual_effects.pixel_grid * 100.0
+                                    );
                                     return true;
                                 }
                                 Key::Char('m') | Key::Char('M') => {
                                     self.selected_fx_slider = 2;
-                                    self.visual_effects.chromatic = if self.visual_effects.chromatic < 0.15 { 0.35 } else if self.visual_effects.chromatic < 0.55 { 0.85 } else { 0.0 };
-                                    self.status = format!("Chromatic: {:.0}%", self.visual_effects.chromatic * 100.0);
+                                    self.visual_effects.chromatic =
+                                        if self.visual_effects.chromatic < 0.15 {
+                                            0.35
+                                        } else if self.visual_effects.chromatic < 0.55 {
+                                            0.85
+                                        } else {
+                                            0.0
+                                        };
+                                    self.status = format!(
+                                        "Chromatic: {:.0}%",
+                                        self.visual_effects.chromatic * 100.0
+                                    );
                                     return true;
                                 }
                                 Key::Char('b') | Key::Char('B') => {
                                     self.selected_fx_slider = 4;
-                                    self.visual_effects.curvature = if self.visual_effects.curvature < 0.10 { 0.25 } else if self.visual_effects.curvature < 0.35 { 0.45 } else { 0.0 };
-                                    self.status = format!("CRT Curvature: {:.0}%", self.visual_effects.curvature * 100.0);
+                                    self.visual_effects.curvature =
+                                        if self.visual_effects.curvature < 0.10 {
+                                            0.25
+                                        } else if self.visual_effects.curvature < 0.35 {
+                                            0.45
+                                        } else {
+                                            0.0
+                                        };
+                                    self.status = format!(
+                                        "CRT Curvature: {:.0}%",
+                                        self.visual_effects.curvature * 100.0
+                                    );
                                     return true;
                                 }
                                 Key::Char('n') | Key::Char('N') => {
                                     self.selected_fx_slider = 5;
-                                    self.visual_effects.jitter = if self.visual_effects.jitter < 0.10 { 0.25 } else if self.visual_effects.jitter < 0.40 { 0.65 } else { 0.0 };
-                                    self.status = format!("Jitter: {:.0}%", self.visual_effects.jitter * 100.0);
+                                    self.visual_effects.jitter =
+                                        if self.visual_effects.jitter < 0.10 {
+                                            0.25
+                                        } else if self.visual_effects.jitter < 0.40 {
+                                            0.65
+                                        } else {
+                                            0.0
+                                        };
+                                    self.status = format!(
+                                        "Jitter: {:.0}%",
+                                        self.visual_effects.jitter * 100.0
+                                    );
                                     return true;
                                 }
                                 Key::Char('g') | Key::Char('G') => {
                                     self.selected_fx_slider = 6;
-                                    self.visual_effects.magnet = if self.visual_effects.magnet < 0.05 { 0.10 } else if self.visual_effects.magnet < 0.18 { 0.25 } else { 0.0 };
-                                    self.status = format!("Point CRT Magnet Deflection: {:.0}%", self.visual_effects.magnet * 100.0);
+                                    self.visual_effects.magnet =
+                                        if self.visual_effects.magnet < 0.05 {
+                                            0.10
+                                        } else if self.visual_effects.magnet < 0.18 {
+                                            0.25
+                                        } else {
+                                            0.0
+                                        };
+                                    self.status = format!(
+                                        "Point CRT Magnet Deflection: {:.0}%",
+                                        self.visual_effects.magnet * 100.0
+                                    );
                                     return true;
                                 }
                                 _ => {}
@@ -144,7 +210,13 @@ impl App {
                         }
                         ActiveModal::Help => {
                             match key {
-                                Key::Escape | Key::Enter | Key::Char('?') | Key::Char('h') | Key::Char('H') | Key::Char('q') | Key::Char('Q') => {
+                                Key::Escape
+                                | Key::Enter
+                                | Key::Char('?')
+                                | Key::Char('h')
+                                | Key::Char('H')
+                                | Key::Char('q')
+                                | Key::Char('Q') => {
                                     self.active_modal = ActiveModal::None;
                                     return true;
                                 }
@@ -157,9 +229,15 @@ impl App {
                 }
 
                 // If on Web with an article overlay open (Tab::Resume or Tab::About):
-                if self.platform == Platform::Web && (self.current_tab == Tab::Resume || self.current_tab == Tab::About) {
+                if self.platform == Platform::Web
+                    && (self.current_tab == Tab::Resume || self.current_tab == Tab::About)
+                {
                     match key {
-                        Key::Escape | Key::Char('q') | Key::Char('Q') | Key::Char('0') | Key::F(10) => {
+                        Key::Escape
+                        | Key::Char('q')
+                        | Key::Char('Q')
+                        | Key::Char('0')
+                        | Key::F(10) => {
                             self.current_tab = Tab::Projects;
                             return true;
                         }
@@ -187,8 +265,12 @@ impl App {
                             self.active_modal = ActiveModal::Visuals;
                             return true;
                         }
-                        Key::Char('7') | Key::Char('8') | Key::F(7) | Key::F(8) | Key::Char('s') | Key::Char('S') => {
+                        Key::Char('7') | Key::F(7) | Key::Char('s') | Key::Char('S') => {
                             self.active_modal = ActiveModal::System;
+                            return true;
+                        }
+                        Key::Char('8') | Key::F(8) | Key::Char('t') | Key::Char('T') => {
+                            self.set_color_theme(self.color_theme.next());
                             return true;
                         }
                         Key::Tab => {
@@ -201,9 +283,11 @@ impl App {
                         }
                         Key::Down | Key::Char('j') => {
                             if self.current_tab == Tab::Resume {
-                                self.resume_scroll = (self.resume_scroll + 1).min(self.resume_max_scroll());
+                                self.resume_scroll =
+                                    (self.resume_scroll + 1).min(self.resume_max_scroll());
                             } else {
-                                self.about_scroll = (self.about_scroll + 1).min(self.about_max_scroll());
+                                self.about_scroll =
+                                    (self.about_scroll + 1).min(self.about_max_scroll());
                             }
                             return true;
                         }
@@ -218,9 +302,11 @@ impl App {
                         Key::PageDown | Key::Char(' ') => {
                             let step = 10;
                             if self.current_tab == Tab::Resume {
-                                self.resume_scroll = (self.resume_scroll + step).min(self.resume_max_scroll());
+                                self.resume_scroll =
+                                    (self.resume_scroll + step).min(self.resume_max_scroll());
                             } else {
-                                self.about_scroll = (self.about_scroll + step).min(self.about_max_scroll());
+                                self.about_scroll =
+                                    (self.about_scroll + step).min(self.about_max_scroll());
                             }
                             return true;
                         }
@@ -316,8 +402,10 @@ impl App {
                             };
                             true
                         } else {
-                            self.system_mode = self.system_mode.next();
-                            self.palette_mode = self.system_mode;
+                            let next = self.system_mode.next();
+                            self.set_resolution(next.to_resolution());
+                            self.set_color_theme(next.to_theme());
+                            self.system_mode = next;
                             true
                         }
                     }
@@ -364,13 +452,11 @@ impl App {
                             } else {
                                 ActiveModal::Help
                             };
+                        } else if self.current_tab == Tab::Help {
+                            self.current_tab = Tab::Projects;
                         } else {
-                            if self.current_tab == Tab::Help {
-                                self.current_tab = Tab::Projects;
-                            } else {
-                                self.current_tab = Tab::Help;
-                                self.show_detail = false;
-                            }
+                            self.current_tab = Tab::Help;
+                            self.show_detail = false;
                         }
                         true
                     }
@@ -385,11 +471,10 @@ impl App {
                             };
                             true
                         } else {
-                            self.system_mode = self.system_mode.next();
-                            self.palette_mode = self.system_mode;
-                            let (w, h) = self.system_mode.resolution();
-                            let (c, r) = self.system_mode.char_grid();
-                            self.status = format!("{}: {}x{} ({}x{})", self.system_mode.name(), w, h, c, r);
+                            let next = self.system_mode.next();
+                            self.set_resolution(next.to_resolution());
+                            self.set_color_theme(next.to_theme());
+                            self.system_mode = next;
                             true
                         }
                     }
@@ -419,329 +504,501 @@ impl App {
                         }
                     }
 
-                // Project Detail Left/Right navigation ('h' / 'l' or Left / Right)
-                Key::Char('h') | Key::Left if self.current_tab == Tab::Projects && self.show_detail => {
-                    if self.selected_project > 0 {
-                        self.selected_project -= 1;
-                    } else {
-                        self.selected_project = PROJECTS.len().saturating_sub(1);
-                    }
-                    self.detail_scroll = 0;
-                    self.selected_detail_item = 0;
-                    true
-                }
-                Key::Char('l') | Key::Right if self.current_tab == Tab::Projects && self.show_detail => {
-                    self.selected_project = (self.selected_project + 1) % PROJECTS.len();
-                    self.detail_scroll = 0;
-                    self.selected_detail_item = 0;
-                    true
-                }
-
-                // Visuals preset shortcuts (Web only)
-                Key::Char('a') | Key::Char('A') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.visual_effects = VisualEffects::clean();
-                    self.status = "Preset: Clean (Pixel-Perfect)".to_string();
-                    true
-                }
-                Key::Char('w') | Key::Char('W') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.visual_effects = VisualEffects::crt_trinitron();
-                    self.status = "Preset: 80s Trinitron CRT".to_string();
-                    true
-                }
-                Key::Char('c') | Key::Char('C') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.visual_effects = VisualEffects::crt_arcade();
-                    self.status = "Preset: Arcade Cabinet".to_string();
-                    true
-                }
-                Key::Char('d') | Key::Char('D') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.visual_effects = VisualEffects::phosphor_bloom();
-                    self.status = "Preset: Phosphor Bloom".to_string();
-                    true
-                }
-                Key::Char('e') | Key::Char('E') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.visual_effects = VisualEffects::retro_glitch();
-                    self.status = "Preset: Retro Glitch".to_string();
-                    true
-                }
-                Key::Char('r') | Key::Char('R') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.visual_effects = VisualEffects::default();
-                    self.status = "Preset: Default CRT".to_string();
-                    true
-                }
-
-                // Direct Visuals FX slider toggles (Keys Z, X, M, V, B, N, G)
-                Key::Char('z') | Key::Char('Z') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.selected_fx_slider = 0;
-                    self.visual_effects.scanlines = if self.visual_effects.scanlines < 0.15 { 0.35 } else if self.visual_effects.scanlines < 0.50 { 0.70 } else { 0.0 };
-                    self.status = format!("Scanlines: {:.0}%", self.visual_effects.scanlines * 100.0);
-                    true
-                }
-                Key::Char('x') | Key::Char('X') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.selected_fx_slider = 1;
-                    self.visual_effects.pixel_grid = if self.visual_effects.pixel_grid < 0.10 { 0.20 } else if self.visual_effects.pixel_grid < 0.30 { 0.40 } else { 0.0 };
-                    self.status = format!("Pixel Grid: {:.0}%", self.visual_effects.pixel_grid * 100.0);
-                    true
-                }
-                Key::Char('m') | Key::Char('M') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.selected_fx_slider = 2;
-                    self.visual_effects.chromatic = if self.visual_effects.chromatic < 0.15 { 0.35 } else if self.visual_effects.chromatic < 0.55 { 0.85 } else { 0.0 };
-                    self.status = format!("Chromatic: {:.0}%", self.visual_effects.chromatic * 100.0);
-                    true
-                }
-                Key::Char('v') | Key::Char('V') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.selected_fx_slider = 3;
-                    self.visual_effects.afterglow = if self.visual_effects.afterglow < 0.15 { 0.30 } else if self.visual_effects.afterglow < 0.55 { 0.80 } else { 0.0 };
-                    self.status = format!("Afterglow: {:.0}%", self.visual_effects.afterglow * 100.0);
-                    true
-                }
-                Key::Char('b') | Key::Char('B') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.selected_fx_slider = 4;
-                    self.visual_effects.curvature = if self.visual_effects.curvature < 0.10 { 0.25 } else if self.visual_effects.curvature < 0.35 { 0.45 } else { 0.0 };
-                    self.status = format!("CRT Curvature: {:.0}%", self.visual_effects.curvature * 100.0);
-                    true
-                }
-                Key::Char('n') | Key::Char('N') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.selected_fx_slider = 5;
-                    self.visual_effects.jitter = if self.visual_effects.jitter < 0.10 { 0.25 } else if self.visual_effects.jitter < 0.40 { 0.65 } else { 0.0 };
-                    self.status = format!("Jitter: {:.0}%", self.visual_effects.jitter * 100.0);
-                    true
-                }
-                Key::Char('g') | Key::Char('G') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.selected_fx_slider = 6;
-                    self.visual_effects.magnet = if self.visual_effects.magnet < 0.05 { 0.10 } else if self.visual_effects.magnet < 0.18 { 0.25 } else { 0.0 };
-                    self.status = format!("Point CRT Magnet Deflection: {:.0}%", self.visual_effects.magnet * 100.0);
-                    true
-                }
-                Key::Char('h') | Key::Char('H') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.selected_fx_slider = 7;
-                    self.visual_effects.antenna_hum = if self.visual_effects.antenna_hum < 0.10 { 0.25 } else if self.visual_effects.antenna_hum < 0.40 { 0.60 } else { 0.0 };
-                    self.status = format!("Sporadic Antenna Hum: {:.0}%", self.visual_effects.antenna_hum * 100.0);
-                    true
-                }
-                Key::Char('y') | Key::Char('Y') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    self.selected_fx_slider = 8;
-                    self.visual_effects.noise = if self.visual_effects.noise < 0.10 { 0.25 } else if self.visual_effects.noise < 0.40 { 0.60 } else { 0.0 };
-                    self.status = format!("White Noise Snow: {:.0}%", self.visual_effects.noise * 100.0);
-                    true
-                }
-
-                // Fine slider tuning with Left/Right or -/+ when on Visuals Tab
-                Key::Left | Key::Char('-') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    match self.selected_fx_slider {
-                        0 => self.visual_effects.scanlines = (self.visual_effects.scanlines - 0.05).max(0.0),
-                        1 => self.visual_effects.pixel_grid = (self.visual_effects.pixel_grid - 0.05).max(0.0),
-                        2 => self.visual_effects.chromatic = (self.visual_effects.chromatic - 0.05).max(0.0),
-                        3 => self.visual_effects.afterglow = (self.visual_effects.afterglow - 0.05).max(0.0),
-                        4 => self.visual_effects.curvature = (self.visual_effects.curvature - 0.05).max(0.0),
-                        5 => self.visual_effects.jitter = (self.visual_effects.jitter - 0.05).max(0.0),
-                        6 => self.visual_effects.magnet = (self.visual_effects.magnet - 0.05).max(0.0),
-                        7 => self.visual_effects.antenna_hum = (self.visual_effects.antenna_hum - 0.05).max(0.0),
-                        _ => self.visual_effects.noise = (self.visual_effects.noise - 0.05).max(0.0),
-                    }
-                    true
-                }
-                Key::Right | Key::Char('+') | Key::Char('=') if self.platform == Platform::Web && self.current_tab == Tab::Visuals => {
-                    match self.selected_fx_slider {
-                        0 => self.visual_effects.scanlines = (self.visual_effects.scanlines + 0.05).min(1.0),
-                        1 => self.visual_effects.pixel_grid = (self.visual_effects.pixel_grid + 0.05).min(1.0),
-                        2 => self.visual_effects.chromatic = (self.visual_effects.chromatic + 0.05).min(1.0),
-                        3 => self.visual_effects.afterglow = (self.visual_effects.afterglow + 0.05).min(1.0),
-                        4 => self.visual_effects.curvature = (self.visual_effects.curvature + 0.05).min(1.0),
-                        5 => self.visual_effects.jitter = (self.visual_effects.jitter + 0.05).min(1.0),
-                        6 => self.visual_effects.magnet = (self.visual_effects.magnet + 0.05).min(1.0),
-                        7 => self.visual_effects.antenna_hum = (self.visual_effects.antenna_hum + 0.05).min(1.0),
-                        _ => self.visual_effects.noise = (self.visual_effects.noise + 0.05).min(1.0),
-                    }
-                    true
-                }
-
-                Key::Up | Key::Char('k') => {
-                    if self.platform == Platform::Web && self.current_tab == Tab::Visuals {
-                        if self.selected_fx_slider > 0 {
-                            self.selected_fx_slider -= 1;
-                            return true;
-                        }
-                    } else if self.current_tab == Tab::Resume {
-                        if self.resume_scroll > 0 {
-                            self.resume_scroll -= 1;
-                            return true;
-                        }
-                    } else if self.current_tab == Tab::About {
-                        if self.about_scroll > 0 {
-                            self.about_scroll -= 1;
-                            return true;
-                        }
-                    } else if self.current_tab == Tab::Projects {
-                        if self.show_detail {
-                            if self.detail_scroll > 0 {
-                                self.detail_scroll -= 1;
-                                return true;
-                            } else {
-                                self.selected_detail_item = self.selected_detail_item.saturating_sub(1);
-                                return true;
-                            }
-                        } else if self.selected_project > 0 {
+                    // Project Detail Left/Right navigation ('h' / 'l' or Left / Right)
+                    Key::Char('h') | Key::Left
+                        if self.current_tab == Tab::Projects && self.show_detail =>
+                    {
+                        if self.selected_project > 0 {
                             self.selected_project -= 1;
-                            if self.selected_project < self.scroll_offset {
-                                self.scroll_offset = self.selected_project;
-                            }
-                            return true;
-                        }
-                    }
-                    false
-                }
-                Key::Down | Key::Char('j') => {
-                    if self.platform == Platform::Web && self.current_tab == Tab::Visuals {
-                        if self.selected_fx_slider < 8 {
-                            self.selected_fx_slider += 1;
-                            return true;
-                        }
-                    } else if self.current_tab == Tab::Resume {
-                        if self.resume_scroll < self.resume_max_scroll() {
-                            self.resume_scroll += 1;
-                            return true;
-                        }
-                    } else if self.current_tab == Tab::About {
-                        if self.about_scroll < self.about_max_scroll() {
-                            self.about_scroll += 1;
-                            return true;
-                        }
-                    } else if self.current_tab == Tab::Projects {
-                        if self.show_detail {
-                            if self.detail_scroll < self.detail_max_scroll() {
-                                self.detail_scroll += 1;
-                                return true;
-                            } else {
-                                self.selected_detail_item = (self.selected_detail_item + 1).min(1);
-                                return true;
-                            }
-                        } else if self.selected_project + 1 < PROJECTS.len() {
-                            self.selected_project += 1;
-                            let max_vis = self.projects_max_visible();
-                            if self.selected_project >= self.scroll_offset + max_vis {
-                                self.scroll_offset = self.selected_project.saturating_sub(max_vis - 1);
-                            }
-                            return true;
-                        }
-                    }
-                    false
-                }
-                Key::PageUp => {
-                    if self.current_tab == Tab::Resume {
-                        self.resume_scroll = self.resume_scroll.saturating_sub(6);
-                        return true;
-                    } else if self.current_tab == Tab::About {
-                        self.about_scroll = self.about_scroll.saturating_sub(6);
-                        return true;
-                    } else if self.current_tab == Tab::Projects && self.show_detail {
-                        self.detail_scroll = self.detail_scroll.saturating_sub(6);
-                        return true;
-                    }
-                    false
-                }
-                Key::PageDown => {
-                    if self.current_tab == Tab::Resume {
-                        self.resume_scroll = (self.resume_scroll + 6).min(self.resume_max_scroll());
-                        return true;
-                    } else if self.current_tab == Tab::About {
-                        self.about_scroll = (self.about_scroll + 6).min(self.about_max_scroll());
-                        return true;
-                    } else if self.current_tab == Tab::Projects && self.show_detail {
-                        self.detail_scroll = (self.detail_scroll + 6).min(self.detail_max_scroll());
-                        return true;
-                    }
-                    false
-                }
-                Key::Home => {
-                    if self.current_tab == Tab::Resume {
-                        self.resume_scroll = 0;
-                        return true;
-                    } else if self.current_tab == Tab::About {
-                        self.about_scroll = 0;
-                        return true;
-                    } else if self.current_tab == Tab::Projects {
-                        if self.show_detail {
-                            self.detail_scroll = 0;
-                        } else {
-                            self.selected_project = 0;
-                            self.scroll_offset = 0;
-                        }
-                        return true;
-                    }
-                    false
-                }
-                Key::End => {
-                    if self.current_tab == Tab::Resume {
-                        self.resume_scroll = self.resume_max_scroll();
-                        return true;
-                    } else if self.current_tab == Tab::About {
-                        self.about_scroll = self.about_max_scroll();
-                        return true;
-                    } else if self.current_tab == Tab::Projects {
-                        if self.show_detail {
-                            self.detail_scroll = self.detail_max_scroll();
                         } else {
                             self.selected_project = PROJECTS.len().saturating_sub(1);
-                            let max_vis = self.projects_max_visible();
-                            self.scroll_offset = PROJECTS.len().saturating_sub(max_vis);
                         }
-                        return true;
+                        self.detail_scroll = 0;
+                        self.selected_detail_item = 0;
+                        true
                     }
-                    false
-                }
-                Key::Enter => {
-                    if self.current_tab == Tab::Projects {
-                        if self.show_detail && self.selected_detail_item == 1 {
+                    Key::Char('l') | Key::Right
+                        if self.current_tab == Tab::Projects && self.show_detail =>
+                    {
+                        self.selected_project = (self.selected_project + 1) % PROJECTS.len();
+                        self.detail_scroll = 0;
+                        self.selected_detail_item = 0;
+                        true
+                    }
+
+                    // Visuals preset shortcuts (Web only)
+                    Key::Char('a') | Key::Char('A')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.visual_effects = VisualEffects::clean();
+                        self.status = "Preset: Clean (Pixel-Perfect)".to_string();
+                        true
+                    }
+                    Key::Char('w') | Key::Char('W')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.visual_effects = VisualEffects::crt_trinitron();
+                        self.status = "Preset: 80s Trinitron CRT".to_string();
+                        true
+                    }
+                    Key::Char('c') | Key::Char('C')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.visual_effects = VisualEffects::crt_arcade();
+                        self.status = "Preset: Arcade Cabinet".to_string();
+                        true
+                    }
+                    Key::Char('d') | Key::Char('D')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.visual_effects = VisualEffects::phosphor_bloom();
+                        self.status = "Preset: Phosphor Bloom".to_string();
+                        true
+                    }
+                    Key::Char('e') | Key::Char('E')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.visual_effects = VisualEffects::retro_glitch();
+                        self.status = "Preset: Retro Glitch".to_string();
+                        true
+                    }
+                    Key::Char('r') | Key::Char('R')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.visual_effects = VisualEffects::default();
+                        self.status = "Preset: Default CRT".to_string();
+                        true
+                    }
+
+                    // Direct Visuals FX slider toggles (Keys Z, X, M, V, B, N, G)
+                    Key::Char('z') | Key::Char('Z')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.selected_fx_slider = 0;
+                        self.visual_effects.scanlines = if self.visual_effects.scanlines < 0.15 {
+                            0.35
+                        } else if self.visual_effects.scanlines < 0.50 {
+                            0.70
+                        } else {
+                            0.0
+                        };
+                        self.status =
+                            format!("Scanlines: {:.0}%", self.visual_effects.scanlines * 100.0);
+                        true
+                    }
+                    Key::Char('x') | Key::Char('X')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.selected_fx_slider = 1;
+                        self.visual_effects.pixel_grid = if self.visual_effects.pixel_grid < 0.10 {
+                            0.20
+                        } else if self.visual_effects.pixel_grid < 0.30 {
+                            0.40
+                        } else {
+                            0.0
+                        };
+                        self.status =
+                            format!("Pixel Grid: {:.0}%", self.visual_effects.pixel_grid * 100.0);
+                        true
+                    }
+                    Key::Char('m') | Key::Char('M')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.selected_fx_slider = 2;
+                        self.visual_effects.chromatic = if self.visual_effects.chromatic < 0.15 {
+                            0.35
+                        } else if self.visual_effects.chromatic < 0.55 {
+                            0.85
+                        } else {
+                            0.0
+                        };
+                        self.status =
+                            format!("Chromatic: {:.0}%", self.visual_effects.chromatic * 100.0);
+                        true
+                    }
+                    Key::Char('v') | Key::Char('V')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.selected_fx_slider = 3;
+                        self.visual_effects.afterglow = if self.visual_effects.afterglow < 0.15 {
+                            0.30
+                        } else if self.visual_effects.afterglow < 0.55 {
+                            0.80
+                        } else {
+                            0.0
+                        };
+                        self.status =
+                            format!("Afterglow: {:.0}%", self.visual_effects.afterglow * 100.0);
+                        true
+                    }
+                    Key::Char('b') | Key::Char('B')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.selected_fx_slider = 4;
+                        self.visual_effects.curvature = if self.visual_effects.curvature < 0.10 {
+                            0.25
+                        } else if self.visual_effects.curvature < 0.35 {
+                            0.45
+                        } else {
+                            0.0
+                        };
+                        self.status = format!(
+                            "CRT Curvature: {:.0}%",
+                            self.visual_effects.curvature * 100.0
+                        );
+                        true
+                    }
+                    Key::Char('n') | Key::Char('N')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.selected_fx_slider = 5;
+                        self.visual_effects.jitter = if self.visual_effects.jitter < 0.10 {
+                            0.25
+                        } else if self.visual_effects.jitter < 0.40 {
+                            0.65
+                        } else {
+                            0.0
+                        };
+                        self.status = format!("Jitter: {:.0}%", self.visual_effects.jitter * 100.0);
+                        true
+                    }
+                    Key::Char('g') | Key::Char('G')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.selected_fx_slider = 6;
+                        self.visual_effects.magnet = if self.visual_effects.magnet < 0.05 {
+                            0.10
+                        } else if self.visual_effects.magnet < 0.18 {
+                            0.25
+                        } else {
+                            0.0
+                        };
+                        self.status = format!(
+                            "Point CRT Magnet Deflection: {:.0}%",
+                            self.visual_effects.magnet * 100.0
+                        );
+                        true
+                    }
+                    Key::Char('h') | Key::Char('H')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.selected_fx_slider = 7;
+                        self.visual_effects.antenna_hum = if self.visual_effects.antenna_hum < 0.10
+                        {
+                            0.25
+                        } else if self.visual_effects.antenna_hum < 0.40 {
+                            0.60
+                        } else {
+                            0.0
+                        };
+                        self.status = format!(
+                            "Sporadic Antenna Hum: {:.0}%",
+                            self.visual_effects.antenna_hum * 100.0
+                        );
+                        true
+                    }
+                    Key::Char('y') | Key::Char('Y')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        self.selected_fx_slider = 8;
+                        self.visual_effects.noise = if self.visual_effects.noise < 0.10 {
+                            0.25
+                        } else if self.visual_effects.noise < 0.40 {
+                            0.60
+                        } else {
+                            0.0
+                        };
+                        self.status = format!(
+                            "White Noise Snow: {:.0}%",
+                            self.visual_effects.noise * 100.0
+                        );
+                        true
+                    }
+
+                    // Fine slider tuning with Left/Right or -/+ when on Visuals Tab
+                    Key::Left | Key::Char('-')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        match self.selected_fx_slider {
+                            0 => {
+                                self.visual_effects.scanlines =
+                                    (self.visual_effects.scanlines - 0.05).max(0.0)
+                            }
+                            1 => {
+                                self.visual_effects.pixel_grid =
+                                    (self.visual_effects.pixel_grid - 0.05).max(0.0)
+                            }
+                            2 => {
+                                self.visual_effects.chromatic =
+                                    (self.visual_effects.chromatic - 0.05).max(0.0)
+                            }
+                            3 => {
+                                self.visual_effects.afterglow =
+                                    (self.visual_effects.afterglow - 0.05).max(0.0)
+                            }
+                            4 => {
+                                self.visual_effects.curvature =
+                                    (self.visual_effects.curvature - 0.05).max(0.0)
+                            }
+                            5 => {
+                                self.visual_effects.jitter =
+                                    (self.visual_effects.jitter - 0.05).max(0.0)
+                            }
+                            6 => {
+                                self.visual_effects.magnet =
+                                    (self.visual_effects.magnet - 0.05).max(0.0)
+                            }
+                            7 => {
+                                self.visual_effects.antenna_hum =
+                                    (self.visual_effects.antenna_hum - 0.05).max(0.0)
+                            }
+                            _ => {
+                                self.visual_effects.noise =
+                                    (self.visual_effects.noise - 0.05).max(0.0)
+                            }
+                        }
+                        true
+                    }
+                    Key::Right | Key::Char('+') | Key::Char('=')
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
+                    {
+                        match self.selected_fx_slider {
+                            0 => {
+                                self.visual_effects.scanlines =
+                                    (self.visual_effects.scanlines + 0.05).min(1.0)
+                            }
+                            1 => {
+                                self.visual_effects.pixel_grid =
+                                    (self.visual_effects.pixel_grid + 0.05).min(1.0)
+                            }
+                            2 => {
+                                self.visual_effects.chromatic =
+                                    (self.visual_effects.chromatic + 0.05).min(1.0)
+                            }
+                            3 => {
+                                self.visual_effects.afterglow =
+                                    (self.visual_effects.afterglow + 0.05).min(1.0)
+                            }
+                            4 => {
+                                self.visual_effects.curvature =
+                                    (self.visual_effects.curvature + 0.05).min(1.0)
+                            }
+                            5 => {
+                                self.visual_effects.jitter =
+                                    (self.visual_effects.jitter + 0.05).min(1.0)
+                            }
+                            6 => {
+                                self.visual_effects.magnet =
+                                    (self.visual_effects.magnet + 0.05).min(1.0)
+                            }
+                            7 => {
+                                self.visual_effects.antenna_hum =
+                                    (self.visual_effects.antenna_hum + 0.05).min(1.0)
+                            }
+                            _ => {
+                                self.visual_effects.noise =
+                                    (self.visual_effects.noise + 0.05).min(1.0)
+                            }
+                        }
+                        true
+                    }
+
+                    Key::Up | Key::Char('k') => {
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals {
+                            if self.selected_fx_slider > 0 {
+                                self.selected_fx_slider -= 1;
+                                return true;
+                            }
+                        } else if self.current_tab == Tab::Resume {
+                            if self.resume_scroll > 0 {
+                                self.resume_scroll -= 1;
+                                return true;
+                            }
+                        } else if self.current_tab == Tab::About {
+                            if self.about_scroll > 0 {
+                                self.about_scroll -= 1;
+                                return true;
+                            }
+                        } else if self.current_tab == Tab::Projects {
+                            if self.show_detail {
+                                if self.detail_scroll > 0 {
+                                    self.detail_scroll -= 1;
+                                    return true;
+                                } else {
+                                    self.selected_detail_item =
+                                        self.selected_detail_item.saturating_sub(1);
+                                    return true;
+                                }
+                            } else if self.selected_project > 0 {
+                                self.selected_project -= 1;
+                                if self.selected_project < self.scroll_offset {
+                                    self.scroll_offset = self.selected_project;
+                                }
+                                return true;
+                            }
+                        }
+                        false
+                    }
+                    Key::Down | Key::Char('j') => {
+                        if self.platform == Platform::Web && self.current_tab == Tab::Visuals {
+                            if self.selected_fx_slider < 8 {
+                                self.selected_fx_slider += 1;
+                                return true;
+                            }
+                        } else if self.current_tab == Tab::Resume {
+                            if self.resume_scroll < self.resume_max_scroll() {
+                                self.resume_scroll += 1;
+                                return true;
+                            }
+                        } else if self.current_tab == Tab::About {
+                            if self.about_scroll < self.about_max_scroll() {
+                                self.about_scroll += 1;
+                                return true;
+                            }
+                        } else if self.current_tab == Tab::Projects {
+                            if self.show_detail {
+                                if self.detail_scroll < self.detail_max_scroll() {
+                                    self.detail_scroll += 1;
+                                    return true;
+                                } else {
+                                    self.selected_detail_item =
+                                        (self.selected_detail_item + 1).min(1);
+                                    return true;
+                                }
+                            } else if self.selected_project + 1 < PROJECTS.len() {
+                                self.selected_project += 1;
+                                let max_vis = self.projects_max_visible();
+                                if self.selected_project >= self.scroll_offset + max_vis {
+                                    self.scroll_offset =
+                                        self.selected_project.saturating_sub(max_vis - 1);
+                                }
+                                return true;
+                            }
+                        }
+                        false
+                    }
+                    Key::PageUp => {
+                        if self.current_tab == Tab::Resume {
+                            self.resume_scroll = self.resume_scroll.saturating_sub(6);
+                            return true;
+                        } else if self.current_tab == Tab::About {
+                            self.about_scroll = self.about_scroll.saturating_sub(6);
+                            return true;
+                        } else if self.current_tab == Tab::Projects && self.show_detail {
+                            self.detail_scroll = self.detail_scroll.saturating_sub(6);
+                            return true;
+                        }
+                        false
+                    }
+                    Key::PageDown => {
+                        if self.current_tab == Tab::Resume {
+                            self.resume_scroll =
+                                (self.resume_scroll + 6).min(self.resume_max_scroll());
+                            return true;
+                        } else if self.current_tab == Tab::About {
+                            self.about_scroll =
+                                (self.about_scroll + 6).min(self.about_max_scroll());
+                            return true;
+                        } else if self.current_tab == Tab::Projects && self.show_detail {
+                            self.detail_scroll =
+                                (self.detail_scroll + 6).min(self.detail_max_scroll());
+                            return true;
+                        }
+                        false
+                    }
+                    Key::Home => {
+                        if self.current_tab == Tab::Resume {
+                            self.resume_scroll = 0;
+                            return true;
+                        } else if self.current_tab == Tab::About {
+                            self.about_scroll = 0;
+                            return true;
+                        } else if self.current_tab == Tab::Projects {
+                            if self.show_detail {
+                                self.detail_scroll = 0;
+                            } else {
+                                self.selected_project = 0;
+                                self.scroll_offset = 0;
+                            }
+                            return true;
+                        }
+                        false
+                    }
+                    Key::End => {
+                        if self.current_tab == Tab::Resume {
+                            self.resume_scroll = self.resume_max_scroll();
+                            return true;
+                        } else if self.current_tab == Tab::About {
+                            self.about_scroll = self.about_max_scroll();
+                            return true;
+                        } else if self.current_tab == Tab::Projects {
+                            if self.show_detail {
+                                self.detail_scroll = self.detail_max_scroll();
+                            } else {
+                                self.selected_project = PROJECTS.len().saturating_sub(1);
+                                let max_vis = self.projects_max_visible();
+                                self.scroll_offset = PROJECTS.len().saturating_sub(max_vis);
+                            }
+                            return true;
+                        }
+                        false
+                    }
+                    Key::Enter => {
+                        if self.current_tab == Tab::Projects {
+                            if self.show_detail && self.selected_detail_item == 1 {
+                                self.show_detail = false;
+                                self.detail_scroll = 0;
+                            } else {
+                                self.show_detail = !self.show_detail;
+                                self.detail_scroll = 0;
+                                self.selected_detail_item = 0;
+                            }
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    Key::Escape | Key::Char('q') => {
+                        if self.active_modal != ActiveModal::None {
+                            self.active_modal = ActiveModal::None;
+                            true
+                        } else if self.current_tab == Tab::Resume || self.current_tab == Tab::About
+                        {
+                            self.current_tab = Tab::Projects;
+                            true
+                        } else if self.show_detail {
                             self.show_detail = false;
                             self.detail_scroll = 0;
+                            true
+                        } else if self.current_tab == Tab::Help {
+                            self.current_tab = Tab::Projects;
+                            true
                         } else {
-                            self.show_detail = !self.show_detail;
-                            self.detail_scroll = 0;
-                            self.selected_detail_item = 0;
+                            false
                         }
-                        true
-                    } else {
-                        false
                     }
+                    _ => false,
                 }
-                Key::Escape | Key::Char('q') => {
-                    if self.active_modal != ActiveModal::None {
-                        self.active_modal = ActiveModal::None;
-                        true
-                    } else if self.current_tab == Tab::Resume || self.current_tab == Tab::About {
-                        self.current_tab = Tab::Projects;
-                        true
-                    } else if self.show_detail {
-                        self.show_detail = false;
-                        self.detail_scroll = 0;
-                        true
-                    } else if self.current_tab == Tab::Help {
-                        self.current_tab = Tab::Projects;
-                        true
-                    } else {
-                        false
-                    }
-                }
-                _ => false,
             }
-        }
             InputEvent::Wheel { dy, .. } => {
                 // If modal is active, swallow wheel event so it never leaks into background
                 if self.active_modal != ActiveModal::None {
                     return true;
                 }
 
-                let delta = (dy.abs() as usize).max(1);
+                let delta = (dy.unsigned_abs() as usize).max(1);
                 if self.current_tab == Tab::Resume {
                     if dy > 0 {
-                        self.resume_scroll = (self.resume_scroll + delta).min(self.resume_max_scroll());
+                        self.resume_scroll =
+                            (self.resume_scroll + delta).min(self.resume_max_scroll());
                     } else if dy < 0 {
                         self.resume_scroll = self.resume_scroll.saturating_sub(delta);
                     }
                     return true;
                 } else if self.current_tab == Tab::About {
                     if dy > 0 {
-                        self.about_scroll = (self.about_scroll + delta).min(self.about_max_scroll());
+                        self.about_scroll =
+                            (self.about_scroll + delta).min(self.about_max_scroll());
                     } else if dy < 0 {
                         self.about_scroll = self.about_scroll.saturating_sub(delta);
                     }
@@ -749,7 +1006,8 @@ impl App {
                 } else if self.current_tab == Tab::Projects {
                     if self.show_detail {
                         if dy > 0 {
-                            self.detail_scroll = (self.detail_scroll + delta).min(self.detail_max_scroll());
+                            self.detail_scroll =
+                                (self.detail_scroll + delta).min(self.detail_max_scroll());
                         } else if dy < 0 {
                             self.detail_scroll = self.detail_scroll.saturating_sub(delta);
                         }
@@ -880,11 +1138,18 @@ impl App {
 
                 // 2. Active Modal Dialog click handling: strictly captures all mouse events
                 if self.active_modal != ActiveModal::None {
-                    let char_h: u16 = if height <= 200 { 8 } else { 16 };
-                    let box_w = if cols >= 80 { 540u16.min(width.saturating_sub(32)) } else { width.saturating_sub(16) };
-                    let box_h = (13 * char_h + 16).min(height.saturating_sub(24));
-                    let box_x = (width.saturating_sub(box_w)) / 2;
-                    let box_y = (height.saturating_sub(box_h)) / 2;
+                    let char_h: u16 = self.resolution.line_height();
+                    let geometry = if self.active_modal == ActiveModal::System {
+                        self.system_dialog_geometry()
+                    } else {
+                        self.standard_dialog_geometry()
+                    };
+                    let (box_x, box_y, box_w, box_h) = (
+                        geometry.box_x,
+                        geometry.box_y,
+                        geometry.box_w,
+                        geometry.box_h,
+                    );
 
                     // Clicking outside dialog box dismisses it
                     if x < box_x || x >= box_x + box_w || y < box_y || y >= box_y + box_h {
@@ -893,7 +1158,7 @@ impl App {
                     }
 
                     // Clicking [X] close button
-                    let close_x = (box_x + box_w).saturating_sub(44);
+                    let close_x = (box_x + box_w).saturating_sub(48);
                     if y >= box_y && y < box_y + char_h + 2 && x >= close_x {
                         self.active_modal = ActiveModal::None;
                         return true;
@@ -901,37 +1166,36 @@ impl App {
 
                     // System modal dual-column selection
                     if self.active_modal == ActiveModal::System {
-                        let row_start_y = box_y + char_h + 4;
+                        let row_start_y = box_y + char_h;
                         if y >= row_start_y + char_h {
                             let row_idx = ((y - (row_start_y + char_h)) / char_h) as usize;
                             if cols >= 80 {
-                                let col1_x = box_x + 12;
-                                let col2_x = box_x + 300;
-                                if x >= col1_x.saturating_sub(4) && x < col1_x + 270 {
+                                let col1_x = box_x + 24;
+                                let col2_x = box_x + 320;
+                                if x >= col1_x && x < col2_x {
                                     if row_idx < ResolutionMode::ALL.len() {
                                         self.set_resolution(ResolutionMode::ALL[row_idx]);
                                         self.active_modal = ActiveModal::None;
                                         return true;
                                     }
-                                } else if x >= col2_x.saturating_sub(4) && x < col2_x + 260 {
-                                    if row_idx < ColorTheme::ALL.len() {
-                                        self.set_color_theme(ColorTheme::ALL[row_idx]);
-                                        self.active_modal = ActiveModal::None;
-                                        return true;
-                                    }
-                                }
-                            } else {
-                                if row_idx < 4 && row_idx < ResolutionMode::ALL.len() {
-                                    self.set_resolution(ResolutionMode::ALL[row_idx]);
+                                } else if x >= col2_x
+                                    && x < box_x + box_w - 8
+                                    && row_idx < ColorTheme::ALL.len()
+                                {
+                                    self.set_color_theme(ColorTheme::ALL[row_idx]);
                                     self.active_modal = ActiveModal::None;
                                     return true;
-                                } else if row_idx >= 5 && row_idx < 9 {
-                                    let thm_idx = row_idx - 5;
-                                    if thm_idx < ColorTheme::ALL.len() {
-                                        self.set_color_theme(ColorTheme::ALL[thm_idx]);
-                                        self.active_modal = ActiveModal::None;
-                                        return true;
-                                    }
+                                }
+                            } else if row_idx < ResolutionMode::ALL.len() {
+                                self.set_resolution(ResolutionMode::ALL[row_idx]);
+                                self.active_modal = ActiveModal::None;
+                                return true;
+                            } else if row_idx >= 10 && row_idx < 10 + ColorTheme::ALL.len() {
+                                let thm_idx = row_idx - 10;
+                                if thm_idx < ColorTheme::ALL.len() {
+                                    self.set_color_theme(ColorTheme::ALL[thm_idx]);
+                                    self.active_modal = ActiveModal::None;
+                                    return true;
                                 }
                             }
                         }
@@ -973,7 +1237,8 @@ impl App {
                                 let track_start = box_x + 115;
                                 let track_w = 110;
                                 if x >= track_start && x <= track_start + track_w {
-                                    let ratio = ((x - track_start) as f32 / track_w as f32).clamp(0.0, 1.0);
+                                    let ratio =
+                                        ((x - track_start) as f32 / track_w as f32).clamp(0.0, 1.0);
                                     match slider_idx {
                                         0 => self.visual_effects.scanlines = ratio,
                                         1 => self.visual_effects.pixel_grid = ratio,
@@ -1001,11 +1266,19 @@ impl App {
                 }
 
                 // 3. Article view (CV or About) on Web: strictly captures mouse clicks
-                if self.platform == Platform::Web && (self.current_tab == Tab::Resume || self.current_tab == Tab::About) {
-                    let char_h = self.palette_mode.line_height();
-                    let pad_x = if cols >= 80 { 16u16 } else { 4u16 };
+                if self.platform == Platform::Web
+                    && (self.current_tab == Tab::Resume || self.current_tab == Tab::About)
+                {
+                    let char_h = self.resolution.line_height();
+                    let pad_x = if cols >= 80 {
+                        16u16
+                    } else if cols >= 40 {
+                        8u16
+                    } else {
+                        0u16
+                    };
                     let pad_top = char_h * 2;
-                    let pad_bot = char_h * 2;
+                    let pad_bot = char_h * 3;
                     let box_x = pad_x;
                     let box_y = pad_top;
                     let box_w = width.saturating_sub(pad_x * 2);
@@ -1013,8 +1286,11 @@ impl App {
 
                     let close_btn_w = if cols >= 80 { 64u16 } else { 24u16 };
                     let close_x = (box_x + box_w).saturating_sub(close_btn_w + 8);
-                    if (y >= box_y && y < box_y + char_h && x >= close_x)
-                        || x < box_x || x >= box_x + box_w || y < box_y || y >= box_y + box_h
+                    if x < box_x
+                        || x >= box_x + box_w
+                        || y < box_y
+                        || y >= box_y + box_h
+                        || (y < box_y + char_h && x >= close_x)
                     {
                         self.current_tab = Tab::Projects;
                         return true;
@@ -1028,12 +1304,12 @@ impl App {
                             } else {
                                 self.about_scroll = self.about_scroll.saturating_sub(5);
                             }
+                        } else if self.current_tab == Tab::Resume {
+                            self.resume_scroll =
+                                (self.resume_scroll + 5).min(self.resume_max_scroll());
                         } else {
-                            if self.current_tab == Tab::Resume {
-                                self.resume_scroll = (self.resume_scroll + 5).min(self.resume_max_scroll());
-                            } else {
-                                self.about_scroll = (self.about_scroll + 5).min(self.about_max_scroll());
-                            }
+                            self.about_scroll =
+                                (self.about_scroll + 5).min(self.about_max_scroll());
                         }
                     }
 
@@ -1055,7 +1331,8 @@ impl App {
                     };
                     let scrollbar_x_start = width.saturating_sub(20);
                     if x >= scrollbar_x_start {
-                        let is_detail_80 = self.current_tab == Tab::Projects && self.show_detail && cols == 80;
+                        let is_detail_80 =
+                            self.current_tab == Tab::Projects && self.show_detail && cols == 80;
                         let (top_arrow_y, bot_arrow_y, track_top, track_bot) = if is_detail_80 {
                             (128..=144, 304..=320, 144.0, 304.0)
                         } else if cols == 80 && self.current_tab == Tab::Resume {
@@ -1063,7 +1340,12 @@ impl App {
                         } else if cols == 80 && self.current_tab == Tab::About {
                             (48..=64, 304..=320, 64.0, 304.0)
                         } else {
-                            (34..=50, (height.saturating_sub(35))..=(height.saturating_sub(18)), 50.0, (height.saturating_sub(35)) as f32)
+                            (
+                                34..=50,
+                                (height.saturating_sub(35))..=(height.saturating_sub(18)),
+                                50.0,
+                                (height.saturating_sub(35)) as f32,
+                            )
                         };
                         if top_arrow_y.contains(&y) {
                             if self.current_tab == Tab::Resume {
@@ -1085,7 +1367,8 @@ impl App {
                             return true;
                         } else if (y as f32) > track_top && (y as f32) < track_bot {
                             let ratio = (y as f32 - track_top) / (track_bot - track_top);
-                            let new_scroll = ((ratio * max_scroll as f32).round() as usize).min(max_scroll);
+                            let new_scroll =
+                                ((ratio * max_scroll as f32).round() as usize).min(max_scroll);
                             if self.current_tab == Tab::Resume {
                                 self.resume_scroll = new_scroll;
                             } else if self.current_tab == Tab::About {
@@ -1102,28 +1385,28 @@ impl App {
                 if self.platform == Platform::Web && self.current_tab == Tab::Visuals {
                     if cols == 80 {
                         // Presets row at Row 5: y = 80 (clickable y = 72..=96)
-                        if y >= 72 && y <= 96 {
-                            if x >= 16 && x < 112 {
+                        if (72..=96).contains(&y) {
+                            if (16..112).contains(&x) {
                                 self.visual_effects = VisualEffects::clean();
                                 self.status = "Preset: Clean (Pixel-Perfect)".to_string();
                                 return true;
-                            } else if x >= 112 && x < 208 {
+                            } else if (112..208).contains(&x) {
                                 self.visual_effects = VisualEffects::crt_trinitron();
                                 self.status = "Preset: 80s Trinitron CRT".to_string();
                                 return true;
-                            } else if x >= 208 && x < 312 {
+                            } else if (208..312).contains(&x) {
                                 self.visual_effects = VisualEffects::crt_arcade();
                                 self.status = "Preset: Arcade Cabinet".to_string();
                                 return true;
-                            } else if x >= 312 && x < 408 {
+                            } else if (312..408).contains(&x) {
                                 self.visual_effects = VisualEffects::phosphor_bloom();
                                 self.status = "Preset: Phosphor Bloom".to_string();
                                 return true;
-                            } else if x >= 408 && x < 512 {
+                            } else if (408..512).contains(&x) {
                                 self.visual_effects = VisualEffects::retro_glitch();
                                 self.status = "Preset: Retro Glitch".to_string();
                                 return true;
-                            } else if x >= 512 && x <= 630 {
+                            } else if (512..=630).contains(&x) {
                                 self.visual_effects = VisualEffects::default();
                                 self.status = "Preset: Default CRT".to_string();
                                 return true;
@@ -1131,7 +1414,7 @@ impl App {
                         }
 
                         // Effect rows at Rows 7..15: y = 112..=256 (9 rows with step 16)
-                        if y >= 112 && y < 256 {
+                        if (112..256).contains(&y) {
                             let row = ((y - 112) / 16).min(8);
                             self.selected_fx_slider = row as usize;
 
@@ -1144,66 +1427,147 @@ impl App {
 
                             match row {
                                 0 => {
-                                    self.visual_effects.scanlines = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.scanlines < 0.15 { 0.35 } else if self.visual_effects.scanlines < 0.50 { 0.70 } else { 0.0 }
+                                    self.visual_effects.scanlines = direct_val.unwrap_or({
+                                        if self.visual_effects.scanlines < 0.15 {
+                                            0.35
+                                        } else if self.visual_effects.scanlines < 0.50 {
+                                            0.70
+                                        } else {
+                                            0.0
+                                        }
                                     });
-                                    self.status = format!("Scanlines: {:.0}%", self.visual_effects.scanlines * 100.0);
+                                    self.status = format!(
+                                        "Scanlines: {:.0}%",
+                                        self.visual_effects.scanlines * 100.0
+                                    );
                                     return true;
                                 }
                                 1 => {
-                                    self.visual_effects.pixel_grid = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.pixel_grid < 0.10 { 0.20 } else if self.visual_effects.pixel_grid < 0.30 { 0.40 } else { 0.0 }
+                                    self.visual_effects.pixel_grid = direct_val.unwrap_or({
+                                        if self.visual_effects.pixel_grid < 0.10 {
+                                            0.20
+                                        } else if self.visual_effects.pixel_grid < 0.30 {
+                                            0.40
+                                        } else {
+                                            0.0
+                                        }
                                     });
-                                    self.status = format!("Pixel Grid: {:.0}%", self.visual_effects.pixel_grid * 100.0);
+                                    self.status = format!(
+                                        "Pixel Grid: {:.0}%",
+                                        self.visual_effects.pixel_grid * 100.0
+                                    );
                                     return true;
                                 }
                                 2 => {
-                                    self.visual_effects.chromatic = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.chromatic < 0.15 { 0.35 } else if self.visual_effects.chromatic < 0.55 { 0.85 } else { 0.0 }
+                                    self.visual_effects.chromatic = direct_val.unwrap_or({
+                                        if self.visual_effects.chromatic < 0.15 {
+                                            0.35
+                                        } else if self.visual_effects.chromatic < 0.55 {
+                                            0.85
+                                        } else {
+                                            0.0
+                                        }
                                     });
-                                    self.status = format!("Chromatic Aberration: {:.0}%", self.visual_effects.chromatic * 100.0);
+                                    self.status = format!(
+                                        "Chromatic Aberration: {:.0}%",
+                                        self.visual_effects.chromatic * 100.0
+                                    );
                                     return true;
                                 }
                                 3 => {
-                                    self.visual_effects.afterglow = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.afterglow < 0.15 { 0.30 } else if self.visual_effects.afterglow < 0.55 { 0.80 } else { 0.0 }
+                                    self.visual_effects.afterglow = direct_val.unwrap_or({
+                                        if self.visual_effects.afterglow < 0.15 {
+                                            0.30
+                                        } else if self.visual_effects.afterglow < 0.55 {
+                                            0.80
+                                        } else {
+                                            0.0
+                                        }
                                     });
-                                    self.status = format!("Phosphor Afterglow: {:.0}%", self.visual_effects.afterglow * 100.0);
+                                    self.status = format!(
+                                        "Phosphor Afterglow: {:.0}%",
+                                        self.visual_effects.afterglow * 100.0
+                                    );
                                     return true;
                                 }
                                 4 => {
-                                    self.visual_effects.curvature = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.curvature < 0.10 { 0.25 } else if self.visual_effects.curvature < 0.35 { 0.45 } else { 0.0 }
+                                    self.visual_effects.curvature = direct_val.unwrap_or({
+                                        if self.visual_effects.curvature < 0.10 {
+                                            0.25
+                                        } else if self.visual_effects.curvature < 0.35 {
+                                            0.45
+                                        } else {
+                                            0.0
+                                        }
                                     });
-                                    self.status = format!("CRT Curvature: {:.0}%", self.visual_effects.curvature * 100.0);
+                                    self.status = format!(
+                                        "CRT Curvature: {:.0}%",
+                                        self.visual_effects.curvature * 100.0
+                                    );
                                     return true;
                                 }
                                 5 => {
-                                    self.visual_effects.jitter = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.jitter < 0.10 { 0.25 } else if self.visual_effects.jitter < 0.40 { 0.65 } else { 0.0 }
+                                    self.visual_effects.jitter = direct_val.unwrap_or({
+                                        if self.visual_effects.jitter < 0.10 {
+                                            0.25
+                                        } else if self.visual_effects.jitter < 0.40 {
+                                            0.65
+                                        } else {
+                                            0.0
+                                        }
                                     });
-                                    self.status = format!("Signal Jitter: {:.0}%", self.visual_effects.jitter * 100.0);
+                                    self.status = format!(
+                                        "Signal Jitter: {:.0}%",
+                                        self.visual_effects.jitter * 100.0
+                                    );
                                     return true;
                                 }
                                 6 => {
-                                    self.visual_effects.magnet = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.magnet < 0.05 { 0.10 } else if self.visual_effects.magnet < 0.18 { 0.25 } else { 0.0 }
+                                    self.visual_effects.magnet = direct_val.unwrap_or({
+                                        if self.visual_effects.magnet < 0.05 {
+                                            0.10
+                                        } else if self.visual_effects.magnet < 0.18 {
+                                            0.25
+                                        } else {
+                                            0.0
+                                        }
                                     });
-                                    self.status = format!("Point CRT Magnet Deflection: {:.0}%", self.visual_effects.magnet * 100.0);
+                                    self.status = format!(
+                                        "Point CRT Magnet Deflection: {:.0}%",
+                                        self.visual_effects.magnet * 100.0
+                                    );
                                     return true;
                                 }
                                 7 => {
-                                    self.visual_effects.antenna_hum = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.antenna_hum < 0.10 { 0.25 } else if self.visual_effects.antenna_hum < 0.40 { 0.60 } else { 0.0 }
+                                    self.visual_effects.antenna_hum = direct_val.unwrap_or({
+                                        if self.visual_effects.antenna_hum < 0.10 {
+                                            0.25
+                                        } else if self.visual_effects.antenna_hum < 0.40 {
+                                            0.60
+                                        } else {
+                                            0.0
+                                        }
                                     });
-                                    self.status = format!("Sporadic Antenna Hum: {:.0}%", self.visual_effects.antenna_hum * 100.0);
+                                    self.status = format!(
+                                        "Sporadic Antenna Hum: {:.0}%",
+                                        self.visual_effects.antenna_hum * 100.0
+                                    );
                                     return true;
                                 }
                                 8 => {
-                                    self.visual_effects.noise = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.noise < 0.10 { 0.25 } else if self.visual_effects.noise < 0.40 { 0.60 } else { 0.0 }
+                                    self.visual_effects.noise = direct_val.unwrap_or({
+                                        if self.visual_effects.noise < 0.10 {
+                                            0.25
+                                        } else if self.visual_effects.noise < 0.40 {
+                                            0.60
+                                        } else {
+                                            0.0
+                                        }
                                     });
-                                    self.status = format!("White Noise Snow: {:.0}%", self.visual_effects.noise * 100.0);
+                                    self.status = format!(
+                                        "White Noise Snow: {:.0}%",
+                                        self.visual_effects.noise * 100.0
+                                    );
                                     return true;
                                 }
                                 _ => {}
@@ -1211,7 +1575,7 @@ impl App {
                         }
                     } else {
                         // 40 / 32 cols: Presets at y = 20..=38
-                        if y >= 20 && y <= 38 {
+                        if (20..=38).contains(&y) {
                             let step = width / 5;
                             if x < step {
                                 self.visual_effects = VisualEffects::clean();
@@ -1255,56 +1619,94 @@ impl App {
 
                             match row {
                                 0 => {
-                                    self.visual_effects.scanlines = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.scanlines < 0.2 { 0.45 } else { 0.0 }
+                                    self.visual_effects.scanlines = direct_val.unwrap_or({
+                                        if self.visual_effects.scanlines < 0.2 {
+                                            0.45
+                                        } else {
+                                            0.0
+                                        }
                                     });
                                     return true;
                                 }
                                 1 => {
-                                    self.visual_effects.pixel_grid = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.pixel_grid < 0.15 { 0.30 } else { 0.0 }
+                                    self.visual_effects.pixel_grid = direct_val.unwrap_or({
+                                        if self.visual_effects.pixel_grid < 0.15 {
+                                            0.30
+                                        } else {
+                                            0.0
+                                        }
                                     });
                                     return true;
                                 }
                                 2 => {
-                                    self.visual_effects.chromatic = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.chromatic < 0.2 { 0.50 } else { 0.0 }
+                                    self.visual_effects.chromatic = direct_val.unwrap_or({
+                                        if self.visual_effects.chromatic < 0.2 {
+                                            0.50
+                                        } else {
+                                            0.0
+                                        }
                                     });
                                     return true;
                                 }
                                 3 => {
-                                    self.visual_effects.afterglow = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.afterglow < 0.2 { 0.60 } else { 0.0 }
+                                    self.visual_effects.afterglow = direct_val.unwrap_or({
+                                        if self.visual_effects.afterglow < 0.2 {
+                                            0.60
+                                        } else {
+                                            0.0
+                                        }
                                     });
                                     return true;
                                 }
                                 4 => {
-                                    self.visual_effects.curvature = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.curvature < 0.15 { 0.35 } else { 0.0 }
+                                    self.visual_effects.curvature = direct_val.unwrap_or({
+                                        if self.visual_effects.curvature < 0.15 {
+                                            0.35
+                                        } else {
+                                            0.0
+                                        }
                                     });
                                     return true;
                                 }
                                 5 => {
-                                    self.visual_effects.jitter = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.jitter < 0.15 { 0.45 } else { 0.0 }
+                                    self.visual_effects.jitter = direct_val.unwrap_or({
+                                        if self.visual_effects.jitter < 0.15 {
+                                            0.45
+                                        } else {
+                                            0.0
+                                        }
                                     });
                                     return true;
                                 }
                                 6 => {
-                                    self.visual_effects.magnet = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.magnet < 0.05 { 0.10 } else if self.visual_effects.magnet < 0.18 { 0.25 } else { 0.0 }
+                                    self.visual_effects.magnet = direct_val.unwrap_or({
+                                        if self.visual_effects.magnet < 0.05 {
+                                            0.10
+                                        } else if self.visual_effects.magnet < 0.18 {
+                                            0.25
+                                        } else {
+                                            0.0
+                                        }
                                     });
                                     return true;
                                 }
                                 7 => {
-                                    self.visual_effects.antenna_hum = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.antenna_hum < 0.15 { 0.35 } else { 0.0 }
+                                    self.visual_effects.antenna_hum = direct_val.unwrap_or({
+                                        if self.visual_effects.antenna_hum < 0.15 {
+                                            0.35
+                                        } else {
+                                            0.0
+                                        }
                                     });
                                     return true;
                                 }
                                 8 => {
-                                    self.visual_effects.noise = direct_val.unwrap_or_else(|| {
-                                        if self.visual_effects.noise < 0.15 { 0.35 } else { 0.0 }
+                                    self.visual_effects.noise = direct_val.unwrap_or({
+                                        if self.visual_effects.noise < 0.15 {
+                                            0.35
+                                        } else {
+                                            0.0
+                                        }
                                     });
                                     return true;
                                 }
@@ -1317,15 +1719,35 @@ impl App {
                 // 4. Project list interaction
                 if self.current_tab == Tab::Projects {
                     if self.show_detail {
-                        let back_y = if cols == 80 { 336..=352 } else { (height.saturating_sub(30))..=(height.saturating_sub(8)) };
+                        let back_y = if cols == 80 {
+                            336..=352
+                        } else {
+                            (height.saturating_sub(30))..=(height.saturating_sub(8))
+                        };
                         if back_y.contains(&y) {
                             self.show_detail = false;
                             return true;
                         }
                     } else {
-                        let list_top = if cols == 80 { 80 } else { 24 };
-                        let row_h = if cols == 80 { 16 } else if cols == 40 { 12 } else { 11 };
-                        let list_bot = if cols == 80 { 320 } else { height.saturating_sub(16) };
+                        let list_top = if cols >= 80 {
+                            3 * self.resolution.line_height()
+                        } else {
+                            24
+                        };
+                        let row_h = if cols >= 80 {
+                            self.resolution.line_height()
+                        } else if cols == 40 {
+                            12
+                        } else {
+                            11
+                        };
+                        let list_bot = if cols >= 80 {
+                            list_top
+                                + (self.projects_max_visible() as u16)
+                                    * self.resolution.line_height()
+                        } else {
+                            height.saturating_sub(16)
+                        };
                         if y >= list_top && y < list_bot {
                             let row_idx = ((y - list_top) / row_h) as usize;
                             let project_idx = self.scroll_offset + row_idx;

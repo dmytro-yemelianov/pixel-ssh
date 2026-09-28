@@ -79,7 +79,10 @@ impl ResolutionMode {
         match self {
             ResolutionMode::Svga | ResolutionMode::Sga | ResolutionMode::Vga => 16,
             ResolutionMode::Ega => 14,
-            ResolutionMode::Cga | ResolutionMode::C64 | ResolutionMode::Atari | ResolutionMode::ZxSpectrum => 8,
+            ResolutionMode::Cga
+            | ResolutionMode::C64
+            | ResolutionMode::Atari
+            | ResolutionMode::ZxSpectrum => 8,
         }
     }
 
@@ -112,8 +115,8 @@ impl ResolutionMode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ColorTheme {
-    #[default]
     Commander,
+    #[default]
     VgaModern,
     Ega,
     C64,
@@ -472,7 +475,11 @@ impl View {
     pub fn link_at(&self, x: u16, y: u16) -> Option<&LinkElement> {
         for element in &self.elements {
             if let Element::Link(link) = element {
-                if x >= link.x && x < link.x + link.width && y >= link.y && y <= link.y + link.height + 2 {
+                if x >= link.x
+                    && x < link.x + link.width
+                    && y >= link.y
+                    && y <= link.y + link.height + 2
+                {
                     return Some(link);
                 }
             }
@@ -571,7 +578,13 @@ pub struct LinkElement {
 }
 
 impl LinkElement {
-    pub fn new(x: u16, y: u16, text: impl Into<String>, url: impl Into<String>, style: TextStyle) -> Self {
+    pub fn new(
+        x: u16,
+        y: u16,
+        text: impl Into<String>,
+        url: impl Into<String>,
+        style: TextStyle,
+    ) -> Self {
         let text = text.into();
         let width = (text.len() as u16) * 8;
         let height = 8;
@@ -686,7 +699,7 @@ pub fn horizontal_scroll(text: &str, max_chars: usize, tick: usize) -> String {
     if char_count <= max_chars {
         return text.to_string();
     }
-    let ticker = format!("{}   •   ", text);
+    let ticker = format!("{text}   •   ");
     let ticker_chars: Vec<char> = ticker.chars().collect();
     let cycle = ticker_chars.len();
     let offset = (tick / 4) % cycle;
@@ -701,10 +714,59 @@ pub fn horizontal_scroll(text: &str, max_chars: usize, tick: usize) -> String {
 pub fn is_table_border_char(ch: char) -> bool {
     matches!(
         ch,
-        '─' | '│' | '┌' | '┐' | '└' | '┘' | '├' | '┤' | '┬' | '┴' | '┼'
-            | '━' | '┃' | '┏' | '┓' | '┗' | '┛' | '┣' | '┫' | '┳' | '┻' | '╋'
-            | '═' | '║' | '╒' | '╓' | '╔' | '╕' | '╖' | '╗' | '╘' | '╙' | '╚'
-            | '╛' | '╜' | '╝' | '╞' | '╟' | '╠' | '╡' | '╢' | '╣' | '╤' | '╥'
-            | '╦' | '╧' | '╨' | '╩' | '╪' | '╫' | '╬' | '╭' | '╮' | '╯' | '╰'
+        '─' | '│'
+            | '┌'
+            | '┐'
+            | '└'
+            | '┘'
+            | '├'
+            | '┤'
+            | '┬'
+            | '┴'
+            | '┼'
+            | '━'
+            | '┃'
+            | '┏'
+            | '┓'
+            | '┗'
+            | '┛'
+            | '┣'
+            | '┫'
+            | '┳'
+            | '┻'
+            | '╋'
+            | '═'
+            | '║'
+            | '╒'
+            | '╓'
+            | '╔'
+            | '╕'
+            | '╖'
+            | '╗'
+            | '╘'
+            | '╙'
+            | '╚'
+            | '╛'
+            | '╜'
+            | '╝'
+            | '╞'
+            | '╟'
+            | '╠'
+            | '╡'
+            | '╢'
+            | '╣'
+            | '╤'
+            | '╥'
+            | '╦'
+            | '╧'
+            | '╨'
+            | '╩'
+            | '╪'
+            | '╫'
+            | '╬'
+            | '╭'
+            | '╮'
+            | '╯'
+            | '╰'
     )
 }

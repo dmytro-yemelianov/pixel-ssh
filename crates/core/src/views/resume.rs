@@ -1,11 +1,11 @@
 //! Resume tab view implementation.
 
-use pixel_ssh_view::{
-    horizontal_scroll, Color, Element, LinkElement, Platform, RectElement,
-    TextElement, TextStyle, View,
-};
 use crate::data::{RESUME_LINES_32, RESUME_LINES_40, RESUME_LINES_80};
 use crate::state::App;
+use pixel_ssh_view::{
+    horizontal_scroll, Color, Element, LinkElement, Platform, RectElement, TextElement, TextStyle,
+    View,
+};
 
 impl App {
     pub(crate) fn render_resume(&self, view: &mut View) {
@@ -13,7 +13,7 @@ impl App {
             self.render_resume_terminal(view);
             return;
         }
-        let (cols, _) = self.palette_mode.char_grid();
+        let (cols, _) = self.resolution.char_grid();
         match cols {
             100 | 80 => self.render_resume_80(view),
             40 => self.render_resume_40(view),
@@ -67,7 +67,7 @@ impl App {
         // Vertical scroll window from y = 96 to y = 320 (Rows 6..20, 15 visible lines)
         for (i, &(line_text, pal_idx, bold)) in RESUME_LINES_80.iter().enumerate() {
             let line_y = 96 + ((i as i32) - (self.resume_scroll as i32)) * 16;
-            if line_y >= 96 && line_y <= 320 {
+            if (96..=320).contains(&line_y) {
                 let mut style = TextStyle::new(Color::from_palette(pal_idx));
                 if bold {
                     style = style.bold();
@@ -101,7 +101,11 @@ impl App {
 
         // Scroll thumb
         let track_h = 192.0 - 16.0;
-        let thumb_ratio = if max_scroll > 0 { self.resume_scroll as f32 / max_scroll as f32 } else { 0.0 };
+        let thumb_ratio = if max_scroll > 0 {
+            self.resume_scroll as f32 / max_scroll as f32
+        } else {
+            0.0
+        };
         let thumb_y = 112 + (thumb_ratio * track_h) as u16;
         view.add(Element::Rect(RectElement {
             x: 624,
@@ -134,7 +138,8 @@ impl App {
     }
 
     pub(crate) fn render_resume_40(&self, view: &mut View) {
-        let resume_hdr = horizontal_scroll("DMYTRO YEMELIANOV - SYSTEMS & AI ARCHITECT", 38, self.tick);
+        let resume_hdr =
+            horizontal_scroll("DMYTRO YEMELIANOV - SYSTEMS & AI ARCHITECT", 38, self.tick);
         view.add(Element::Text(TextElement {
             x: 4,
             y: 22,
@@ -177,7 +182,7 @@ impl App {
 
         for (i, &(line_text, pal_idx, bold)) in RESUME_LINES_40.iter().enumerate() {
             let line_y = 43 + ((i as i32) - (self.resume_scroll as i32)) * 9;
-            if line_y >= 43 && line_y <= 170 {
+            if (43..=170).contains(&line_y) {
                 let mut style = TextStyle::new(Color::from_palette(pal_idx));
                 if bold {
                     style = style.bold();
@@ -209,7 +214,11 @@ impl App {
         }));
 
         let track_h = 110.0 - 12.0;
-        let thumb_ratio = if max_scroll > 0 { self.resume_scroll as f32 / max_scroll as f32 } else { 0.0 };
+        let thumb_ratio = if max_scroll > 0 {
+            self.resume_scroll as f32 / max_scroll as f32
+        } else {
+            0.0
+        };
         let thumb_y = 53 + (thumb_ratio * track_h) as u16;
         view.add(Element::Rect(RectElement {
             x: 310,
@@ -230,13 +239,19 @@ impl App {
         view.add(Element::Text(TextElement {
             x: 4,
             y: 177,
-            text: format!("Lines {}-{} of {} [j/k/Wheel]", self.resume_scroll + 1, (self.resume_scroll + 14).min(RESUME_LINES_40.len()), RESUME_LINES_40.len()),
+            text: format!(
+                "Lines {}-{} of {} [j/k/Wheel]",
+                self.resume_scroll + 1,
+                (self.resume_scroll + 14).min(RESUME_LINES_40.len()),
+                RESUME_LINES_40.len()
+            ),
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }
 
     pub(crate) fn render_resume_32(&self, view: &mut View) {
-        let resume_hdr = horizontal_scroll("DMYTRO YEMELIANOV - SYSTEMS & AI ARCHITECT", 30, self.tick);
+        let resume_hdr =
+            horizontal_scroll("DMYTRO YEMELIANOV - SYSTEMS & AI ARCHITECT", 30, self.tick);
         view.add(Element::Text(TextElement {
             x: 2,
             y: 22,
@@ -272,7 +287,7 @@ impl App {
 
         for (i, &(line_text, pal_idx, bold)) in RESUME_LINES_32.iter().enumerate() {
             let line_y = 43 + ((i as i32) - (self.resume_scroll as i32)) * 9;
-            if line_y >= 43 && line_y <= 164 {
+            if (43..=164).contains(&line_y) {
                 let mut style = TextStyle::new(Color::from_palette(pal_idx));
                 if bold {
                     style = style.bold();
@@ -304,7 +319,11 @@ impl App {
         }));
 
         let track_h = 100.0 - 12.0;
-        let thumb_ratio = if max_scroll > 0 { self.resume_scroll as f32 / max_scroll as f32 } else { 0.0 };
+        let thumb_ratio = if max_scroll > 0 {
+            self.resume_scroll as f32 / max_scroll as f32
+        } else {
+            0.0
+        };
         let thumb_y = 53 + (thumb_ratio * track_h) as u16;
         view.add(Element::Rect(RectElement {
             x: 246,
@@ -325,7 +344,12 @@ impl App {
         view.add(Element::Text(TextElement {
             x: 2,
             y: 170,
-            text: format!("Lines {}-{} of {} [k/j]", self.resume_scroll + 1, (self.resume_scroll + 13).min(RESUME_LINES_32.len()), RESUME_LINES_32.len()),
+            text: format!(
+                "Lines {}-{} of {} [k/j]",
+                self.resume_scroll + 1,
+                (self.resume_scroll + 13).min(RESUME_LINES_32.len()),
+                RESUME_LINES_32.len()
+            ),
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }
@@ -377,7 +401,11 @@ impl App {
             filled: true,
         }));
 
-        let thumb_ratio = if max_scroll > 0 { self.resume_scroll as f32 / max_scroll as f32 } else { 0.0 };
+        let thumb_ratio = if max_scroll > 0 {
+            self.resume_scroll as f32 / max_scroll as f32
+        } else {
+            0.0
+        };
         let thumb_travel = track_h.saturating_sub(16) as f32;
         let thumb_y = track_top + (thumb_ratio * thumb_travel) as u16;
         view.add(Element::Rect(RectElement {

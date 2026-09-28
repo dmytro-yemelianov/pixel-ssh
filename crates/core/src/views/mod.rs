@@ -8,11 +8,11 @@ pub mod projects;
 pub mod resume;
 pub mod visuals;
 
+use crate::state::{App, Tab};
 use pixel_ssh_view::{
     horizontal_scroll, ActiveModal, Color, Cursor, Element, LinkElement, Platform, RectElement,
     TextElement, TextStyle, View,
 };
-use crate::state::{App, Tab};
 
 impl App {
     pub fn render(&self) -> View {
@@ -55,9 +55,18 @@ impl App {
             }));
 
             // Title text with subtle color cycle / pulse
-            let title_color = match (self.tick / 8) % 4 { 0 => 7, 1 => 15, 2 => 14, _ => 7 };
+            let title_color = match (self.tick / 8) % 4 {
+                0 => 7,
+                1 => 15,
+                2 => 14,
+                _ => 7,
+            };
             let title_w = ((width.saturating_sub(260)) / 8) as usize;
-            let title = horizontal_scroll("DMYTRO YEMELIANOV - SYSTEMS & AI ARCHITECT", title_w.max(20), self.tick);
+            let title = horizontal_scroll(
+                "DMYTRO YEMELIANOV - SYSTEMS & AI ARCHITECT",
+                title_w.max(20),
+                self.tick,
+            );
             view.add(Element::Text(TextElement {
                 x: 8,
                 y: 0,
@@ -102,7 +111,12 @@ impl App {
                 filled: true,
             }));
 
-            let title_color = match (self.tick / 8) % 4 { 0 => 7, 1 => 15, 2 => 14, _ => 7 };
+            let title_color = match (self.tick / 8) % 4 {
+                0 => 7,
+                1 => 15,
+                2 => 14,
+                _ => 7,
+            };
             let hdr_title = horizontal_scroll("DMYTRO YEMELIANOV", 18, self.tick);
             view.add(Element::Text(TextElement {
                 x: 4,
@@ -148,7 +162,12 @@ impl App {
                 filled: true,
             }));
 
-            let title_color = match (self.tick / 8) % 4 { 0 => 7, 1 => 15, 2 => 14, _ => 7 };
+            let title_color = match (self.tick / 8) % 4 {
+                0 => 7,
+                1 => 15,
+                2 => 14,
+                _ => 7,
+            };
             let hdr_title = horizontal_scroll("DMYTRO YEMELIANOV", 13, self.tick);
             view.add(Element::Text(TextElement {
                 x: 2,
@@ -256,7 +275,10 @@ impl App {
             }));
 
             let status_msg = if self.active_modal != ActiveModal::None {
-                format!("DIALOG ACTIVE: {:?} • Click [X] or press [ESC] to dismiss", self.active_modal)
+                format!(
+                    "DIALOG ACTIVE: {:?} • Click [X] or press [ESC] to dismiss",
+                    self.active_modal
+                )
             } else if self.current_tab == Tab::Resume || self.current_tab == Tab::About {
                 "ARTICLE VIEW: [j/k/Wheel] Scroll • [ESC] Return to Projects".to_string()
             } else {
@@ -357,9 +379,18 @@ impl App {
             filled: true,
         }));
 
-        let title_color = match (self.tick / 8) % 4 { 0 => 7, 1 => 15, 2 => 14, _ => 7 };
+        let title_color = match (self.tick / 8) % 4 {
+            0 => 7,
+            1 => 15,
+            2 => 14,
+            _ => 7,
+        };
         let title_w = (cols as usize).saturating_sub(38).max(24);
-        let title = horizontal_scroll("DMYTRO YEMELIANOV - SYSTEMS & AI ARCHITECT", title_w, self.tick);
+        let title = horizontal_scroll(
+            "DMYTRO YEMELIANOV - SYSTEMS & AI ARCHITECT",
+            title_w,
+            self.tick,
+        );
         view.add(Element::Text(TextElement {
             x: 8,
             y: 0,
@@ -391,7 +422,13 @@ impl App {
     }
 
     /// Single global bottom navigation bar rendered identically across all views and modals.
-    pub(crate) fn render_bottom_navigation(&self, view: &mut View, width: u16, height: u16, cols: u16) {
+    pub(crate) fn render_bottom_navigation(
+        &self,
+        view: &mut View,
+        width: u16,
+        height: u16,
+        cols: u16,
+    ) {
         if cols >= 80 {
             let nav_y = if self.platform == Platform::Terminal {
                 (self.terminal_rows.saturating_sub(2)) * 16
@@ -410,11 +447,17 @@ impl App {
             }));
 
             let is_web = self.platform == Platform::Web;
-            let active_prj = self.current_tab == Tab::Projects && !self.show_detail && self.active_modal == ActiveModal::None;
-            let active_cv = self.current_tab == Tab::Resume && self.active_modal == ActiveModal::None;
-            let active_abt = self.current_tab == Tab::About && self.active_modal == ActiveModal::None;
-            let active_cnt = self.current_tab == Tab::Contact && self.active_modal == ActiveModal::None;
-            let active_hlp = self.active_modal == ActiveModal::Help || (self.current_tab == Tab::Help && !is_web);
+            let active_prj = self.current_tab == Tab::Projects
+                && !self.show_detail
+                && self.active_modal == ActiveModal::None;
+            let active_cv =
+                self.current_tab == Tab::Resume && self.active_modal == ActiveModal::None;
+            let active_abt =
+                self.current_tab == Tab::About && self.active_modal == ActiveModal::None;
+            let active_cnt =
+                self.current_tab == Tab::Contact && self.active_modal == ActiveModal::None;
+            let active_hlp = self.active_modal == ActiveModal::Help
+                || (self.current_tab == Tab::Help && !is_web);
             let active_vis = self.active_modal == ActiveModal::Visuals;
             let active_res = self.active_modal == ActiveModal::System;
             let active_thm = false;
@@ -437,7 +480,7 @@ impl App {
             let slot_w = width / 10;
             for (i, &(key_num, label, is_active)) in items.iter().enumerate() {
                 let slot_x = (i as u16) * slot_w;
-                let num_str = format!("{}", key_num);
+                let num_str = format!("{key_num}");
                 let num_w = (num_str.len() as u16) * 8;
 
                 // Number text (bright white or yellow)
@@ -489,10 +532,15 @@ impl App {
                 filled: true,
             }));
 
-            let active_prj = self.current_tab == Tab::Projects && !self.show_detail && self.active_modal == ActiveModal::None;
-            let active_cv = self.current_tab == Tab::Resume && self.active_modal == ActiveModal::None;
-            let active_abt = self.current_tab == Tab::About && self.active_modal == ActiveModal::None;
-            let active_cnt = self.current_tab == Tab::Contact && self.active_modal == ActiveModal::None;
+            let active_prj = self.current_tab == Tab::Projects
+                && !self.show_detail
+                && self.active_modal == ActiveModal::None;
+            let active_cv =
+                self.current_tab == Tab::Resume && self.active_modal == ActiveModal::None;
+            let active_abt =
+                self.current_tab == Tab::About && self.active_modal == ActiveModal::None;
+            let active_cnt =
+                self.current_tab == Tab::Contact && self.active_modal == ActiveModal::None;
             let active_hlp = self.active_modal == ActiveModal::Help;
             let active_sys = self.active_modal == ActiveModal::System;
 
@@ -508,8 +556,16 @@ impl App {
             let slot_w = width / 6;
             for (i, &(k, lbl, active)) in items.iter().enumerate() {
                 let sx = (i as u16) * slot_w;
-                let bg = if active { Color::from_palette(6) } else { Color::from_palette(3) };
-                let fg = if active { Color::from_palette(0) } else { Color::from_palette(13) };
+                let bg = if active {
+                    Color::from_palette(6)
+                } else {
+                    Color::from_palette(3)
+                };
+                let fg = if active {
+                    Color::from_palette(0)
+                } else {
+                    Color::from_palette(13)
+                };
                 view.add(Element::Rect(RectElement {
                     x: sx + 10,
                     y: nav_y,
@@ -521,7 +577,7 @@ impl App {
                 view.add(Element::Text(TextElement {
                     x: sx + 2,
                     y: nav_y,
-                    text: format!("{}", k),
+                    text: format!("{k}"),
                     style: TextStyle::new(Color::from_palette(14)).bold(),
                 }));
                 view.add(Element::Text(TextElement {
@@ -543,10 +599,15 @@ impl App {
                 filled: true,
             }));
 
-            let active_prj = self.current_tab == Tab::Projects && !self.show_detail && self.active_modal == ActiveModal::None;
-            let active_cv = self.current_tab == Tab::Resume && self.active_modal == ActiveModal::None;
-            let active_abt = self.current_tab == Tab::About && self.active_modal == ActiveModal::None;
-            let active_cnt = self.current_tab == Tab::Contact && self.active_modal == ActiveModal::None;
+            let active_prj = self.current_tab == Tab::Projects
+                && !self.show_detail
+                && self.active_modal == ActiveModal::None;
+            let active_cv =
+                self.current_tab == Tab::Resume && self.active_modal == ActiveModal::None;
+            let active_abt =
+                self.current_tab == Tab::About && self.active_modal == ActiveModal::None;
+            let active_cnt =
+                self.current_tab == Tab::Contact && self.active_modal == ActiveModal::None;
             let active_hlp = self.active_modal == ActiveModal::Help;
             let active_sys = self.active_modal == ActiveModal::System;
 
@@ -562,8 +623,16 @@ impl App {
             let slot_w = width / 6;
             for (i, &(k, lbl, active)) in items.iter().enumerate() {
                 let sx = (i as u16) * slot_w;
-                let bg = if active { Color::from_palette(6) } else { Color::from_palette(3) };
-                let fg = if active { Color::from_palette(0) } else { Color::from_palette(13) };
+                let bg = if active {
+                    Color::from_palette(6)
+                } else {
+                    Color::from_palette(3)
+                };
+                let fg = if active {
+                    Color::from_palette(0)
+                } else {
+                    Color::from_palette(13)
+                };
                 view.add(Element::Rect(RectElement {
                     x: sx + 9,
                     y: nav_y,
@@ -575,7 +644,7 @@ impl App {
                 view.add(Element::Text(TextElement {
                     x: sx + 1,
                     y: nav_y,
-                    text: format!("{}", k),
+                    text: format!("{k}"),
                     style: TextStyle::new(Color::from_palette(14)).bold(),
                 }));
                 view.add(Element::Text(TextElement {

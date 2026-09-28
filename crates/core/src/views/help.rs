@@ -1,9 +1,7 @@
 //! Help and keyboard / touch reference tab view implementation.
 
-use pixel_ssh_view::{
-    Color, Element, Platform, RectElement, TextElement, TextStyle, View,
-};
 use crate::state::App;
+use pixel_ssh_view::{Color, Element, Platform, RectElement, TextElement, TextStyle, View};
 
 impl App {
     pub(crate) fn render_help(&self, view: &mut View) {
@@ -11,7 +9,7 @@ impl App {
             self.render_help_terminal(view);
             return;
         }
-        let (cols, _) = self.palette_mode.char_grid();
+        let (cols, _) = self.resolution.char_grid();
         match cols {
             100 | 80 => self.render_help_80(view),
             40 => self.render_help_40(view),

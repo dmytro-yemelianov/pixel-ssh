@@ -1,7 +1,7 @@
 use pixel_ssh_framebuffer::Framebuffer;
 use pixel_ssh_view::{is_table_border_char, Element, Platform, View};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnsiCell {
     pub ch: char,
     pub fg_rgb: [u8; 3],
@@ -28,6 +28,8 @@ pub struct AnsiRenderer {
     pub cols: u16,
     pub rows: u16,
     pub grid: Vec<AnsiCell>,
+    previous_grid: Option<Vec<AnsiCell>>,
+    previous_cursor: Option<(u16, u16)>,
 }
 
 impl AnsiRenderer {
@@ -37,6 +39,8 @@ impl AnsiRenderer {
             cols,
             rows,
             grid: vec![AnsiCell::default(); size],
+            previous_grid: None,
+            previous_cursor: None,
         }
     }
 
@@ -45,6 +49,13 @@ impl AnsiRenderer {
         self.rows = rows;
         let size = (cols as usize) * (rows as usize);
         self.grid = vec![AnsiCell::default(); size];
+        self.previous_grid = None;
+        self.previous_cursor = None;
+    }
+
+    pub fn force_full_redraw(&mut self) {
+        self.previous_grid = None;
+        self.previous_cursor = None;
     }
 
     pub fn clear(&mut self, bg_rgb: [u8; 3]) {
@@ -105,7 +116,11 @@ impl AnsiRenderer {
 
         let is_terminal = view.platform == Platform::Terminal;
         let (target_cols, _target_rows) = view.resolution.char_grid();
-        let offset_col = if is_terminal { 0 } else { self.cols.saturating_sub(target_cols) / 2 };
+        let offset_col = if is_terminal {
+            0
+        } else {
+            self.cols.saturating_sub(target_cols) / 2
+        };
 
         let border_entry = palette[7];
         let border_rgb = [border_entry[0], border_entry[1], border_entry[2]];
@@ -119,7 +134,10 @@ impl AnsiRenderer {
                     // Check if it's a thin horizontal separator rule
                     if r.height <= 2 {
                         let (rx_start, ry) = if is_terminal {
-                            ((r.x / 8).min(self.cols.saturating_sub(1)), (r.y / 16).min(self.rows.saturating_sub(1)))
+                            (
+                                (r.x / 8).min(self.cols.saturating_sub(1)),
+                                (r.y / 16).min(self.rows.saturating_sub(1)),
+                            )
                         } else {
                             self.pixel_to_grid(r.x, r.y, view.palette_mode)
                         };
@@ -127,10 +145,13 @@ impl AnsiRenderer {
                             if r.width >= view.width || r.width >= 600 {
                                 self.cols
                             } else {
-                                ((r.x + r.width + 7) / 8).min(self.cols)
+                                (r.x + r.width).div_ceil(8).min(self.cols)
                             }
                         } else {
-                            offset_col + ((r.x + r.width + 7) / 8).min(self.cols.saturating_sub(offset_col))
+                            offset_col
+                                + (r.x + r.width)
+                                    .div_ceil(8)
+                                    .min(self.cols.saturating_sub(offset_col))
                         };
                         let line_rgb = if is_terminal { border_rgb } else { rgb };
                         if ry < self.rows {
@@ -145,7 +166,10 @@ impl AnsiRenderer {
                     } else {
                         // Background rect (header, tabs, active card, or status bar)
                         let (rx_start, ry_start) = if is_terminal {
-                            ((r.x / 8).min(self.cols.saturating_sub(1)), (r.y / 16).min(self.rows.saturating_sub(1)))
+                            (
+                                (r.x / 8).min(self.cols.saturating_sub(1)),
+                                (r.y / 16).min(self.rows.saturating_sub(1)),
+                            )
                         } else {
                             self.pixel_to_grid(r.x, r.y, view.palette_mode)
                         };
@@ -153,12 +177,15 @@ impl AnsiRenderer {
                             let end_col = if r.width >= view.width || r.width >= 600 {
                                 self.cols
                             } else {
-                                ((r.x + r.width + 7) / 8).min(self.cols)
+                                (r.x + r.width).div_ceil(8).min(self.cols)
                             };
                             let end_row = if r.y + r.height >= view.height {
                                 self.rows.saturating_sub(1)
                             } else {
-                                ((r.y + r.height + 15) / 16).saturating_sub(1).min(self.rows.saturating_sub(1))
+                                (r.y + r.height)
+                                    .div_ceil(16)
+                                    .saturating_sub(1)
+                                    .min(self.rows.saturating_sub(1))
                             };
                             (end_col, end_row)
                         } else {
@@ -178,7 +205,10 @@ impl AnsiRenderer {
                 Element::Text(t) => {
                     let sanitized = Self::sanitize_text(&t.text);
                     let (mut start_col, row) = if is_terminal {
-                        ((t.x / 8).min(self.cols.saturating_sub(1)), (t.y / 16).min(self.rows.saturating_sub(1)))
+                        (
+                            (t.x / 8).min(self.cols.saturating_sub(1)),
+                            (t.y / 16).min(self.rows.saturating_sub(1)),
+                        )
                     } else {
                         self.pixel_to_grid(t.x, t.y, view.palette_mode)
                     };
@@ -216,7 +246,10 @@ impl AnsiRenderer {
                 Element::Link(l) => {
                     let sanitized = Self::sanitize_text(&l.text);
                     let (mut start_col, row) = if is_terminal {
-                        ((l.x / 8).min(self.cols.saturating_sub(1)), (l.y / 16).min(self.rows.saturating_sub(1)))
+                        (
+                            (l.x / 8).min(self.cols.saturating_sub(1)),
+                            (l.y / 16).min(self.rows.saturating_sub(1)),
+                        )
                     } else {
                         self.pixel_to_grid(l.x, l.y, view.palette_mode)
                     };
@@ -255,7 +288,10 @@ impl AnsiRenderer {
                 }
                 Element::Sprite(s) => {
                     let (start_col, start_row) = if is_terminal {
-                        ((s.x / 8).min(self.cols.saturating_sub(1)), (s.y / 16).min(self.rows.saturating_sub(1)))
+                        (
+                            (s.x / 8).min(self.cols.saturating_sub(1)),
+                            (s.y / 16).min(self.rows.saturating_sub(1)),
+                        )
                     } else {
                         self.pixel_to_grid(s.x, s.y, view.palette_mode)
                     };
@@ -265,27 +301,39 @@ impl AnsiRenderer {
 
                     for r in 0..sprite_rows {
                         let cell_row = start_row + r;
-                        if cell_row >= self.rows { break; }
+                        if cell_row >= self.rows {
+                            break;
+                        }
                         for c in 0..sprite_cols {
                             let cell_col = start_col + c;
-                            if cell_col >= self.cols { break; }
+                            if cell_col >= self.cols {
+                                break;
+                            }
 
                             let top_py = (r * 16) + 4;
                             let bot_py = (r * 16) + 12;
                             let px = (c * 8) + 4;
 
-                            if (top_py as usize) < (s.height as usize) && (bot_py as usize) < (s.height as usize) && (px as usize) < (s.width as usize) {
-                                let top_idx = s.data[(top_py as usize) * (s.width as usize) + (px as usize)];
-                                let bot_idx = s.data[(bot_py as usize) * (s.width as usize) + (px as usize)];
+                            if (top_py as usize) < (s.height as usize)
+                                && (bot_py as usize) < (s.height as usize)
+                                && (px as usize) < (s.width as usize)
+                            {
+                                let top_idx =
+                                    s.data[(top_py as usize) * (s.width as usize) + (px as usize)];
+                                let bot_idx =
+                                    s.data[(bot_py as usize) * (s.width as usize) + (px as usize)];
 
                                 let top_entry = palette[top_idx as usize];
                                 let bot_entry = palette[bot_idx as usize];
 
-                                let grid_idx = (cell_row as usize) * (self.cols as usize) + (cell_col as usize);
+                                let grid_idx = (cell_row as usize) * (self.cols as usize)
+                                    + (cell_col as usize);
                                 if grid_idx < self.grid.len() {
                                     self.grid[grid_idx].ch = '▀';
-                                    self.grid[grid_idx].fg_rgb = [top_entry[0], top_entry[1], top_entry[2]];
-                                    self.grid[grid_idx].bg_rgb = [bot_entry[0], bot_entry[1], bot_entry[2]];
+                                    self.grid[grid_idx].fg_rgb =
+                                        [top_entry[0], top_entry[1], top_entry[2]];
+                                    self.grid[grid_idx].bg_rgb =
+                                        [bot_entry[0], bot_entry[1], bot_entry[2]];
                                     self.grid[grid_idx].bold = false;
                                 }
                             }
@@ -295,10 +343,75 @@ impl AnsiRenderer {
             }
         }
 
-        // Generate optimized ANSI string output with cursor home and differential 24-bit color
+        let cursor_position = view
+            .cursor
+            .as_ref()
+            .filter(|cursor| cursor.visible)
+            .map(|cursor| {
+                if is_terminal {
+                    (
+                        (cursor.x / 8).min(self.cols.saturating_sub(1)),
+                        (cursor.y / 16).min(self.rows.saturating_sub(1)),
+                    )
+                } else {
+                    self.pixel_to_grid(cursor.x, cursor.y, view.palette_mode)
+                }
+            });
+        let cursor_changed = cursor_position != self.previous_cursor;
+        self.previous_cursor = cursor_position;
+
+        // Emit only changed cells after the initial frame. This keeps the animated
+        // clock and marquee from retransmitting an entire terminal screen.
+        if let Some(previous) = self.previous_grid.replace(self.grid.clone()) {
+            if previous.len() == self.grid.len() {
+                let mut changed = String::new();
+                for (index, (before, cell)) in previous.iter().zip(&self.grid).enumerate() {
+                    if before == cell {
+                        continue;
+                    }
+                    let row = index / self.cols as usize + 1;
+                    let col = index % self.cols as usize + 1;
+                    changed.push_str(&format!("\x1b[{row};{col}H"));
+                    changed.push_str("\x1b[0;");
+                    if cell.bold {
+                        changed.push_str("1;");
+                    }
+                    if cell.underline {
+                        changed.push_str("4;");
+                    }
+                    changed.push_str(&format!(
+                        "38;2;{};{};{};48;2;{};{};{}m",
+                        cell.fg_rgb[0],
+                        cell.fg_rgb[1],
+                        cell.fg_rgb[2],
+                        cell.bg_rgb[0],
+                        cell.bg_rgb[1],
+                        cell.bg_rgb[2]
+                    ));
+                    if let Some(url) = &cell.link_url {
+                        changed.push_str(&format!("\x1b]8;;{url}\x1b\\"));
+                    }
+                    changed.push(cell.ch);
+                    if cell.link_url.is_some() {
+                        changed.push_str("\x1b]8;;\x1b\\");
+                    }
+                }
+                if !changed.is_empty() || cursor_changed {
+                    changed.push_str("\x1b[0m");
+                    if let Some((cx, cy)) = cursor_position {
+                        changed.push_str(&format!("\x1b[{};{}H\x1b[?25h", cy + 1, cx + 1));
+                    } else if cursor_changed {
+                        changed.push_str("\x1b[?25l");
+                    }
+                }
+                return changed;
+            }
+        }
+
+        // Initial frame, or a forced redraw after a dropped queued update.
         let mut out = String::with_capacity((self.cols as usize) * (self.rows as usize) * 8);
         out.push_str("\x1b[?25l"); // Hide cursor during draw
-        out.push_str("\x1b[H");    // Move cursor to (1,1)
+        out.push_str("\x1b[H"); // Move cursor to (1,1)
 
         let mut current_fg = [0u8, 0, 0];
         let mut current_bg = [0u8, 0, 0];
@@ -329,8 +442,12 @@ impl AnsiRenderer {
                     }
                     out.push_str(&format!(
                         "38;2;{};{};{};48;2;{};{};{}m",
-                        cell.fg_rgb[0], cell.fg_rgb[1], cell.fg_rgb[2],
-                        cell.bg_rgb[0], cell.bg_rgb[1], cell.bg_rgb[2]
+                        cell.fg_rgb[0],
+                        cell.fg_rgb[1],
+                        cell.fg_rgb[2],
+                        cell.bg_rgb[0],
+                        cell.bg_rgb[1],
+                        cell.bg_rgb[2]
                     ));
                     current_fg = cell.fg_rgb;
                     current_bg = cell.bg_rgb;
@@ -342,7 +459,7 @@ impl AnsiRenderer {
                 // Check hyperlink change (OSC 8)
                 if cell.link_url != current_url {
                     if let Some(url) = &cell.link_url {
-                        out.push_str(&format!("\x1b]8;;{}\x1b\\", url));
+                        out.push_str(&format!("\x1b]8;;{url}\x1b\\"));
                     } else {
                         out.push_str("\x1b]8;;\x1b\\");
                     }
@@ -369,7 +486,10 @@ impl AnsiRenderer {
         if let Some(cursor) = &view.cursor {
             if cursor.visible {
                 let (cx, cy) = if is_terminal {
-                    ((cursor.x / 8).min(self.cols.saturating_sub(1)), (cursor.y / 16).min(self.rows.saturating_sub(1)))
+                    (
+                        (cursor.x / 8).min(self.cols.saturating_sub(1)),
+                        (cursor.y / 16).min(self.rows.saturating_sub(1)),
+                    )
                 } else {
                     self.pixel_to_grid(cursor.x, cursor.y, view.palette_mode)
                 };
@@ -414,8 +534,14 @@ mod tests {
     fn test_pixel_to_grid_mapping_zx() {
         let renderer = AnsiRenderer::new(80, 24);
         // ZX is 32 cols centered in 80: offset_col = 24
-        assert_eq!(renderer.pixel_to_grid(0, 0, PaletteMode::ZxSpectrum), (24, 0));
-        assert_eq!(renderer.pixel_to_grid(0, 10, PaletteMode::ZxSpectrum), (24, 1));
+        assert_eq!(
+            renderer.pixel_to_grid(0, 0, PaletteMode::ZxSpectrum),
+            (24, 0)
+        );
+        assert_eq!(
+            renderer.pixel_to_grid(0, 10, PaletteMode::ZxSpectrum),
+            (24, 1)
+        );
     }
 
     #[test]
@@ -444,6 +570,33 @@ mod tests {
     }
 
     #[test]
+    fn test_ansi_renderer_sends_only_changed_cells() {
+        let mut renderer = AnsiRenderer::new(80, 25);
+        let mut view = View::new(640, 400);
+        view.platform = Platform::Terminal;
+        view.add(Element::Text(pixel_ssh_view::TextElement {
+            x: 8,
+            y: 0,
+            text: "A".to_string(),
+            style: TextStyle::new(Color::from_palette(6)),
+        }));
+        let full = renderer.render_view(&view);
+        assert!(full.len() > 1000);
+        assert!(renderer.render_view(&view).is_empty());
+
+        if let Element::Text(text) = &mut view.elements[0] {
+            text.text = "B".to_string();
+        }
+        let changed = renderer.render_view(&view);
+        assert!(changed.contains("\x1b[1;2H"));
+        assert!(changed.contains('B'));
+        assert!(changed.len() < full.len() / 10);
+
+        renderer.force_full_redraw();
+        assert!(renderer.render_view(&view).len() > 1000);
+    }
+
+    #[test]
     fn test_terminal_mode_fullscreen_expansion() {
         let cols = 120;
         let rows = 40;
@@ -467,7 +620,7 @@ mod tests {
         // Row 2 should be filled with '─' from col 0 to cols - 1
         for col in 0..cols {
             let idx = (2 * cols + col) as usize;
-            assert_eq!(renderer.grid[idx].ch, '─', "Expected '─' at col {}", col);
+            assert_eq!(renderer.grid[idx].ch, '─', "Expected '─' at col {col}");
         }
     }
 
@@ -517,11 +670,11 @@ mod tests {
 
         renderer.render_view(&view);
 
-        let pal = Framebuffer::palette_for_mode(PaletteMode::Vga);
+        let pal = Framebuffer::palette_for_theme(view.color_theme);
         let border_rgb = [pal[7][0], pal[7][1], pal[7][2]];
         let text_rgb = [pal[6][0], pal[6][1], pal[6][2]];
 
-        let idx_pipe_0 = 3 * 80 + 0;
+        let idx_pipe_0 = 3 * 80;
         let idx_pipe_1 = 3 * 80 + 12;
         let idx_char = 3 * 80 + 2; // 'C'
 
@@ -535,4 +688,3 @@ mod tests {
         assert_eq!(renderer.grid[idx_char].fg_rgb, text_rgb);
     }
 }
-

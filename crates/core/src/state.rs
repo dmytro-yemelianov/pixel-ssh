@@ -1,9 +1,11 @@
 //! Core application state, Tab enum, and session containers.
 
-use pixel_ssh_view::{ActiveModal, ColorTheme, Platform, ResolutionMode, SystemMode, VisualEffects};
 use crate::data::{
-    project_detail_lines, ABOUT_LINES_32, ABOUT_LINES_40, ABOUT_LINES_80,
-    PROJECTS, RESUME_LINES_32, RESUME_LINES_40, RESUME_LINES_80,
+    project_detail_lines, ABOUT_LINES_32, ABOUT_LINES_40, ABOUT_LINES_80, PROJECTS,
+    RESUME_LINES_32, RESUME_LINES_40, RESUME_LINES_80,
+};
+use pixel_ssh_view::{
+    ActiveModal, ColorTheme, Platform, ResolutionMode, SystemMode, VisualEffects,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,7 +69,9 @@ impl App {
             screensaver_tick: 0,
             selected_project: 0,
             show_detail: false,
-            status: String::from("Ready. [1-4] Nav | [V] Visuals | [S] System | [?] Help | [Enter] Detail"),
+            status: String::from(
+                "Ready. [1-4] Nav | [V] Visuals | [S] System | [?] Help | [Enter] Detail",
+            ),
             scroll_offset: 0,
             resume_scroll: 0,
             about_scroll: 0,
@@ -143,14 +147,32 @@ impl App {
 
     pub fn adjust_selected_slider(&mut self, delta: f32) {
         match self.selected_fx_slider {
-            0 => self.visual_effects.scanlines = (self.visual_effects.scanlines + delta).clamp(0.0, 1.0),
-            1 => self.visual_effects.pixel_grid = (self.visual_effects.pixel_grid + delta).clamp(0.0, 1.0),
-            2 => self.visual_effects.chromatic = (self.visual_effects.chromatic + delta).clamp(0.0, 1.0),
-            3 => self.visual_effects.afterglow = (self.visual_effects.afterglow + delta).clamp(0.0, 1.0),
-            4 => self.visual_effects.curvature = (self.visual_effects.curvature + delta).clamp(0.0, 1.0),
+            0 => {
+                self.visual_effects.scanlines =
+                    (self.visual_effects.scanlines + delta).clamp(0.0, 1.0)
+            }
+            1 => {
+                self.visual_effects.pixel_grid =
+                    (self.visual_effects.pixel_grid + delta).clamp(0.0, 1.0)
+            }
+            2 => {
+                self.visual_effects.chromatic =
+                    (self.visual_effects.chromatic + delta).clamp(0.0, 1.0)
+            }
+            3 => {
+                self.visual_effects.afterglow =
+                    (self.visual_effects.afterglow + delta).clamp(0.0, 1.0)
+            }
+            4 => {
+                self.visual_effects.curvature =
+                    (self.visual_effects.curvature + delta).clamp(0.0, 1.0)
+            }
             5 => self.visual_effects.jitter = (self.visual_effects.jitter + delta).clamp(0.0, 1.0),
             6 => self.visual_effects.magnet = (self.visual_effects.magnet + delta).clamp(0.0, 1.0),
-            7 => self.visual_effects.antenna_hum = (self.visual_effects.antenna_hum + delta).clamp(0.0, 1.0),
+            7 => {
+                self.visual_effects.antenna_hum =
+                    (self.visual_effects.antenna_hum + delta).clamp(0.0, 1.0)
+            }
             _ => {}
         }
     }
@@ -188,17 +210,19 @@ impl App {
     pub fn clock_formatted(&self) -> String {
         if let Some((h, m, s)) = self.clock_time {
             let colon = if s % 2 == 0 { ":" } else { " " };
-            format!("{:02}{}{:02}", h, colon, m)
+            format!("{h:02}{colon}{m:02}")
         } else {
             #[cfg(not(target_arch = "wasm32"))]
             {
-                if let Ok(duration) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                if let Ok(duration) =
+                    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+                {
                     let secs = duration.as_secs();
                     let s = (secs % 60) as u8;
                     let m = ((secs / 60) % 60) as u8;
                     let h = ((secs / 3600) % 24) as u8;
                     let colon = if s % 2 == 0 { ":" } else { " " };
-                    return format!("{:02}{}{:02}", h, colon, m);
+                    return format!("{h:02}{colon}{m:02}");
                 }
             }
             let total_secs = self.tick / 10;
@@ -206,7 +230,7 @@ impl App {
             let m = ((total_secs / 60) % 60) as u8;
             let h = ((total_secs / 3600) % 24) as u8;
             let colon = if s % 2 == 0 { ":" } else { " " };
-            format!("{:02}{}{:02}", h, colon, m)
+            format!("{h:02}{colon}{m:02}")
         }
     }
 
@@ -216,11 +240,14 @@ impl App {
             return RESUME_LINES_80.len().saturating_sub(visible);
         }
         let (cols, _) = self.resolution.char_grid();
-        match cols {
-            80 => RESUME_LINES_80.len().saturating_sub(15),
-            40 => RESUME_LINES_40.len().saturating_sub(14),
-            _ => RESUME_LINES_32.len().saturating_sub(13),
-        }
+        let (_, height) = self.resolution.resolution();
+        let visible = (height / self.resolution.line_height()).saturating_sub(7) as usize;
+        let len = match cols {
+            100 | 80 => RESUME_LINES_80.len(),
+            40 => RESUME_LINES_40.len(),
+            _ => RESUME_LINES_32.len(),
+        };
+        len.saturating_sub(visible)
     }
 
     pub fn about_max_scroll(&self) -> usize {
@@ -229,11 +256,14 @@ impl App {
             return ABOUT_LINES_80.len().saturating_sub(visible);
         }
         let (cols, _) = self.resolution.char_grid();
-        match cols {
-            100 | 80 => ABOUT_LINES_80.len().saturating_sub(18),
-            40 => ABOUT_LINES_40.len().saturating_sub(19),
-            _ => ABOUT_LINES_32.len().saturating_sub(18),
-        }
+        let (_, height) = self.resolution.resolution();
+        let visible = (height / self.resolution.line_height()).saturating_sub(7) as usize;
+        let len = match cols {
+            100 | 80 => ABOUT_LINES_80.len(),
+            40 => ABOUT_LINES_40.len(),
+            _ => ABOUT_LINES_32.len(),
+        };
+        len.saturating_sub(visible)
     }
 
     pub fn detail_max_scroll(&self) -> usize {
@@ -242,7 +272,7 @@ impl App {
             (self.terminal_rows as usize).saturating_sub(11).max(8)
         } else {
             match cols {
-                80 => 13,
+                100 | 80 => 13,
                 40 => 16,
                 _ => 15,
             }

@@ -1,9 +1,9 @@
 //! Contact tab view implementation.
 
+use crate::state::App;
 use pixel_ssh_view::{
     word_wrap, Color, Element, LinkElement, Platform, RectElement, TextElement, TextStyle, View,
 };
-use crate::state::App;
 
 impl App {
     pub(crate) fn render_contact(&self, view: &mut View) {
@@ -11,7 +11,7 @@ impl App {
             self.render_contact_terminal(view);
             return;
         }
-        let (cols, _) = self.palette_mode.char_grid();
+        let (cols, _) = self.resolution.char_grid();
         match cols {
             100 | 80 => self.render_contact_80(view),
             40 => self.render_contact_40(view),
@@ -21,11 +21,16 @@ impl App {
 
     pub(crate) fn render_contact_80(&self, view: &mut View) {
         let cols = (view.width / 8) as usize;
-        let lh = self.palette_mode.line_height();
+        let lh = self.resolution.line_height();
         let title_panel = " D:\\PORTFOLIO\\CONTACT ";
         let left_pad = cols.saturating_sub(2 + title_panel.len()) / 2;
         let right_pad = cols.saturating_sub(2 + title_panel.len() + left_pad);
-        let top_border = format!("╔{}{}{}╗", "═".repeat(left_pad), title_panel, "═".repeat(right_pad));
+        let top_border = format!(
+            "╔{}{}{}╗",
+            "═".repeat(left_pad),
+            title_panel,
+            "═".repeat(right_pad)
+        );
         view.add(Element::Text(TextElement {
             x: 0,
             y: 2 * lh,
@@ -43,7 +48,10 @@ impl App {
         view.add(Element::Text(TextElement {
             x: 0,
             y: 4 * lh,
-            text: format!("║  {:<76}║", "Click any underlined link below to open directly in a new tab:"),
+            text: format!(
+                "║  {:<76}║",
+                "Click any underlined link below to open directly in a new tab:"
+            ),
             style: TextStyle::new(Color::from_palette(4)),
         }));
 
@@ -58,11 +66,31 @@ impl App {
 
         // Clickable contact cards (Rows 6, 8, 10, 12, 14)
         let links = [
-            (" Email:    dyemelianov@icloud.com              [Open Mail] ", "mailto:dyemelianov@icloud.com", 6),
-            (" GitHub:   https://github.com/dmytro-yemelianov [Profile]   ", "https://github.com/dmytro-yemelianov", 8),
-            (" LinkedIn: https://linkedin.com/in/dmytro-yemelianov [Net]  ", "https://linkedin.com/in/dmytro-yemelianov", 10),
-            (" Website:  https://yemelianov.dev              [Portal]    ", "https://yemelianov.dev", 12),
-            (" SSH:      ssh guest@yemelianov.dev:2222       [Terminal]  ", "ssh://guest@yemelianov.dev:2222", 14),
+            (
+                " Email:    dyemelianov@icloud.com              [Open Mail] ",
+                "mailto:dyemelianov@icloud.com",
+                6,
+            ),
+            (
+                " GitHub:   https://github.com/dmytro-yemelianov [Profile]   ",
+                "https://github.com/dmytro-yemelianov",
+                8,
+            ),
+            (
+                " LinkedIn: https://linkedin.com/in/dmytro-yemelianov [Net]  ",
+                "https://linkedin.com/in/dmytro-yemelianov",
+                10,
+            ),
+            (
+                " Website:  https://yemelianov.dev              [Portal]    ",
+                "https://yemelianov.dev",
+                12,
+            ),
+            (
+                " SSH:      ssh guest@yemelianov.dev:2222       [Terminal]  ",
+                "ssh://guest@yemelianov.dev:2222",
+                14,
+            ),
         ];
 
         for (label, url, r) in links {
@@ -127,7 +155,7 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 16,
                 y: ry,
-                text: format!("{:<76}", line),
+                text: format!("{line:<76}"),
                 style: TextStyle::new(Color::from_palette(5)),
             }));
             view.add(Element::Text(TextElement {
@@ -142,7 +170,12 @@ impl App {
         let bot_label = " 5 Direct Channels Online • Available ";
         let left_bot = cols.saturating_sub(2 + bot_label.len()) / 2;
         let right_bot = cols.saturating_sub(2 + bot_label.len() + left_bot);
-        let bot_border = format!("╚{}{}{}╝", "═".repeat(left_bot), bot_label, "═".repeat(right_bot));
+        let bot_border = format!(
+            "╚{}{}{}╝",
+            "═".repeat(left_bot),
+            bot_label,
+            "═".repeat(right_bot)
+        );
         let bot_y = 20 * lh;
         if bot_y + lh <= view.height {
             view.add(Element::Text(TextElement {
@@ -160,7 +193,7 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 16,
                 y: prompt_y,
-                text: format!("C:\\DMYTRO\\CONTACT>{}", cursor_char),
+                text: format!("C:\\DMYTRO\\CONTACT>{cursor_char}"),
                 style: TextStyle::new(Color::from_palette(14)).bold(),
             }));
         }
@@ -171,7 +204,8 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 16,
                 y: hint_y,
-                text: "Click any contact channel above to open • [1-10] Navigation buttons below".to_string(),
+                text: "Click any contact channel above to open • [1-10] Navigation buttons below"
+                    .to_string(),
                 style: TextStyle::new(Color::from_palette(4)),
             }));
         }
@@ -202,11 +236,31 @@ impl App {
         }));
 
         let links = [
-            ("Email:   dyemelianov@icloud.com", "mailto:dyemelianov@icloud.com", 47),
-            ("GitHub:  github.com/dmytro-yemelianov", "https://github.com/dmytro-yemelianov", 72),
-            ("LinkedIn: linkedin.com/in/dmytro-yemelianov", "https://linkedin.com/in/dmytro-yemelianov", 97),
-            ("Website: https://yemelianov.dev", "https://yemelianov.dev", 122),
-            ("SSH:     ssh -p 2222 guest@dev", "ssh://guest@yemelianov.dev:2222", 147),
+            (
+                "Email:   dyemelianov@icloud.com",
+                "mailto:dyemelianov@icloud.com",
+                47,
+            ),
+            (
+                "GitHub:  github.com/dmytro-yemelianov",
+                "https://github.com/dmytro-yemelianov",
+                72,
+            ),
+            (
+                "LinkedIn: linkedin.com/in/dmytro-yemelianov",
+                "https://linkedin.com/in/dmytro-yemelianov",
+                97,
+            ),
+            (
+                "Website: https://yemelianov.dev",
+                "https://yemelianov.dev",
+                122,
+            ),
+            (
+                "SSH:     ssh -p 2222 guest@dev",
+                "ssh://guest@yemelianov.dev:2222",
+                147,
+            ),
         ];
 
         for (label, url, ly) in links {
@@ -260,11 +314,27 @@ impl App {
         }));
 
         let links = [
-            ("Email: dyemelianov@icloud.com", "mailto:dyemelianov@icloud.com", 46),
-            ("GH:    github/.../yemelianov", "https://github.com/dmytro-yemelianov", 70),
-            ("In:    linkedin/.../yemelianov", "https://linkedin.com/in/dmytro-yemelianov", 94),
+            (
+                "Email: dyemelianov@icloud.com",
+                "mailto:dyemelianov@icloud.com",
+                46,
+            ),
+            (
+                "GH:    github/.../yemelianov",
+                "https://github.com/dmytro-yemelianov",
+                70,
+            ),
+            (
+                "In:    linkedin/.../yemelianov",
+                "https://linkedin.com/in/dmytro-yemelianov",
+                94,
+            ),
             ("Web:   yemelianov.dev", "https://yemelianov.dev", 118),
-            ("SSH:   ssh -p 2222 guest@dev", "ssh://guest@yemelianov.dev:2222", 142),
+            (
+                "SSH:   ssh -p 2222 guest@dev",
+                "ssh://guest@yemelianov.dev:2222",
+                142,
+            ),
         ];
 
         for (label, url, ly) in links {
@@ -324,11 +394,31 @@ impl App {
         }));
 
         let links = [
-            ("Email:    dyemelianov@icloud.com", "mailto:dyemelianov@icloud.com", 96),
-            ("GitHub:   https://github.com/dmytro-yemelianov", "https://github.com/dmytro-yemelianov", 128),
-            ("LinkedIn: https://linkedin.com/in/dmytro-yemelianov", "https://linkedin.com/in/dmytro-yemelianov", 160),
-            ("Website:  https://yemelianov.dev", "https://yemelianov.dev", 192),
-            ("SSH:      ssh guest@yemelianov.dev (Port 2222)", "ssh://guest@yemelianov.dev:2222", 224),
+            (
+                "Email:    dyemelianov@icloud.com",
+                "mailto:dyemelianov@icloud.com",
+                96,
+            ),
+            (
+                "GitHub:   https://github.com/dmytro-yemelianov",
+                "https://github.com/dmytro-yemelianov",
+                128,
+            ),
+            (
+                "LinkedIn: https://linkedin.com/in/dmytro-yemelianov",
+                "https://linkedin.com/in/dmytro-yemelianov",
+                160,
+            ),
+            (
+                "Website:  https://yemelianov.dev",
+                "https://yemelianov.dev",
+                192,
+            ),
+            (
+                "SSH:      ssh guest@yemelianov.dev (Port 2222)",
+                "ssh://guest@yemelianov.dev:2222",
+                224,
+            ),
         ];
 
         for (label, url, ly) in links {

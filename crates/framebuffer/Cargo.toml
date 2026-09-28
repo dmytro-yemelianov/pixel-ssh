@@ -3,7 +3,7 @@ name = "pixel-ssh-framebuffer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "8-bit indexed 320x200 framebuffer, palette, and bitmap font rasterizer"
+description = "Resizable 8-bit indexed framebuffer, palette, and bitmap font rasterizer"
 
 [dependencies]
 pixel-ssh-view = { path = "../view" }

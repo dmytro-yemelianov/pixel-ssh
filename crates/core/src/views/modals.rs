@@ -1,10 +1,55 @@
 //! Modal dialogs (System, Visuals, Help), article overlays (CV, About), and CRT screensaver.
 
-use pixel_ssh_view::{Color, Element, LinkElement, RectElement, TextElement, TextStyle, View};
-use crate::data::{ABOUT_LINES_32, ABOUT_LINES_40, ABOUT_LINES_80, RESUME_LINES_32, RESUME_LINES_40, RESUME_LINES_80};
+use crate::data::{
+    ABOUT_LINES_32, ABOUT_LINES_40, ABOUT_LINES_80, RESUME_LINES_32, RESUME_LINES_40,
+    RESUME_LINES_80,
+};
 use crate::state::{App, Tab};
+use pixel_ssh_view::{Color, Element, LinkElement, RectElement, TextElement, TextStyle, View};
+
+pub(crate) struct SystemDialogGeometry {
+    pub box_x: u16,
+    pub box_y: u16,
+    pub box_w: u16,
+    pub box_h: u16,
+    pub box_cols: u16,
+    pub box_rows: u16,
+    pub char_h: u16,
+}
 
 impl App {
+    pub(crate) fn system_dialog_geometry(&self) -> SystemDialogGeometry {
+        self.dialog_geometry(21)
+    }
+
+    pub(crate) fn standard_dialog_geometry(&self) -> SystemDialogGeometry {
+        self.dialog_geometry(15)
+    }
+
+    fn dialog_geometry(&self, compact_rows: u16) -> SystemDialogGeometry {
+        let (width, height) = self.resolution.resolution();
+        let (cols, _) = self.resolution.char_grid();
+        let char_h = self.resolution.line_height();
+        let box_cols = if cols >= 80 {
+            76
+        } else {
+            cols.saturating_sub(2)
+        };
+        let box_rows = if cols >= 80 { 15 } else { compact_rows };
+        let box_rows = box_rows.min((height / char_h).saturating_sub(2));
+        let box_w = box_cols * 8;
+        let box_h = box_rows * char_h;
+        SystemDialogGeometry {
+            box_x: (width.saturating_sub(box_w) / 16) * 8,
+            box_y: ((height / char_h).saturating_sub(box_rows) / 2) * char_h,
+            box_w,
+            box_h,
+            box_cols,
+            box_rows,
+            char_h,
+        }
+    }
+
     /// Renders an authentic retro 3D Starfield Warp screensaver with live glowing clock.
     pub(crate) fn render_screensaver(&self, view: &mut View, width: u16, height: u16) {
         view.add(Element::Rect(RectElement {
@@ -23,7 +68,7 @@ impl App {
         // 3D Starfield Warp: 64 depth-projected phosphor stars
         for i in 0..64 {
             let seed = (i as f32 * 137.58 + 23.41).fract();
-            let angle = (i as f32 * 0.6180339887) * std::f32::consts::PI * 2.0 + (seed * 0.5);
+            let angle = (i as f32 * 0.618_034) * std::f32::consts::PI * 2.0 + (seed * 0.5);
             let z = (1.0 - ((t * 0.35 + i as f32 * 0.05) % 1.0)).max(0.02);
             let max_r = (width.max(height) as f32) * 0.65;
             let dist = (1.0 - z) * max_r;
@@ -41,7 +86,7 @@ impl App {
                     ('O', 6)
                 };
 
-                let char_h = if height <= 200 { 8.0 } else { 16.0 };
+                let char_h = self.resolution.line_height() as f32;
                 let px = ((sx / 8.0).floor() * 8.0) as u16;
                 let py = ((sy / char_h).floor() * char_h) as u16;
                 view.add(Element::Text(TextElement {
@@ -54,7 +99,7 @@ impl App {
         }
 
         // Live Center Clock Display with authentic CP437 double border and drop shadow
-        let char_h: u16 = if height <= 200 { 8 } else { 16 };
+        let char_h = self.resolution.line_height();
         let clock_str = self.clock_formatted();
         let box_cols = 28u16.min(width / 8);
         let box_w = box_cols * 8;
@@ -162,26 +207,42 @@ impl App {
     }
 
     /// Renders About or CV (Resume) as a reader article window overlaying on top of Projects.
-    pub(crate) fn render_article_overlay(&self, view: &mut View, _width: u16, height: u16, cols: u16) {
+    pub(crate) fn render_article_overlay(
+        &self,
+        view: &mut View,
+        _width: u16,
+        height: u16,
+        cols: u16,
+    ) {
         let is_resume = self.current_tab == Tab::Resume;
         let article_title = if cols >= 80 {
-            if is_resume { "ARTICLE: CURRICULUM VITAE" } else { "ARTICLE: ABOUT ARCHITECT" }
+            if is_resume {
+                "ARTICLE: CURRICULUM VITAE"
+            } else {
+                "ARTICLE: ABOUT ARCHITECT"
+            }
         } else if is_resume {
             "CV"
         } else {
             "ABOUT"
         };
-        let char_h: u16 = self.palette_mode.line_height();
+        let char_h: u16 = self.resolution.line_height();
 
-        let pad_cols = if cols >= 80 { 2u16 } else { 1u16 };
+        let pad_cols = if cols >= 80 {
+            2u16
+        } else if cols >= 40 {
+            1u16
+        } else {
+            0u16
+        };
         let box_x = pad_cols * 8;
         let box_cols = cols.saturating_sub(pad_cols * 2);
         let box_w = box_cols * 8;
         let box_y = char_h * 2;
-        let box_rows = ((height.saturating_sub(char_h * 4)) / char_h).max(4);
+        let box_rows = ((height.saturating_sub(char_h * 5)) / char_h).max(4);
         let box_h = box_rows * char_h;
 
-        // Authentic Volkov Commander drop shadow (pure black index 13)
+        // Dialog drop shadow (pure black index 13)
         view.add(Element::Rect(RectElement {
             x: box_x + 8,
             y: box_y + char_h,
@@ -212,11 +273,12 @@ impl App {
         }));
 
         // Top Border with embedded Title and Close indicator slot
-        let title_part = format!("╔═ [ {} ] ", article_title);
+        let title_part = format!("╔═ [ {article_title} ] ");
         let close_btn_text = if cols >= 80 { "[ESC: X]" } else { "[X]" };
         let close_spaces = " ".repeat(close_btn_text.chars().count() + 2);
-        let close_slot = format!("{}═╗", close_spaces);
-        let filler_len = (box_cols as usize).saturating_sub(title_part.chars().count() + close_slot.chars().count());
+        let close_slot = format!("{close_spaces}═╗");
+        let filler_len = (box_cols as usize)
+            .saturating_sub(title_part.chars().count() + close_slot.chars().count());
         let top_str = format!("{}{}{}", title_part, "═".repeat(filler_len), close_slot);
         view.add(Element::Text(TextElement {
             x: box_x,
@@ -226,7 +288,8 @@ impl App {
         }));
 
         // Clickable close button overlay aligned exactly in the slot
-        let close_x = (box_x + box_w).saturating_sub(((close_btn_text.chars().count() + 2) as u16) * 8);
+        let close_x =
+            (box_x + box_w).saturating_sub(((close_btn_text.chars().count() + 2) as u16) * 8);
         view.add(Element::Link(LinkElement::new(
             close_x,
             box_y,
@@ -237,16 +300,16 @@ impl App {
 
         let (lines, scroll_offset, max_scroll): (&[(&str, u8, bool)], usize, usize) = if is_resume {
             let l: &[(&str, u8, bool)] = match cols {
-                100 | 80 => &RESUME_LINES_80,
-                40 => &RESUME_LINES_40,
-                _ => &RESUME_LINES_32,
+                100 | 80 => RESUME_LINES_80,
+                40 => RESUME_LINES_40,
+                _ => RESUME_LINES_32,
             };
             (l, self.resume_scroll, self.resume_max_scroll())
         } else {
             let l: &[(&str, u8, bool)] = match cols {
-                100 | 80 => &ABOUT_LINES_80,
-                40 => &ABOUT_LINES_40,
-                _ => &ABOUT_LINES_32,
+                100 | 80 => ABOUT_LINES_80,
+                40 => ABOUT_LINES_40,
+                _ => ABOUT_LINES_32,
             };
             (l, self.about_scroll, self.about_max_scroll())
         };
@@ -263,7 +326,7 @@ impl App {
                     style = style.bold();
                 }
                 view.add(Element::Text(TextElement {
-                    x: box_x + 16,
+                    x: box_x + if cols <= 32 { 8 } else { 16 },
                     y,
                     text: text.to_string(),
                     style,
@@ -282,7 +345,8 @@ impl App {
                     y: sprite_y,
                     width: sprite_size,
                     height: sprite_size,
-                    data: crate::data::profile::get_profile_sprite(self.palette_mode, sprite_size).to_vec(),
+                    data: crate::data::profile::get_profile_sprite(self.palette_mode, sprite_size)
+                        .to_vec(),
                 }));
             }
         }
@@ -304,7 +368,9 @@ impl App {
                     ("▼", 6)
                 } else {
                     let track_len = (box_rows - 4).max(1) as usize;
-                    let thumb_idx = ((scroll_offset as f32 / max_scroll as f32) * ((track_len.saturating_sub(1)) as f32)).round() as usize;
+                    let thumb_idx = ((scroll_offset as f32 / max_scroll as f32)
+                        * ((track_len.saturating_sub(1)) as f32))
+                        .round() as usize;
                     if (r - 2) as usize == thumb_idx {
                         ("█", 14)
                     } else {
@@ -351,16 +417,24 @@ impl App {
     }
 
     /// Renders the System mode / Resolution & Color Theme picker modal dialog.
-    pub(crate) fn render_system_modal(&self, view: &mut View, _width: u16, height: u16, cols: u16) {
-        let char_h: u16 = if height <= 200 { 8 } else { 16 };
-        let box_cols = if cols >= 80 { 76u16 } else { cols.saturating_sub(2) };
-        let box_w = box_cols * 8;
-        let box_rows = 15u16.min((height / char_h).saturating_sub(2));
-        let box_h = box_rows * char_h;
-        let box_x = ((cols.saturating_sub(box_cols)) / 2) * 8;
-        let box_y = ((height / char_h).saturating_sub(box_rows) / 2) * char_h;
+    pub(crate) fn render_system_modal(
+        &self,
+        view: &mut View,
+        _width: u16,
+        _height: u16,
+        cols: u16,
+    ) {
+        let SystemDialogGeometry {
+            box_x,
+            box_y,
+            box_w,
+            box_h,
+            box_cols,
+            box_rows,
+            char_h,
+        } = self.system_dialog_geometry();
 
-        // Authentic Volkov Commander drop shadow (pure black index 13)
+        // Dialog drop shadow (pure black index 13)
         view.add(Element::Rect(RectElement {
             x: box_x + 8,
             y: box_y + char_h,
@@ -391,10 +465,15 @@ impl App {
         }));
 
         // Top Border with embedded Title and Close indicator slot
-        let title = "SELECT RESOLUTION & COLOR THEME";
-        let title_part = format!("╔═ [ {} ] ", title);
+        let title = if cols >= 80 {
+            "SELECT RESOLUTION & COLOR THEME"
+        } else {
+            "SYSTEM"
+        };
+        let title_part = format!("╔═ [ {title} ] ");
         let close_slot = "      ═╗";
-        let filler_len = (box_cols as usize).saturating_sub(title_part.chars().count() + close_slot.chars().count());
+        let filler_len = (box_cols as usize)
+            .saturating_sub(title_part.chars().count() + close_slot.chars().count());
         let top_str = format!("{}{}{}", title_part, "═".repeat(filler_len), close_slot);
         view.add(Element::Text(TextElement {
             x: box_x,
@@ -452,7 +531,9 @@ impl App {
             // Resolution List (Left Column)
             for (i, res) in pixel_ssh_view::ResolutionMode::ALL.iter().enumerate() {
                 let y = row_start_y + ((i + 1) as u16) * char_h;
-                if y + char_h >= box_y + box_h { break; }
+                if y + char_h >= box_y + box_h {
+                    break;
+                }
 
                 let is_cur = self.resolution == *res;
                 let (w, h) = res.resolution();
@@ -471,11 +552,19 @@ impl App {
                 let marker = if is_cur { "►" } else { " " };
                 let line_text = format!(
                     "{} [{}] {:<4} {:>3}x{:<3} {}",
-                    marker, i + 1, res.short_name(), w, h,
+                    marker,
+                    i + 1,
+                    res.short_name(),
+                    w,
+                    h,
                     if is_cur { "[*]" } else { "" }
                 );
 
-                let fg = if is_cur { Color::from_palette(6) } else { Color::from_palette(5) };
+                let fg = if is_cur {
+                    Color::from_palette(6)
+                } else {
+                    Color::from_palette(5)
+                };
                 view.add(Element::Text(TextElement {
                     x: col1_x,
                     y,
@@ -487,12 +576,20 @@ impl App {
             // Color Theme List (Right Column)
             for (i, theme) in pixel_ssh_view::ColorTheme::ALL.iter().enumerate() {
                 let y = row_start_y + ((i + 1) as u16) * char_h;
-                if y + char_h >= box_y + box_h { break; }
+                if y + char_h >= box_y + box_h {
+                    break;
+                }
 
                 let is_cur = self.color_theme == *theme;
                 let key_char = match i {
-                    0 => 'A', 1 => 'B', 2 => 'C', 3 => 'D',
-                    4 => 'E', 5 => 'F', 6 => 'G', _ => 'H',
+                    0 => 'A',
+                    1 => 'B',
+                    2 => 'C',
+                    3 => 'D',
+                    4 => 'E',
+                    5 => 'F',
+                    6 => 'G',
+                    _ => 'H',
                 };
 
                 if is_cur {
@@ -509,11 +606,17 @@ impl App {
                 let marker = if is_cur { "►" } else { " " };
                 let line_text = format!(
                     "{} [{}] {:<16} {}",
-                    marker, key_char, theme.short_name(),
+                    marker,
+                    key_char,
+                    theme.short_name(),
                     if is_cur { "[*]" } else { "" }
                 );
 
-                let fg = if is_cur { Color::from_palette(6) } else { Color::from_palette(5) };
+                let fg = if is_cur {
+                    Color::from_palette(6)
+                } else {
+                    Color::from_palette(5)
+                };
                 view.add(Element::Text(TextElement {
                     x: col2_x,
                     y,
@@ -522,31 +625,61 @@ impl App {
                 }));
             }
         } else {
-            // Compact 40-col stacked list
-            for (i, res) in pixel_ssh_view::ResolutionMode::ALL.iter().take(4).enumerate() {
-                let y = row_start_y + (i as u16) * char_h;
+            // Compact stacked list: every choice remains visible and clickable.
+            view.add(Element::Text(TextElement {
+                x: box_x + 16,
+                y: row_start_y,
+                text: "RESOLUTION [1-8]".to_string(),
+                style: TextStyle::new(Color::from_palette(4)).bold(),
+            }));
+            for (i, res) in pixel_ssh_view::ResolutionMode::ALL.iter().enumerate() {
+                let y = row_start_y + ((i + 1) as u16) * char_h;
                 let is_cur = self.resolution == *res;
                 let (w, h) = res.resolution();
                 let marker = if is_cur { "►" } else { " " };
-                let line_text = format!("{} [{}] {:<4} {:>3}x{:<3}", marker, i + 1, res.short_name(), w, h);
+                let line_text = format!(
+                    "{} [{}] {:<4} {:>3}x{:<3}",
+                    marker,
+                    i + 1,
+                    res.short_name(),
+                    w,
+                    h
+                );
                 view.add(Element::Text(TextElement {
                     x: box_x + 16,
                     y,
                     text: line_text,
-                    style: TextStyle::new(if is_cur { Color::from_palette(6) } else { Color::from_palette(5) }).bold(),
+                    style: TextStyle::new(if is_cur {
+                        Color::from_palette(6)
+                    } else {
+                        Color::from_palette(5)
+                    })
+                    .bold(),
                 }));
             }
-            for (i, theme) in pixel_ssh_view::ColorTheme::ALL.iter().take(4).enumerate() {
-                let y = row_start_y + ((i + 5) as u16) * char_h;
+            let theme_header_y = row_start_y + 10 * char_h;
+            view.add(Element::Text(TextElement {
+                x: box_x + 16,
+                y: theme_header_y,
+                text: "COLOR THEME [A-H]".to_string(),
+                style: TextStyle::new(Color::from_palette(4)).bold(),
+            }));
+            for (i, theme) in pixel_ssh_view::ColorTheme::ALL.iter().enumerate() {
+                let y = theme_header_y + ((i + 1) as u16) * char_h;
                 let is_cur = self.color_theme == *theme;
-                let key_char = match i { 0 => 'A', 1 => 'B', 2 => 'C', _ => 'D' };
+                let key_char = (b'A' + i as u8) as char;
                 let marker = if is_cur { "►" } else { " " };
-                let line_text = format!("{} [{}] {:<14}", marker, key_char, theme.short_name());
+                let line_text = format!("{} [{}] {}", marker, key_char, theme.short_name());
                 view.add(Element::Text(TextElement {
                     x: box_x + 16,
                     y,
                     text: line_text,
-                    style: TextStyle::new(if is_cur { Color::from_palette(6) } else { Color::from_palette(5) }).bold(),
+                    style: TextStyle::new(if is_cur {
+                        Color::from_palette(6)
+                    } else {
+                        Color::from_palette(5)
+                    })
+                    .bold(),
                 }));
             }
         }
@@ -564,7 +697,7 @@ impl App {
         let prompt = if cols >= 80 {
             "╚══ Click [1-8] Resolution • [A-H] Theme • [ESC] Close "
         } else {
-            "╚═ [1-4] Res • [A-D] Theme • [ESC] "
+            "╚═ [1-8] Res [A-H] Theme "
         };
         let filler_len = (box_cols as usize).saturating_sub(prompt.chars().count() + 1);
         let bot_border = format!("{}{}{}", prompt, "═".repeat(filler_len), "╝");
@@ -577,16 +710,24 @@ impl App {
     }
 
     /// Renders the Visuals effects modal dialog.
-    pub(crate) fn render_visuals_modal(&self, view: &mut View, _width: u16, height: u16, cols: u16) {
-        let char_h: u16 = if height <= 200 { 8 } else { 16 };
-        let box_cols = if cols >= 80 { 76u16 } else { cols.saturating_sub(2) };
-        let box_w = box_cols * 8;
-        let box_rows = 15u16.min((height / char_h).saturating_sub(2));
-        let box_h = box_rows * char_h;
-        let box_x = ((cols.saturating_sub(box_cols)) / 2) * 8;
-        let box_y = ((height / char_h).saturating_sub(box_rows) / 2) * char_h;
+    pub(crate) fn render_visuals_modal(
+        &self,
+        view: &mut View,
+        _width: u16,
+        _height: u16,
+        cols: u16,
+    ) {
+        let SystemDialogGeometry {
+            box_x,
+            box_y,
+            box_w,
+            box_h,
+            box_cols,
+            box_rows,
+            char_h,
+        } = self.standard_dialog_geometry();
 
-        // Authentic Volkov Commander drop shadow (pure black index 13)
+        // Dialog drop shadow (pure black index 13)
         view.add(Element::Rect(RectElement {
             x: box_x + 8,
             y: box_y + char_h,
@@ -618,9 +759,10 @@ impl App {
 
         // Top Border with embedded Title and Close indicator slot
         let title = "CRT DISPLAY & VISUAL EFFECTS";
-        let title_part = format!("╔═ [ {} ] ", title);
+        let title_part = format!("╔═ [ {title} ] ");
         let close_slot = "      ═╗";
-        let filler_len = (box_cols as usize).saturating_sub(title_part.chars().count() + close_slot.chars().count());
+        let filler_len = (box_cols as usize)
+            .saturating_sub(title_part.chars().count() + close_slot.chars().count());
         let top_str = format!("{}{}{}", title_part, "═".repeat(filler_len), close_slot);
         view.add(Element::Text(TextElement {
             x: box_x,
@@ -676,7 +818,7 @@ impl App {
                 view.add(Element::Link(LinkElement::new(
                     box_x + offset,
                     preset_y,
-                    format!("[{}]", name),
+                    format!("[{name}]"),
                     link,
                     TextStyle::new(Color::from_palette(12)).bold(),
                 )));
@@ -706,7 +848,9 @@ impl App {
         let slider_start_y = box_y + 3 * char_h;
         for (i, (name, val)) in sliders.iter().enumerate() {
             let y = slider_start_y + (i as u16) * char_h;
-            if y + char_h >= box_y + box_h { break; }
+            if y + char_h >= box_y + box_h {
+                break;
+            }
 
             let pct = (*val * 100.0).round() as u8;
             let num_blocks = (pct as usize * 14) / 100;
@@ -719,7 +863,7 @@ impl App {
                 }
             }
 
-            let text = format!("{:<12} [ {} ] {:>3}%", name, bar, pct);
+            let text = format!("{name:<12} [ {bar} ] {pct:>3}%");
             view.add(Element::Text(TextElement {
                 x: box_x + 24,
                 y,
@@ -754,16 +898,18 @@ impl App {
     }
 
     /// Renders the Help & keyboard navigation modal dialog.
-    pub(crate) fn render_help_modal(&self, view: &mut View, _width: u16, height: u16, cols: u16) {
-        let char_h: u16 = if height <= 200 { 8 } else { 16 };
-        let box_cols = if cols >= 80 { 76u16 } else { cols.saturating_sub(2) };
-        let box_w = box_cols * 8;
-        let box_rows = 15u16.min((height / char_h).saturating_sub(2));
-        let box_h = box_rows * char_h;
-        let box_x = ((cols.saturating_sub(box_cols)) / 2) * 8;
-        let box_y = ((height / char_h).saturating_sub(box_rows) / 2) * char_h;
+    pub(crate) fn render_help_modal(&self, view: &mut View, _width: u16, _height: u16, cols: u16) {
+        let SystemDialogGeometry {
+            box_x,
+            box_y,
+            box_w,
+            box_h,
+            box_cols,
+            box_rows,
+            char_h,
+        } = self.standard_dialog_geometry();
 
-        // Authentic Volkov Commander drop shadow (pure black index 13)
+        // Dialog drop shadow (pure black index 13)
         view.add(Element::Rect(RectElement {
             x: box_x + 8,
             y: box_y + char_h,
@@ -795,9 +941,10 @@ impl App {
 
         // Top Border with embedded Title and Close indicator slot
         let title = "SYSTEM HELP & KEYBOARD SHORTCUTS";
-        let title_part = format!("╔═ [ {} ] ", title);
+        let title_part = format!("╔═ [ {title} ] ");
         let close_slot = "      ═╗";
-        let filler_len = (box_cols as usize).saturating_sub(title_part.chars().count() + close_slot.chars().count());
+        let filler_len = (box_cols as usize)
+            .saturating_sub(title_part.chars().count() + close_slot.chars().count());
         let top_str = format!("{}{}{}", title_part, "═".repeat(filler_len), close_slot);
         view.add(Element::Text(TextElement {
             x: box_x,
@@ -834,24 +981,41 @@ impl App {
         }
 
         let shortcuts = [
-            ("1-10/Fk", "Bottom navigation: Prj, CV, About, Contact, Help, Visual..."),
+            (
+                "1-10/Fk",
+                "Bottom navigation: Prj, CV, About, Contact, Help, Visual...",
+            ),
             ("Enter", "Open project details / Return to catalog"),
             ("h / l", "Navigate previous / next project in detail view"),
-            ("j / k", "Scroll catalog, article, or project details up/down"),
+            (
+                "j / k",
+                "Scroll catalog, article, or project details up/down",
+            ),
             ("Wheel", "Smooth vertical mouse-wheel scrolling"),
             ("v / V", "Toggle CRT Visual Effects modal dialog"),
-            ("s / S", "Toggle System Resolution modal dialog (SVGA, VGA, EGA...)"),
+            (
+                "s / S",
+                "Toggle System Resolution modal dialog (SVGA, VGA, EGA...)",
+            ),
             ("? / h", "Toggle this Help & Navigation shortcuts dialog"),
-            ("Top-R", "Move mouse to Top-Right corner for CRT screensaver"),
-            ("ESC  ", "Close active modal dialog / Return to Projects view"),
+            (
+                "Top-R",
+                "Move mouse to Top-Right corner for CRT screensaver",
+            ),
+            (
+                "ESC  ",
+                "Close active modal dialog / Return to Projects view",
+            ),
         ];
 
         let row_start_y = box_y + char_h;
         for (i, (keys, desc)) in shortcuts.iter().enumerate() {
             let y = row_start_y + ((i + 1) as u16) * char_h;
-            if y + char_h >= box_y + box_h { break; }
+            if y + char_h >= box_y + box_h {
+                break;
+            }
 
-            let text = format!("{:<7} : {}", keys, desc);
+            let text = format!("{keys:<7} : {desc}");
             view.add(Element::Text(TextElement {
                 x: box_x + 24,
                 y,

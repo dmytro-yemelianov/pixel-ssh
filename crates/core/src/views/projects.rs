@@ -1,11 +1,11 @@
 //! Projects tab view implementation.
 
-use pixel_ssh_view::{
-    horizontal_scroll, Color, Element, LinkElement, Platform, RectElement,
-    TextElement, TextStyle, View,
-};
 use crate::data::{project_detail_lines, PROJECTS};
 use crate::state::App;
+use pixel_ssh_view::{
+    horizontal_scroll, Color, Element, LinkElement, Platform, RectElement, TextElement, TextStyle,
+    View,
+};
 
 impl App {
     pub(crate) fn render_projects(&self, view: &mut View) {
@@ -13,7 +13,7 @@ impl App {
             self.render_projects_terminal(view);
             return;
         }
-        let (cols, _) = self.palette_mode.char_grid();
+        let (cols, _) = self.resolution.char_grid();
         match cols {
             100 | 80 => self.render_projects_80(view),
             40 => self.render_projects_40(view),
@@ -22,7 +22,7 @@ impl App {
     }
 
     pub(crate) fn render_projects_80(&self, view: &mut View) {
-        let lh = self.palette_mode.line_height();
+        let lh = self.resolution.line_height();
         if self.show_detail {
             let p = &PROJECTS[self.selected_project];
             let lines = project_detail_lines(p, 80, self.tick);
@@ -31,7 +31,12 @@ impl App {
             // Fixed header at top (Row 3: y = 3 * lh)
             let title_header = format!("PROJECT // {}  [h/l: Prev/Next]", p.title);
             let title_disp = horizontal_scroll(&title_header, 74, self.tick);
-            let title_color = match (self.tick / 8) % 4 { 0 => 12, 1 => 14, 2 => 15, _ => 12 };
+            let title_color = match (self.tick / 8) % 4 {
+                0 => 12,
+                1 => 14,
+                2 => 15,
+                _ => 12,
+            };
 
             view.add(Element::Text(TextElement {
                 x: 16,
@@ -49,7 +54,11 @@ impl App {
                 x: 16,
                 y: 4 * lh,
                 text: status_badge.to_string(),
-                style: TextStyle::new(if p.wip { Color::from_palette(10) } else { Color::from_palette(8) }),
+                style: TextStyle::new(if p.wip {
+                    Color::from_palette(10)
+                } else {
+                    Color::from_palette(8)
+                }),
             }));
 
             view.add(Element::Text(TextElement {
@@ -70,7 +79,11 @@ impl App {
             view.add(Element::Link(LinkElement::new(
                 16,
                 6 * lh,
-                format!("{} [ Open Repository: {} ]", if repo_active { "►" } else { " " }, gh_url),
+                format!(
+                    "{} [ Open Repository: {} ]",
+                    if repo_active { "►" } else { " " },
+                    gh_url
+                ),
                 gh_url,
                 repo_style,
             )));
@@ -124,7 +137,11 @@ impl App {
                 filled: true,
             }));
 
-            let thumb_ratio = if max_scroll > 0 { self.detail_scroll as f32 / max_scroll as f32 } else { 0.0 };
+            let thumb_ratio = if max_scroll > 0 {
+                self.detail_scroll as f32 / max_scroll as f32
+            } else {
+                0.0
+            };
             let thumb_pos = (thumb_ratio * (track_h.saturating_sub(lh) as f32)) as u16;
             let thumb_y = 9 * lh + thumb_pos;
             view.add(Element::Rect(RectElement {
@@ -147,14 +164,19 @@ impl App {
             let return_row = 8 + visible_rows as u16;
             let back_active = self.selected_detail_item == 1;
             let back_style = if back_active {
-                TextStyle::new(Color::from_palette(0)).with_bg(Color::from_palette(7)).bold()
+                TextStyle::new(Color::from_palette(0))
+                    .with_bg(Color::from_palette(7))
+                    .bold()
             } else {
                 TextStyle::new(Color::from_palette(9)).bold()
             };
             view.add(Element::Link(LinkElement::new(
                 16,
                 return_row * lh,
-                format!("{} < [ESC] or [q] Return to Project List | [h/l] Prev/Next Project >", if back_active { "►" } else { " " }),
+                format!(
+                    "{} < [ESC] or [q] Return to Project List | [h/l] Prev/Next Project >",
+                    if back_active { "►" } else { " " }
+                ),
                 "#back",
                 back_style,
             )));
@@ -174,36 +196,7 @@ impl App {
             return;
         }
 
-        // Single Panel Volkov Commander layout
-        let cols = (view.width / 8) as usize;
-        let tag_w = cols.saturating_sub(48);
-        let title_panel = " D:\\PORTFOLIO\\PROJECTS ";
-        let left_pad = cols.saturating_sub(2 + title_panel.len()) / 2;
-        let right_pad = cols.saturating_sub(2 + title_panel.len() + left_pad);
-        let top_border = format!("╔{}{}{}╗", "═".repeat(left_pad), title_panel, "═".repeat(right_pad));
-        view.add(Element::Text(TextElement {
-            x: 0,
-            y: 2 * lh,
-            text: top_border,
-            style: TextStyle::new(Color::from_palette(3)).bold(),
-        }));
-
-        let header_str = format!("║  #   Project Title           │ {:<w$}│ Action       ║", "Tags / Domain Subsystems", w = tag_w.saturating_sub(1));
-        view.add(Element::Text(TextElement {
-            x: 0,
-            y: 3 * lh,
-            text: header_str,
-            style: TextStyle::new(Color::from_palette(6)).bold(),
-        }));
-
-        let sep_str = format!("╟{}┼{}┼{}╢", "─".repeat(30), "─".repeat(tag_w), "─".repeat(14));
-        view.add(Element::Text(TextElement {
-            x: 0,
-            y: 4 * lh,
-            text: sep_str,
-            style: TextStyle::new(Color::from_palette(3)),
-        }));
-
+        // Project list sized by the selected display resolution
         let max_visible = self.projects_max_visible();
         let start = self.scroll_offset;
         let end = (start + max_visible).min(PROJECTS.len());
@@ -211,13 +204,13 @@ impl App {
         for (i, p) in PROJECTS[start..end].iter().enumerate() {
             let idx = start + i;
             let is_sel = idx == self.selected_project;
-            let y = (5 + i as u16) * lh;
+            let y = (3 + i as u16) * lh;
 
             if is_sel {
                 view.add(Element::Rect(RectElement {
-                    x: 8,
+                    x: 0,
                     y,
-                    width: view.width.saturating_sub(16),
+                    width: view.width,
                     height: lh,
                     color: Color::from_palette(2),
                     filled: true,
@@ -236,34 +229,23 @@ impl App {
             let num = format!("{:02}", idx + 1);
             let title = horizontal_scroll(p.title, 22, self.tick);
 
-            // Left panel border
-            view.add(Element::Text(TextElement {
-                x: 0,
-                y,
-                text: "║".to_string(),
-                style: TextStyle::new(Color::from_palette(3)),
-            }));
-
-            // Item number and title (at x=16 for test compatibility)
             view.add(Element::Text(TextElement {
                 x: 16,
                 y,
-                text: format!("{} [{}] {:<22}", marker, num, title),
+                text: format!("{marker} [{num}] {title:<22}"),
                 style: TextStyle::new(fg).bold(),
             }));
 
-            // Mid separator (col 31, x=248)
-            view.add(Element::Text(TextElement {
-                x: 248,
-                y,
-                text: "│".to_string(),
-                style: TextStyle::new(Color::from_palette(3)),
-            }));
-
             // Tags formatted with horizontal auto-scroll when selected or long
-            let tag_str = p.tags.iter().map(|t| format!("<{}>", t)).collect::<Vec<_>>().join(" ");
-            let tag_display = if is_sel || tag_str.chars().count() > tag_w {
-                horizontal_scroll(&tag_str, tag_w, self.tick)
+            let tag_str = p
+                .tags
+                .iter()
+                .map(|t| format!("<{t}>"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            let tag_width = (view.width as usize / 8).saturating_sub(46);
+            let tag_display = if is_sel || tag_str.chars().count() > tag_width {
+                horizontal_scroll(&tag_str, tag_width, self.tick)
             } else {
                 tag_str
             };
@@ -272,70 +254,35 @@ impl App {
                 x: 256,
                 y,
                 text: tag_display,
-                style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(4) }),
+                style: TextStyle::new(Color::from_palette(4)),
             }));
 
-            // Action separator (col 32 + tag_w)
-            let action_sep_x = ((31 + 1 + tag_w) as u16) * 8;
+            // Detail arrow
+            let arrow_x = view.width.saturating_sub(96);
             view.add(Element::Text(TextElement {
-                x: action_sep_x,
-                y,
-                text: "│".to_string(),
-                style: TextStyle::new(Color::from_palette(3)),
-            }));
-
-            // Action text
-            let action_text_x = action_sep_x + 16;
-            view.add(Element::Text(TextElement {
-                x: action_text_x,
+                x: arrow_x,
                 y,
                 text: if is_sel { "[Enter] ->" } else { "  Details " }.to_string(),
-                style: TextStyle::new(if is_sel { Color::from_palette(7) } else { Color::from_palette(3) }).bold(),
-            }));
-
-            // Right panel border (col = cols - 1)
-            view.add(Element::Text(TextElement {
-                x: view.width.saturating_sub(8),
-                y,
-                text: "║".to_string(),
-                style: TextStyle::new(Color::from_palette(3)),
+                style: TextStyle::new(if is_sel {
+                    Color::from_palette(7)
+                } else {
+                    Color::from_palette(3)
+                }),
             }));
         }
 
-        // Panel Bottom Border with column connectors ╧ at col 31 and action separator col
-        let bot_label = " 16 Projects • 160 KB Free ";
-        let bot_border = format!("╚═{}══╧{}╧{}╝", bot_label, "═".repeat(tag_w), "═".repeat(14));
-        let bot_y = (5 + max_visible as u16) * lh;
-        if bot_y + lh <= view.height {
-            view.add(Element::Text(TextElement {
-                x: 0,
-                y: bot_y,
-                text: bot_border,
-                style: TextStyle::new(Color::from_palette(3)).bold(),
-            }));
-        }
-
-        // DOS prompt path at bottom
-        let prompt_y = bot_y + lh;
-        if prompt_y + lh <= view.height {
-            let selected_slug = PROJECTS.get(self.selected_project).map(|p| p.slug).unwrap_or("portfolio");
-            let prompt_path = format!("C:\\DMYTRO\\PROJECTS\\{}>", selected_slug.to_uppercase());
-            let cursor_char = if (self.tick / 4) % 2 == 0 { "█" } else { " " };
+        // Scroll guidance note if more items exist
+        if PROJECTS.len() > max_visible {
+            let guide_y = (3 + max_visible as u16) * lh;
             view.add(Element::Text(TextElement {
                 x: 16,
-                y: prompt_y,
-                text: format!("{}{}", prompt_path, cursor_char),
-                style: TextStyle::new(Color::from_palette(14)).bold(),
-            }));
-        }
-
-        // Navigation guidance
-        let hint_y = prompt_y + lh;
-        if hint_y + lh <= view.height {
-            view.add(Element::Text(TextElement {
-                x: 16,
-                y: hint_y,
-                text: "Use [↑/↓] or [k/j] to select • [Enter] Details • [1-8] or Click buttons below".to_string(),
+                y: guide_y,
+                text: format!(
+                    "Showing {}-{} of {} projects. Use [Up/Down] or [k/j] to scroll.",
+                    start + 1,
+                    end,
+                    PROJECTS.len()
+                ),
                 style: TextStyle::new(Color::from_palette(4)),
             }));
         }
@@ -349,7 +296,7 @@ impl App {
 
             for (i, (line_text, pal_idx, bold)) in lines.iter().enumerate() {
                 let line_y = 24 + ((i as i32) - (self.detail_scroll as i32)) * 8;
-                if line_y >= 24 && line_y <= 172 {
+                if (24..=172).contains(&line_y) {
                     let mut style = TextStyle::new(Color::from_palette(*pal_idx));
                     if *bold {
                         style = style.bold();
@@ -381,7 +328,11 @@ impl App {
             }));
 
             let track_h = 134.0 - 16.0;
-            let thumb_ratio = if max_scroll > 0 { self.detail_scroll as f32 / max_scroll as f32 } else { 0.0 };
+            let thumb_ratio = if max_scroll > 0 {
+                self.detail_scroll as f32 / max_scroll as f32
+            } else {
+                0.0
+            };
             let thumb_y = 34 + (thumb_ratio * track_h) as u16;
             view.add(Element::Rect(RectElement {
                 x: 310,
@@ -445,10 +396,13 @@ impl App {
             let num = format!("{:02}", idx + 1);
             let title = horizontal_scroll(p.title, 14, self.tick);
 
-            let tag_str = p.tags.iter().map(|t| format!("<{}>", t)).collect::<Vec<_>>().join(" ");
-            let tag_display = if is_sel {
-                horizontal_scroll(&tag_str, 17, self.tick)
-            } else if tag_str.chars().count() > 17 {
+            let tag_str = p
+                .tags
+                .iter()
+                .map(|t| format!("<{t}>"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            let tag_display = if is_sel || tag_str.chars().count() > 17 {
                 horizontal_scroll(&tag_str, 17, self.tick)
             } else {
                 tag_str
@@ -457,7 +411,7 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 4,
                 y,
-                text: format!("{} [{}] {:<14} {}", marker, num, title, tag_display),
+                text: format!("{marker} [{num}] {title:<14} {tag_display}"),
                 style: TextStyle::new(fg).bold(),
             }));
         }
@@ -466,7 +420,12 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 4,
                 y: 176,
-                text: format!("{}-{} of {}. [j/k]Nav [Enter]Info", start + 1, end, PROJECTS.len()),
+                text: format!(
+                    "{}-{} of {}. [j/k]Nav [Enter]Info",
+                    start + 1,
+                    end,
+                    PROJECTS.len()
+                ),
                 style: TextStyle::new(Color::from_palette(4)),
             }));
         }
@@ -480,7 +439,7 @@ impl App {
 
             for (i, (line_text, pal_idx, bold)) in lines.iter().enumerate() {
                 let line_y = 24 + ((i as i32) - (self.detail_scroll as i32)) * 8;
-                if line_y >= 24 && line_y <= 162 {
+                if (24..=162).contains(&line_y) {
                     let mut style = TextStyle::new(Color::from_palette(*pal_idx));
                     if *bold {
                         style = style.bold();
@@ -512,7 +471,11 @@ impl App {
             }));
 
             let track_h = 124.0 - 14.0;
-            let thumb_ratio = if max_scroll > 0 { self.detail_scroll as f32 / max_scroll as f32 } else { 0.0 };
+            let thumb_ratio = if max_scroll > 0 {
+                self.detail_scroll as f32 / max_scroll as f32
+            } else {
+                0.0
+            };
             let thumb_y = 34 + (thumb_ratio * track_h) as u16;
             view.add(Element::Rect(RectElement {
                 x: 246,
@@ -576,10 +539,13 @@ impl App {
             let num = format!("{:02}", idx + 1);
             let title = horizontal_scroll(p.title, 12, self.tick);
 
-            let tag_str = p.tags.iter().map(|t| format!("<{}>", t)).collect::<Vec<_>>().join(" ");
-            let tag_display = if is_sel {
-                horizontal_scroll(&tag_str, 12, self.tick)
-            } else if tag_str.chars().count() > 12 {
+            let tag_str = p
+                .tags
+                .iter()
+                .map(|t| format!("<{t}>"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            let tag_display = if is_sel || tag_str.chars().count() > 12 {
                 horizontal_scroll(&tag_str, 12, self.tick)
             } else {
                 tag_str
@@ -588,7 +554,7 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 2,
                 y,
-                text: format!("{}{:<2} {:<12} {}", marker, num, title, tag_display),
+                text: format!("{marker}{num:<2} {title:<12} {tag_display}"),
                 style: TextStyle::new(fg).bold(),
             }));
         }
@@ -596,8 +562,13 @@ impl App {
         if PROJECTS.len() > max_visible {
             view.add(Element::Text(TextElement {
                 x: 2,
-                y: 168,
-                text: format!("{}-{} of {}. [j/k]Nav [Enter]", start + 1, end, PROJECTS.len()),
+                y: 156,
+                text: format!(
+                    "{}-{} of {}. [j/k]Nav [Enter]",
+                    start + 1,
+                    end,
+                    PROJECTS.len()
+                ),
                 style: TextStyle::new(Color::from_palette(4)),
             }));
         }
@@ -616,7 +587,12 @@ impl App {
             let title_header = format!("PROJECT // {}  [h/l: Prev/Next]", p.title);
             let max_title = (cols as usize).saturating_sub(6).max(30);
             let title_disp = horizontal_scroll(&title_header, max_title, self.tick);
-            let title_color = match (self.tick / 8) % 4 { 0 => 12, 1 => 14, 2 => 15, _ => 12 };
+            let title_color = match (self.tick / 8) % 4 {
+                0 => 12,
+                1 => 14,
+                2 => 15,
+                _ => 12,
+            };
             view.add(Element::Text(TextElement {
                 x: 8,
                 y: 48,
@@ -631,12 +607,16 @@ impl App {
                 "STATUS: Production-Ready / Stable Open-Source"
             };
             let tags_str = format!("TAGS: {}", p.tags.join(", "));
-            let header_row_2 = format!("{} | {}", status_badge, tags_str);
+            let header_row_2 = format!("{status_badge} | {tags_str}");
             view.add(Element::Text(TextElement {
                 x: 8,
                 y: 64,
                 text: header_row_2,
-                style: TextStyle::new(if p.wip { Color::from_palette(10) } else { Color::from_palette(8) }),
+                style: TextStyle::new(if p.wip {
+                    Color::from_palette(10)
+                } else {
+                    Color::from_palette(8)
+                }),
             }));
 
             // Row 5: Open Repository link (y = 80)
@@ -650,7 +630,11 @@ impl App {
             view.add(Element::Link(LinkElement::new(
                 8,
                 80,
-                format!("{} [ Open Repository: {} ]", if repo_active { "►" } else { " " }, gh_url),
+                format!(
+                    "{} [ Open Repository: {} ]",
+                    if repo_active { "►" } else { " " },
+                    gh_url
+                ),
                 gh_url,
                 repo_style,
             )));
@@ -688,7 +672,9 @@ impl App {
             // Row rows - 3: Return button
             let back_active = self.selected_detail_item == 1;
             let back_style = if back_active {
-                TextStyle::new(Color::from_palette(0)).with_bg(Color::from_palette(7)).bold()
+                TextStyle::new(Color::from_palette(0))
+                    .with_bg(Color::from_palette(7))
+                    .bold()
             } else {
                 TextStyle::new(Color::from_palette(9)).bold()
             };
@@ -696,7 +682,10 @@ impl App {
             view.add(Element::Link(LinkElement::new(
                 8,
                 back_y,
-                format!("{} < [ESC] or [q] Return to Project List | [h/l] Prev/Next Project >", if back_active { "►" } else { " " }),
+                format!(
+                    "{} < [ESC] or [q] Return to Project List | [h/l] Prev/Next Project >",
+                    if back_active { "►" } else { " " }
+                ),
                 "#back",
                 back_style,
             )));
@@ -754,14 +743,19 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 8,
                 y,
-                text: format!("{} [{}] {:<width$}", marker, num, title, width = title_w),
+                text: format!("{marker} [{num}] {title:<title_w$}"),
                 style: TextStyle::new(fg).bold(),
             }));
 
             // Tags formatted to fill available width cleanly
             let tag_col = (title_w + 10) as u16;
             let tag_x = tag_col * 8;
-            let tag_str = p.tags.iter().map(|t| format!("<{}>", t)).collect::<Vec<_>>().join(" ");
+            let tag_str = p
+                .tags
+                .iter()
+                .map(|t| format!("<{t}>"))
+                .collect::<Vec<_>>()
+                .join(" ");
             let avail_chars = (cols as usize).saturating_sub(tag_col as usize + 16);
             let tag_display = if is_sel || tag_str.chars().count() > avail_chars {
                 horizontal_scroll(&tag_str, avail_chars, self.tick)
@@ -782,7 +776,11 @@ impl App {
                 x: det_x,
                 y,
                 text: if is_sel { "[Enter] ->" } else { "  Details " }.to_string(),
-                style: TextStyle::new(if is_sel { Color::from_palette(7) } else { Color::from_palette(4) }),
+                style: TextStyle::new(if is_sel {
+                    Color::from_palette(7)
+                } else {
+                    Color::from_palette(4)
+                }),
             }));
         }
 

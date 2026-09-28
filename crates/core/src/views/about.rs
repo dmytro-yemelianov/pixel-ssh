@@ -1,11 +1,8 @@
 //! About system tab view implementation.
 
-use pixel_ssh_view::{
-    Color, Element, Platform, RectElement,
-    TextElement, TextStyle, View,
-};
 use crate::data::{ABOUT_LINES_32, ABOUT_LINES_40, ABOUT_LINES_80};
 use crate::state::App;
+use pixel_ssh_view::{Color, Element, Platform, RectElement, TextElement, TextStyle, View};
 
 impl App {
     pub(crate) fn render_about(&self, view: &mut View) {
@@ -26,7 +23,7 @@ impl App {
 
         for (i, &(line_text, pal_idx, bold)) in ABOUT_LINES_80.iter().enumerate() {
             let line_y = 48 + ((i as i32) - (self.about_scroll as i32)) * 16;
-            if line_y >= 48 && line_y <= 320 {
+            if (48..=320).contains(&line_y) {
                 let mut style = TextStyle::new(Color::from_palette(pal_idx));
                 if bold {
                     style = style.bold();
@@ -69,7 +66,11 @@ impl App {
         }));
 
         let track_h = 240.0 - 16.0;
-        let thumb_ratio = if max_scroll > 0 { self.about_scroll as f32 / max_scroll as f32 } else { 0.0 };
+        let thumb_ratio = if max_scroll > 0 {
+            self.about_scroll as f32 / max_scroll as f32
+        } else {
+            0.0
+        };
         let thumb_y = 64 + (thumb_ratio * track_h) as u16;
         view.add(Element::Rect(RectElement {
             x: 624,
@@ -90,7 +91,12 @@ impl App {
         view.add(Element::Text(TextElement {
             x: 16,
             y: 336,
-            text: format!("Lines {}-{} of {}  [k/j or Wheel to scroll]", self.about_scroll + 1, (self.about_scroll + 18).min(ABOUT_LINES_80.len()), ABOUT_LINES_80.len()),
+            text: format!(
+                "Lines {}-{} of {}  [k/j or Wheel to scroll]",
+                self.about_scroll + 1,
+                (self.about_scroll + 18).min(ABOUT_LINES_80.len()),
+                ABOUT_LINES_80.len()
+            ),
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }
@@ -100,7 +106,7 @@ impl App {
 
         for (i, &(line_text, pal_idx, bold)) in ABOUT_LINES_40.iter().enumerate() {
             let line_y = 24 + ((i as i32) - (self.about_scroll as i32)) * 8;
-            if line_y >= 24 && line_y <= 170 {
+            if (24..=170).contains(&line_y) {
                 let mut style = TextStyle::new(Color::from_palette(pal_idx));
                 if bold {
                     style = style.bold();
@@ -142,7 +148,11 @@ impl App {
         }));
 
         let track_h = 110.0 - 16.0;
-        let thumb_ratio = if max_scroll > 0 { self.about_scroll as f32 / max_scroll as f32 } else { 0.0 };
+        let thumb_ratio = if max_scroll > 0 {
+            self.about_scroll as f32 / max_scroll as f32
+        } else {
+            0.0
+        };
         let thumb_y = 48 + (thumb_ratio * track_h) as u16;
         view.add(Element::Rect(RectElement {
             x: 310,
@@ -163,7 +173,12 @@ impl App {
         view.add(Element::Text(TextElement {
             x: 4,
             y: 180,
-            text: format!("Lines {}-{} of {} [k/j]", self.about_scroll + 1, (self.about_scroll + 19).min(ABOUT_LINES_40.len()), ABOUT_LINES_40.len()),
+            text: format!(
+                "Lines {}-{} of {} [k/j]",
+                self.about_scroll + 1,
+                (self.about_scroll + 19).min(ABOUT_LINES_40.len()),
+                ABOUT_LINES_40.len()
+            ),
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }
@@ -173,7 +188,7 @@ impl App {
 
         for (i, &(line_text, pal_idx, bold)) in ABOUT_LINES_32.iter().enumerate() {
             let line_y = 24 + ((i as i32) - (self.about_scroll as i32)) * 8;
-            if line_y >= 24 && line_y <= 160 {
+            if (24..=160).contains(&line_y) {
                 let mut style = TextStyle::new(Color::from_palette(pal_idx));
                 if bold {
                     style = style.bold();
@@ -215,7 +230,11 @@ impl App {
         }));
 
         let track_h = 100.0 - 12.0;
-        let thumb_ratio = if max_scroll > 0 { self.about_scroll as f32 / max_scroll as f32 } else { 0.0 };
+        let thumb_ratio = if max_scroll > 0 {
+            self.about_scroll as f32 / max_scroll as f32
+        } else {
+            0.0
+        };
         let thumb_y = 53 + (thumb_ratio * track_h) as u16;
         view.add(Element::Rect(RectElement {
             x: 246,
@@ -236,7 +255,12 @@ impl App {
         view.add(Element::Text(TextElement {
             x: 2,
             y: 171,
-            text: format!("Lines {}-{} of {} [k/j]", self.about_scroll + 1, (self.about_scroll + 18).min(ABOUT_LINES_32.len()), ABOUT_LINES_32.len()),
+            text: format!(
+                "Lines {}-{} of {} [k/j]",
+                self.about_scroll + 1,
+                (self.about_scroll + 18).min(ABOUT_LINES_32.len()),
+                ABOUT_LINES_32.len()
+            ),
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }
@@ -285,7 +309,11 @@ impl App {
             filled: true,
         }));
 
-        let thumb_ratio = if max_scroll > 0 { self.about_scroll as f32 / max_scroll as f32 } else { 0.0 };
+        let thumb_ratio = if max_scroll > 0 {
+            self.about_scroll as f32 / max_scroll as f32
+        } else {
+            0.0
+        };
         let thumb_travel = track_h.saturating_sub(16) as f32;
         let thumb_y = track_top + (thumb_ratio * thumb_travel) as u16;
         view.add(Element::Rect(RectElement {

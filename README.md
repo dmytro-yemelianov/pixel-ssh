@@ -1,93 +1,53 @@
-# Pixel-First Rust Web + SSH Interface
+# Pixel SSH
 
-A minimal interactive application exposing the **exact same application and session model** through two distinct interfaces:
-1. **Web Interface**: Lightweight pixel-based UI written in Rust/WASM, rendering to a WebGL2 8-bit indexed framebuffer (320 × 200) with nearest-neighbor scaling, an authentic IBM VGA 8×8 bitmap font, and zero DOM UI widgets.
-2. **SSH Interface**: Native Rust SSH server (powered by `russh`) with terminal ANSI rendering, supporting anonymous `guest` sessions (no passwords, no keys, no shell).
-3. **Web Gateway**: WebSocket (WSS) ↔ SSH TCP bridge.
+An interactive portfolio with a shared Rust application core and two front ends: a WebAssembly/WebGL2 canvas and an ANSI terminal over SSH. Each connection has its own application state. The browser also has DOM touch controls below the canvas in portrait mode.
 
-The content presents an interactive portfolio, resume, and project browser for **Dmytro Yemelianov** (Systems & AI Workflows Engineer).
+## Display and controls
 
----
+The web client supports SVGA 800×600, SGA 640×480, VGA 640×400, EGA 640×350, CGA/C64 320×200, Atari 320×192, and ZX Spectrum 256×192 layouts. Resolution and color theme are independent choices. VGA Modern Dark is the default theme; Volkov Commander is available as a palette choice.
 
-## Architecture Overview
+The framebuffer uses 8-bit color indices. WebGL2 looks up the active 256-color palette from a 256×1 RGBA texture, then applies optional CRT effects. VGA-sized layouts use an 8×16 CP437 font. EGA uses 14-pixel rows with glyphs clipped from that font; compact layouts use 8×8 fonts. The EGA font is not a separately sourced hardware 8×14 ROM.
 
-```text
-                         ┌──────────────────┐
-                         │    Rust Core     │
-                         │                  │
-                         │  Application     │
-                         │  Session State   │
-                         │  View Model      │
-                         └────────┬─────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    │                           │
-                    ▼                           ▼
-            Web Pixel Renderer           ANSI Renderer
-                    │                           │
-               Rust → WASM                 Rust native
-                    │                           │
-                 WebGL2                         SSH
-                    │                           │
-                 Canvas                      Terminal
+In the browser, `1`–`4` open Projects, CV, About, and Contact. `5` or `?` opens Help; `6` or `v` opens Visuals. `7` or `F7` opens the System dialog, where `1`–`8` select a resolution and `A`–`H` select a theme. `8`, `F8`, or `t` cycles themes when the dialog is closed. The bottom bar and portrait touch controls provide screen-specific shortcuts. Arrow keys navigate lists, Enter opens a project, and Escape returns or closes a dialog.
+
+The terminal uses the same content and ANSI rendering. Its `7`/`s` shortcut cycles combined legacy display presets rather than opening the browser dialog.
+
+## Run locally
+
+Build the browser client (requires the `wasm32-unknown-unknown` target and `wasm-bindgen` CLI):
+
+```sh
+cargo build -p pixel-ssh-web-client --target wasm32-unknown-unknown --release
+wasm-bindgen target/wasm32-unknown-unknown/release/pixel_ssh_web_client.wasm --out-dir web/pkg --target web --no-typescript
+python3 -m http.server 8085 --directory web
 ```
 
-### Clean Separation of Concerns
-- `crates/view`: Platform-agnostic `View`, `Element` (`Text`, `Rect`, `Sprite`), styling, and normalized `InputEvent` abstractions. Zero dependencies.
-- `crates/core`: Application business logic, state management (`App`), 16 project definitions from `yemelianov.dev`, tabs (`Projects`, `Resume`, `Contact`, `Help`), and view generation. Never imports rendering primitives.
-- `crates/framebuffer`: 320×200 8-bit indexed framebuffer (64 KB display memory), 256-color palette uniform, and IBM VGA 8×8 bitmap font rasterizer.
-- `crates/render-ansi`: Terminal ANSI renderer translating `View` elements into differential ANSI escape sequences, box borders, 256-color codes, and text sanitization.
-- `crates/render-web`: WebGL2 R8 texture + 256-color palette lookup uniform fragment shader, fullscreen quad, nearest neighbor filtering.
-- `crates/web-client`: WebAssembly browser client, canvas binding, keyboard event listener, and dirty-flag event-driven `requestAnimationFrame` loop.
-- `crates/ssh-server`: Native Rust SSH server on port 2222 with anonymous `guest` auth, PTY/window-change support, terminal keyboard decoding, and ANSI streaming.
-- `crates/web-gateway`: WebSocket (WSS) ↔ SSH TCP anonymous gateway for browser-based terminal access.
+Open `http://localhost:8085`. The generated `web/pkg` files are tracked for static hosting. Their size varies with the build; inspect the built files rather than relying on a fixed size claim.
 
----
+Run the SSH server in another terminal:
 
-## Technical Specifications Satisfied
-
-- **Logical Resolution**: 320 × 200 8-bit indexed framebuffer (64,000 bytes).
-- **Zero DOM UI**: Single `<canvas id="screen">`, no `<div>` grids, no browser font rendering.
-- **Rendering Pipeline**: WebGL2 R8 texture with palette uniform lookup fragment shader. Nearest neighbor filtering (`GL_NEAREST`).
-- **Binary Size**: WebAssembly client is ~66 KB (`.wasm`) and ~22 KB bootstrap JS.
-- **Anonymous SSH**: Accessible via `ssh -p 2222 guest@<host>` without password or keys.
-- **Security**: Strictly application-only; no shell prompt, SCP, or exec capability is exposed.
-
----
-
-## Quickstart
-
-### 1. Run the Native SSH Server
-```bash
+```sh
 cargo run --bin pixel-ssh-server
-```
-In another terminal:
-```bash
 ssh -p 2222 guest@127.0.0.1
 ```
 
-### 2. Run the Web Interface
-Compile the WebAssembly client:
-```bash
-cargo build -p pixel-ssh-web-client --target wasm32-unknown-unknown --release
-wasm-bindgen target/wasm32-unknown-unknown/release/pixel_ssh_web_client.wasm --out-dir web/pkg --target web --no-typescript
-```
+The server accepts only the `guest` user with SSH `none` authentication. Password and public-key authentication are rejected. Sessions expose the portfolio application, not a shell, SCP, or remote commands. The server binds to port 2222 on all interfaces by default. Its host key is stored in `ssh_host_ed25519_key` in the working directory; set `SSH_HOST_KEY` to use another path and keep this private file between restarts.
 
-Serve the web client locally:
-```bash
-python3 -m http.server 8085 --directory web
-```
-Open `http://localhost:8085` in any modern browser.
+## Optional raw WebSocket bridge
 
-### 3. Run the Web-to-SSH Gateway
-```bash
+`pixel-ssh-web-gateway` forwards binary WebSocket traffic to the SSH TCP server. It does not implement an SSH client in the browser portfolio. It serves plain `ws://`, so use a TLS reverse proxy if exposing it remotely. By default it binds to `127.0.0.1:8080` and accepts browser origins `http://localhost:8085` and `http://127.0.0.1:8085`.
+
+```sh
 GATEWAY_PORT=8080 SSH_TARGET=127.0.0.1:2222 cargo run --bin pixel-ssh-web-gateway
 ```
 
----
+`GATEWAY_BIND` changes the bind address, and `GATEWAY_ORIGINS` sets a comma-separated browser Origin allowlist. Clients without an Origin header can connect as non-browser WebSocket clients.
 
-## Keyboard Controls
-- `1` / `2` / `3` / `4` or `Tab`: Switch tabs (`Projects`, `Resume`, `Contact`, `Help`)
-- `Up` / `Down` (or `k` / `j`): Select project in list
-- `Enter`: View detailed project metadata, description, and tags
-- `Escape` (or `q`): Return to project list
+## Development checks
+
+```sh
+cargo test --workspace
+cargo check -p pixel-ssh-web-client --target wasm32-unknown-unknown
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+```

@@ -1,8 +1,8 @@
 //! In-depth architectural overviews, subsystem breakdowns, technical specifications,
 //! and bespoke ASCII dataflow diagrams for all 16 portfolio projects.
 
-use pixel_ssh_view::{horizontal_scroll, word_wrap};
 use crate::data::Project;
+use pixel_ssh_view::{horizontal_scroll, word_wrap};
 
 pub struct ProjectDetail {
     pub overview: &'static str,
@@ -738,7 +738,11 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
         let max_w = 74;
 
         // 1. Overview Section
-        lines.push(("ARCHITECTURAL OVERVIEW & PROBLEM DOMAIN:".to_string(), 6, true));
+        lines.push((
+            "ARCHITECTURAL OVERVIEW & PROBLEM DOMAIN:".to_string(),
+            6,
+            true,
+        ));
         for l in word_wrap(detail.overview, max_w) {
             lines.push((l, 5, false));
         }
@@ -748,7 +752,7 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
         // 2. Subsystems Section
         lines.push(("CORE SUBSYSTEMS & MODULAR CRATES:".to_string(), 11, true));
         for sub in detail.subsystems {
-            let bullet = format!("• {}", sub);
+            let bullet = format!("• {sub}");
             for l in word_wrap(&bullet, max_w) {
                 lines.push((l, 5, false));
             }
@@ -765,28 +769,56 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
         lines.push(("".to_string(), 5, false));
 
         // 4. Specifications Table (Exact 74 chars wide)
-        lines.push(("TECHNICAL SPECIFICATIONS & INVARIANTS:".to_string(), 9, true));
-        lines.push(("┌─────────────────────┬──────────────────────────────────────────────────┐".to_string(), 7, false));
-        lines.push(("│ Attribute / Metric  │ Implementation Specification & Guarantees        │".to_string(), 6, true));
-        lines.push(("├─────────────────────┼──────────────────────────────────────────────────┤".to_string(), 7, false));
+        lines.push((
+            "TECHNICAL SPECIFICATIONS & INVARIANTS:".to_string(),
+            9,
+            true,
+        ));
+        lines.push((
+            "┌─────────────────────┬──────────────────────────────────────────────────┐"
+                .to_string(),
+            7,
+            false,
+        ));
+        lines.push((
+            "│ Attribute / Metric  │ Implementation Specification & Guarantees        │"
+                .to_string(),
+            6,
+            true,
+        ));
+        lines.push((
+            "├─────────────────────┼──────────────────────────────────────────────────┤"
+                .to_string(),
+            7,
+            false,
+        ));
         for (k, v) in detail.specs {
-            lines.push((format!("│ {:<19} │ {:<48} │", k, v), 5, false));
+            lines.push((format!("│ {k:<19} │ {v:<48} │"), 5, false));
         }
-        lines.push(("└─────────────────────┴──────────────────────────────────────────────────┘".to_string(), 7, false));
+        lines.push((
+            "└─────────────────────┴──────────────────────────────────────────────────┘"
+                .to_string(),
+            7,
+            false,
+        ));
 
         lines.push(("".to_string(), 5, false));
 
         // 5. Key Highlights Section
         lines.push(("KEY ENGINEERING HIGHLIGHTS:".to_string(), 14, true));
         for hl in detail.highlights {
-            let bullet = format!("• {}", hl);
+            let bullet = format!("• {hl}");
             for l in word_wrap(&bullet, max_w) {
                 lines.push((l, 5, false));
             }
         }
 
         lines.push(("".to_string(), 5, false));
-        lines.push(("< [ESC] or [q] Return to Project List | [h/l] Prev/Next | [k/j] Scroll >".to_string(), 9, true));
+        lines.push((
+            "< [ESC] or [q] Return to Project List | [h/l] Prev/Next | [k/j] Scroll >".to_string(),
+            9,
+            true,
+        ));
     } else if cols == 40 {
         let max_w = 38;
 
@@ -826,7 +858,11 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
         lines.push((repo_line, 7, false));
 
         // 5. Divider
-        lines.push(("──────────────────────────────────────".to_string(), 3, false));
+        lines.push((
+            "──────────────────────────────────────".to_string(),
+            3,
+            false,
+        ));
 
         // 6. Overview
         lines.push(("ARCHITECTURAL OVERVIEW:".to_string(), 6, true));
@@ -839,7 +875,7 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
         // 7. Subsystems
         lines.push(("SUBSYSTEMS & CRATES:".to_string(), 11, true));
         for sub in detail.subsystems {
-            let bullet = format!("• {}", sub);
+            let bullet = format!("• {sub}");
             for l in word_wrap(&bullet, max_w) {
                 lines.push((l, 5, false));
             }
@@ -857,22 +893,38 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
 
         // 9. Specifications Table (Exact 38 chars wide)
         lines.push(("CORE CONTRACTS & SPECS:".to_string(), 9, true));
-        lines.push(("┌────────────────┬───────────────────┐".to_string(), 7, false));
-        lines.push(("│ Metric         │ Specification     │".to_string(), 6, true));
-        lines.push(("├────────────────┼───────────────────┤".to_string(), 7, false));
+        lines.push((
+            "┌────────────────┬───────────────────┐".to_string(),
+            7,
+            false,
+        ));
+        lines.push((
+            "│ Metric         │ Specification     │".to_string(),
+            6,
+            true,
+        ));
+        lines.push((
+            "├────────────────┼───────────────────┤".to_string(),
+            7,
+            false,
+        ));
         for (k, v) in detail.specs {
             let k_fmt = truncate_chars(k, 14);
             let v_fmt = truncate_chars(v, 17);
-            lines.push((format!("│ {:<14} │ {:<17} │", k_fmt, v_fmt), 5, false));
+            lines.push((format!("│ {k_fmt:<14} │ {v_fmt:<17} │"), 5, false));
         }
-        lines.push(("└────────────────┴───────────────────┘".to_string(), 7, false));
+        lines.push((
+            "└────────────────┴───────────────────┘".to_string(),
+            7,
+            false,
+        ));
 
         lines.push(("".to_string(), 5, false));
 
         // 10. Key Highlights
         lines.push(("KEY HIGHLIGHTS:".to_string(), 14, true));
         for hl in detail.highlights {
-            let bullet = format!("• {}", hl);
+            let bullet = format!("• {hl}");
             for l in word_wrap(&bullet, max_w) {
                 lines.push((l, 5, false));
             }
@@ -928,7 +980,7 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
         // 7. Subsystems
         lines.push(("SUBSYSTEMS:".to_string(), 11, true));
         for sub in detail.subsystems {
-            let bullet = format!("• {}", sub);
+            let bullet = format!("• {sub}");
             for l in word_wrap(&bullet, max_w) {
                 lines.push((l, 5, false));
             }
@@ -952,7 +1004,7 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
         for (k, v) in detail.specs {
             let k_fmt = truncate_chars(k, 10);
             let v_fmt = truncate_chars(v, 12);
-            lines.push((format!("│ {:<10} │ {:<12} │", k_fmt, v_fmt), 5, false));
+            lines.push((format!("│ {k_fmt:<10} │ {v_fmt:<12} │"), 5, false));
         }
         lines.push(("└────────────┴──────────────┘".to_string(), 7, false));
 
@@ -961,7 +1013,7 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
         // 10. Key Highlights
         lines.push(("HIGHLIGHTS:".to_string(), 14, true));
         for hl in detail.highlights {
-            let bullet = format!("• {}", hl);
+            let bullet = format!("• {hl}");
             for l in word_wrap(&bullet, max_w) {
                 lines.push((l, 5, false));
             }
