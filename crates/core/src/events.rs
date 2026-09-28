@@ -1129,10 +1129,18 @@ impl App {
                     };
                     let scrollbar_x_start = width.saturating_sub(20);
                     if x >= scrollbar_x_start {
-                        let is_detail_80 =
-                            self.current_tab == Tab::Projects && self.show_detail && cols == 80;
-                        let (top_arrow_y, bot_arrow_y, track_top, track_bot) = if is_detail_80 {
-                            (128..=144, 304..=320, 144.0, 304.0)
+                        let is_detail_wide =
+                            self.current_tab == Tab::Projects && self.show_detail && cols >= 80;
+                        let (top_arrow_y, bot_arrow_y, track_top, track_bot) = if is_detail_wide {
+                            let lh = self.resolution.line_height();
+                            let top = 8 * lh;
+                            let bottom = (8 + self.detail_wide_visible_rows() as u16 - 1) * lh;
+                            (
+                                top..=top + lh - 1,
+                                bottom..=bottom + lh - 1,
+                                (top + lh) as f32,
+                                bottom as f32,
+                            )
                         } else if cols == 80 && self.current_tab == Tab::Resume {
                             (96..=112, 304..=320, 112.0, 304.0)
                         } else if cols == 80 && self.current_tab == Tab::About {
@@ -1517,8 +1525,10 @@ impl App {
                 // 4. Project list interaction
                 if self.current_tab == Tab::Projects {
                     if self.show_detail {
-                        let back_y = if cols == 80 {
-                            336..=352
+                        let back_y = if cols >= 80 {
+                            let y = (8 + self.detail_wide_visible_rows() as u16)
+                                * self.resolution.line_height();
+                            y..=y + self.resolution.line_height() - 1
                         } else {
                             (height.saturating_sub(30))..=(height.saturating_sub(8))
                         };

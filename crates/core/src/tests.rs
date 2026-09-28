@@ -593,6 +593,15 @@ fn test_all_16_projects_have_detailed_specs_and_subsystems() {
 #[test]
 fn test_project_detail_lines_width_bounds_across_all_resolutions() {
     for p in PROJECTS {
+        // SVGA uses the full 94-character content width.
+        let lines_100 = project_detail_lines(p, 100, 0);
+        assert!(lines_100
+            .iter()
+            .all(|(line, _, _)| line.chars().count() <= 94));
+        assert!(lines_100
+            .iter()
+            .any(|(line, _, _)| line.starts_with('┌') && line.chars().count() == 94));
+
         // 80 columns: text must fit <= 74 chars
         let lines_80 = project_detail_lines(p, 80, 0);
         assert!(
@@ -1226,4 +1235,48 @@ fn wide_visuals_pointer_matches_rendered_rows() {
         button: Button::Left,
     }));
     assert_eq!(app.visual_effects, VisualEffects::crt_trinitron());
+}
+
+#[test]
+fn wide_project_viewer_fills_available_height_and_tracks_clicks() {
+    for resolution in [
+        ResolutionMode::Svga,
+        ResolutionMode::Sga,
+        ResolutionMode::Vga,
+        ResolutionMode::Ega,
+    ] {
+        let mut app = App::new_web();
+        app.set_resolution(resolution);
+        app.show_detail = true;
+        app.selected_project = 0;
+        let view = app.render();
+        let lh = resolution.line_height();
+        let visible = app.detail_wide_visible_rows();
+        let nav_y = view.height - 32;
+        let return_y = (8 + visible as u16) * lh;
+        assert!(
+            return_y + 2 * lh <= nav_y,
+            "{resolution:?}: return and indicator must stay above navigation"
+        );
+        assert!(view.elements.iter().any(|element| matches!(element,
+            Element::Rect(rect) if rect.x == 0 && rect.y == 7 * lh && rect.width == view.width
+                && rect.y + rect.height == nav_y
+        )));
+        assert!(view.elements.iter().any(|element| matches!(element,
+            Element::Link(link) if link.url == "#back" && link.y == return_y
+        )));
+        let bottom_arrow = (8 + visible as u16 - 1) * lh;
+        assert!(app.update(InputEvent::PointerDown {
+            x: view.width - 12,
+            y: bottom_arrow + 1,
+            button: Button::Left,
+        }));
+        assert_eq!(app.detail_scroll, 2, "{resolution:?}: scrollbar arrow");
+        assert!(app.update(InputEvent::PointerDown {
+            x: 24,
+            y: return_y + 1,
+            button: Button::Left,
+        }));
+        assert!(!app.show_detail, "{resolution:?}: return row");
+    }
 }

@@ -735,7 +735,7 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
     let detail = get_project_detail(p.slug);
 
     if cols >= 80 {
-        let max_w = 74;
+        let max_w = cols.saturating_sub(6);
 
         // 1. Overview Section
         lines.push((
@@ -768,39 +768,40 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
 
         lines.push(("".to_string(), 5, false));
 
-        // 4. Specifications Table (Exact 74 chars wide)
+        // 4. Specifications Table fills the available content width.
+        let right_col = max_w.saturating_sub(24);
+        let rule = |left: char, middle: char, right: char| {
+            format!(
+                "{left}{}{middle}{}{right}",
+                "─".repeat(21),
+                "─".repeat(right_col)
+            )
+        };
         lines.push((
             "TECHNICAL SPECIFICATIONS & INVARIANTS:".to_string(),
             9,
             true,
         ));
+        lines.push((rule('┌', '┬', '┐'), 7, false));
         lines.push((
-            "┌─────────────────────┬──────────────────────────────────────────────────┐"
-                .to_string(),
-            7,
-            false,
-        ));
-        lines.push((
-            "│ Attribute / Metric  │ Implementation Specification & Guarantees        │"
-                .to_string(),
+            format!(
+                "│ {:<19} │ {:<width$} │",
+                "Attribute / Metric",
+                "Implementation Specification & Guarantees",
+                width = right_col - 2
+            ),
             6,
             true,
         ));
-        lines.push((
-            "├─────────────────────┼──────────────────────────────────────────────────┤"
-                .to_string(),
-            7,
-            false,
-        ));
+        lines.push((rule('├', '┼', '┤'), 7, false));
         for (k, v) in detail.specs {
-            lines.push((format!("│ {k:<19} │ {v:<48} │"), 5, false));
+            lines.push((
+                format!("│ {k:<19} │ {v:<width$} │", width = right_col - 2),
+                5,
+                false,
+            ));
         }
-        lines.push((
-            "└─────────────────────┴──────────────────────────────────────────────────┘"
-                .to_string(),
-            7,
-            false,
-        ));
+        lines.push((rule('└', '┴', '┘'), 7, false));
 
         lines.push(("".to_string(), 5, false));
 

@@ -429,7 +429,7 @@
   </div>
 
   <script type="module">
-    import init from './pkg/pixel_ssh_web_client.js?v=systems-1';
+    import init from './pkg/pixel_ssh_web_client.js?v=detail-1';
 
     function triggerKey(keyName) {
       if (navigator.vibrate) {
@@ -457,7 +457,7 @@
       }
     });
 
-    init({ module_or_path: './pkg/pixel_ssh_web_client_bg.wasm?v=systems-1' }).then(() => {
+    init({ module_or_path: './pkg/pixel_ssh_web_client_bg.wasm?v=detail-1' }).then(() => {
       const params = new URLSearchParams(window.location.search);
       const keys = params.get('keys');
       if (keys) {

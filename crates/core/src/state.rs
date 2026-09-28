@@ -317,7 +317,7 @@ impl App {
             (self.terminal_rows as usize).saturating_sub(11).max(8)
         } else {
             match cols {
-                100 | 80 => 13,
+                100 | 80 => self.detail_wide_visible_rows(),
                 40 => 16,
                 _ => 15,
             }
@@ -325,6 +325,15 @@ impl App {
         let p = &PROJECTS[self.selected_project.min(PROJECTS.len() - 1)];
         let lines = project_detail_lines(p, cols as usize, self.tick);
         lines.len().saturating_sub(visible)
+    }
+
+    /// Content rows between the fixed detail header and the bottom menu.
+    pub(crate) fn detail_wide_visible_rows(&self) -> usize {
+        let (_, height) = self.resolution.resolution();
+        let nav_y = height.saturating_sub(32);
+        (nav_y / self.resolution.line_height())
+            .saturating_sub(10)
+            .max(1) as usize
     }
 }
 

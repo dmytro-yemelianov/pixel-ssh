@@ -25,12 +25,15 @@ impl App {
         let lh = self.resolution.line_height();
         if self.show_detail {
             let p = &PROJECTS[self.selected_project];
-            let lines = project_detail_lines(p, 80, self.tick);
+            let (cols, _) = self.resolution.char_grid();
+            let lines = project_detail_lines(p, cols as usize, self.tick);
             let max_scroll = self.detail_max_scroll();
+            let visible_rows = self.detail_wide_visible_rows();
 
             // Fixed header at top (Row 3: y = 3 * lh)
             let title_header = format!("PROJECT // {}  [h/l: Prev/Next]", p.title);
-            let title_disp = horizontal_scroll(&title_header, 74, self.tick);
+            let title_disp =
+                horizontal_scroll(&title_header, cols.saturating_sub(6) as usize, self.tick);
             let title_color = match (self.tick / 8) % 4 {
                 0 => 12,
                 1 => 14,
@@ -64,7 +67,11 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 16,
                 y: 5 * lh,
-                text: format!("TAGS: {}", p.tags.join(", ")),
+                text: horizontal_scroll(
+                    &format!("TAGS: {}", p.tags.join(", ")),
+                    cols.saturating_sub(6) as usize,
+                    self.tick,
+                ),
                 style: TextStyle::new(Color::from_palette(11)),
             }));
 
@@ -88,6 +95,16 @@ impl App {
                 repo_style,
             )));
 
+            // Fill the entire detail viewer down to the bottom menu.
+            view.add(Element::Rect(RectElement {
+                x: 0,
+                y: 7 * lh,
+                width: view.width,
+                height: view.height.saturating_sub(32 + 7 * lh),
+                color: Color::from_palette(1),
+                filled: true,
+            }));
+
             // Divider line (Row 7: y = 7 * lh)
             view.add(Element::Rect(RectElement {
                 x: 0,
@@ -98,8 +115,7 @@ impl App {
                 filled: true,
             }));
 
-            // Scrollable content area: rows from 8 to visible_rows
-            let visible_rows = ((view.height.saturating_sub(12 * lh)) / lh).min(13) as usize;
+            // Scrollable content occupies every available row above Return.
             for (i, (line_text, pal_idx, bold)) in lines.iter().enumerate() {
                 let row_idx = (i as i32) - (self.detail_scroll as i32);
                 if row_idx >= 0 && (row_idx as usize) < visible_rows {
