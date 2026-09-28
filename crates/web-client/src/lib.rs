@@ -23,6 +23,18 @@ struct ClientState {
     start_time_ms: f64,
 }
 
+fn active_deck_preset(effects: pixel_ssh_view::VisualEffects) -> &'static str {
+    if effects == pixel_ssh_view::VisualEffects::clean() {
+        "clean"
+    } else if effects == pixel_ssh_view::VisualEffects::crt_trinitron() {
+        "crt"
+    } else if effects == pixel_ssh_view::VisualEffects::retro_glitch() {
+        "glitch"
+    } else {
+        "custom"
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -48,7 +60,6 @@ pub fn start() -> Result<(), JsValue> {
         .unwrap_or(800.0);
     let is_portrait = win_w < win_h;
     let mut has_explicit_system = false;
-    let mut has_explicit_theme = false;
 
     let mut app = App::new();
     let mut init_mouse_uv = (0.5f32, 0.5f32);
@@ -70,41 +81,59 @@ pub fn start() -> Result<(), JsValue> {
         if search.contains("detail=1") {
             app.show_detail = true;
         }
-        let modes = [
-            ("svga", pixel_ssh_view::SystemMode::Svga),
-            ("sga", pixel_ssh_view::SystemMode::Sga),
-            ("ega", pixel_ssh_view::SystemMode::Ega),
-            ("cga", pixel_ssh_view::SystemMode::Cga),
-            ("zx", pixel_ssh_view::SystemMode::ZxSpectrum),
-            ("c64", pixel_ssh_view::SystemMode::C64),
-            ("atari", pixel_ssh_view::SystemMode::Atari),
-            ("amber", pixel_ssh_view::SystemMode::Amber),
-            ("green", pixel_ssh_view::SystemMode::GreenCrt),
-            ("vga", pixel_ssh_view::SystemMode::Vga),
-        ];
         let params: Vec<(&str, &str)> = search
             .trim_start_matches('?')
             .split('&')
             .filter_map(|part| part.split_once('='))
             .collect();
-        for key in ["system", "mode", "resolution", "palette"] {
-            if let Some(mode) = params
-                .iter()
-                .find(|(param_key, _)| *param_key == key)
-                .and_then(|(_, value)| {
-                    modes
-                        .iter()
-                        .find(|(name, _)| name == value)
-                        .map(|(_, mode)| *mode)
-                })
-            {
-                if key != "palette" {
-                    app.set_resolution(mode.to_resolution());
+        for (key, value) in params {
+            if ["system", "mode", "resolution"].contains(&key) {
+                let resolution = match value {
+                    "svga" => Some(pixel_ssh_view::ResolutionMode::Svga),
+                    "sga" => Some(pixel_ssh_view::ResolutionMode::Sga),
+                    "vga" => Some(pixel_ssh_view::ResolutionMode::Vga),
+                    "ega" => Some(pixel_ssh_view::ResolutionMode::Ega),
+                    "cga" => Some(pixel_ssh_view::ResolutionMode::Cga),
+                    "c64" => Some(pixel_ssh_view::ResolutionMode::C64),
+                    "atari" => Some(pixel_ssh_view::ResolutionMode::Atari),
+                    "zx" => Some(pixel_ssh_view::ResolutionMode::ZxSpectrum),
+                    _ => None,
+                };
+                if let Some(resolution) = resolution {
+                    app.set_resolution(resolution);
                     has_explicit_system = true;
                 }
-                if key != "resolution" {
-                    app.set_color_theme(mode.to_theme());
-                    has_explicit_theme = true;
+            }
+            if key == "palette" {
+                let palette = match value {
+                    "modern" | "vga" => Some(pixel_ssh_view::ColorPalette::VgaModern),
+                    "ega" | "cga" => Some(pixel_ssh_view::ColorPalette::Ega),
+                    "c64" => Some(pixel_ssh_view::ColorPalette::C64),
+                    "atari" => Some(pixel_ssh_view::ColorPalette::Atari),
+                    "zx" => Some(pixel_ssh_view::ColorPalette::ZxSpectrum),
+                    "amber" => Some(pixel_ssh_view::ColorPalette::Amber),
+                    "green" => Some(pixel_ssh_view::ColorPalette::GreenCrt),
+                    "commander" | "volkov" => Some(pixel_ssh_view::ColorPalette::Commander),
+                    _ => None,
+                };
+                if let Some(palette) = palette {
+                    app.set_color_palette(palette);
+                }
+            }
+            if key == "theme" {
+                let theme = match value {
+                    "modern" | "vga" => Some(pixel_ssh_view::InterfaceTheme::Modern),
+                    "ega" | "cga" => Some(pixel_ssh_view::InterfaceTheme::Ega),
+                    "c64" => Some(pixel_ssh_view::InterfaceTheme::C64),
+                    "atari" => Some(pixel_ssh_view::InterfaceTheme::Atari),
+                    "zx" => Some(pixel_ssh_view::InterfaceTheme::ZxSpectrum),
+                    "amber" => Some(pixel_ssh_view::InterfaceTheme::Amber),
+                    "green" => Some(pixel_ssh_view::InterfaceTheme::GreenCrt),
+                    "commander" | "volkov" => Some(pixel_ssh_view::InterfaceTheme::Commander),
+                    _ => None,
+                };
+                if let Some(theme) = theme {
+                    app.set_interface_theme(theme);
                 }
             }
         }
@@ -112,6 +141,10 @@ pub fn start() -> Result<(), JsValue> {
             app.active_modal = pixel_ssh_view::ActiveModal::Visuals;
         } else if search.contains("modal=system") {
             app.active_modal = pixel_ssh_view::ActiveModal::System;
+        } else if search.contains("modal=color") {
+            app.active_modal = pixel_ssh_view::ActiveModal::Color;
+        } else if search.contains("modal=theme") {
+            app.active_modal = pixel_ssh_view::ActiveModal::Theme;
         } else if search.contains("modal=help") {
             app.active_modal = pixel_ssh_view::ActiveModal::Help;
         }
@@ -206,23 +239,19 @@ pub fn start() -> Result<(), JsValue> {
             }
         }
         if init_mouse_active {
-            let (fb_w, fb_h) = app.system_mode.resolution();
+            let (fb_w, fb_h) = app.resolution.resolution();
             let fb_x = ((init_mouse_uv.0 * fb_w as f32).round() as u16).min(fb_w.saturating_sub(1));
             let fb_y = ((init_mouse_uv.1 * fb_h as f32).round() as u16).min(fb_h.saturating_sub(1));
             app.mouse_pos = Some((fb_x, fb_y));
         }
     }
 
-    // Adaptive default: If loaded in portrait / mobile orientation and no explicit mode query param was passed,
-    // default to 40-column C64 mode so characters are large (~10px), readable, and touchable!
+    // In portrait, use a readable 40-column grid without changing palette or theme.
     if is_portrait && !has_explicit_system {
         app.set_resolution(pixel_ssh_view::ResolutionMode::C64);
-        if !has_explicit_theme {
-            app.set_color_theme(pixel_ssh_view::ColorTheme::C64);
-        }
     }
 
-    let (init_w, init_h) = app.system_mode.resolution();
+    let (init_w, init_h) = app.resolution.resolution();
     let scale: u32 = if init_w <= 320 { 4 } else { 2 };
     let draw_w = init_w as u32 * scale;
     let draw_h = init_h as u32 * scale;
@@ -262,26 +291,29 @@ pub fn start() -> Result<(), JsValue> {
         );
         s.dirty = false;
 
-        let tab_idx = match s.app.current_tab {
-            pixel_ssh_core::Tab::Projects => 1,
-            pixel_ssh_core::Tab::Resume => 2,
-            pixel_ssh_core::Tab::About => 3,
-            pixel_ssh_core::Tab::Contact => 4,
-            _ => 1,
+        let tab = match s.app.current_tab {
+            pixel_ssh_core::Tab::Projects => "projects",
+            pixel_ssh_core::Tab::Resume => "resume",
+            pixel_ssh_core::Tab::About => "about",
+            pixel_ssh_core::Tab::Contact => "contact",
+            _ => "projects",
         };
         if let Some(deck) = document.get_element_by_id("cyberdeck") {
-            let _ = deck.set_attribute("data-tab", &tab_idx.to_string());
+            let _ = deck.set_attribute("data-tab", tab);
             let modal_str = match s.app.active_modal {
                 pixel_ssh_view::ActiveModal::None => "none",
                 pixel_ssh_view::ActiveModal::Visuals => "visuals",
                 pixel_ssh_view::ActiveModal::Help => "help",
                 pixel_ssh_view::ActiveModal::System => "system",
+                pixel_ssh_view::ActiveModal::Color => "color",
+                pixel_ssh_view::ActiveModal::Theme => "theme",
             };
             let _ = deck.set_attribute("data-modal", modal_str);
-            let _ = deck.set_attribute("data-mode", s.app.system_mode.short_name());
+            let _ = deck.set_attribute("data-mode", s.app.resolution.short_name());
+            let _ = deck.set_attribute("data-preset", active_deck_preset(s.app.visual_effects));
         }
         if let Some(indicator) = document.get_element_by_id("deck-mode-indicator") {
-            indicator.set_text_content(Some(&format!("SYS: {}", s.app.system_mode.short_name())));
+            indicator.set_text_content(Some(&format!("RES: {}", s.app.resolution.short_name())));
         }
     }
 
@@ -384,7 +416,7 @@ pub fn start() -> Result<(), JsValue> {
                 let client_y = event.client_y() as f64 - rect.top();
 
                 let mut s = state.borrow_mut();
-                let (fb_w, fb_h) = s.app.system_mode.resolution();
+                let (fb_w, fb_h) = s.app.resolution.resolution();
                 let fb_x =
                     ((client_x / rect_width) * fb_w as f64).clamp(0.0, (fb_w - 1) as f64) as u16;
                 let fb_y =
@@ -437,7 +469,7 @@ pub fn start() -> Result<(), JsValue> {
                 s.mouse_uv = (norm_x, norm_y);
                 s.mouse_active = true;
 
-                let (fb_w, fb_h) = s.app.system_mode.resolution();
+                let (fb_w, fb_h) = s.app.resolution.resolution();
                 let fb_x =
                     ((client_x / rect_width) * fb_w as f64).clamp(0.0, (fb_w - 1) as f64) as u16;
                 let fb_y =
@@ -613,7 +645,7 @@ pub fn start() -> Result<(), JsValue> {
                         let mut s = state.borrow_mut();
                         s.mouse_uv = (norm_x, norm_y);
 
-                        let (fb_w, fb_h) = s.app.system_mode.resolution();
+                        let (fb_w, fb_h) = s.app.resolution.resolution();
                         let fb_x = (((cx - rect.left()) / rect.width()) * fb_w as f64)
                             .clamp(0.0, (fb_w - 1) as f64)
                             as u16;
@@ -661,23 +693,13 @@ pub fn start() -> Result<(), JsValue> {
                                 && total_dx.abs() > total_dy.abs() * 1.5
                             {
                                 let mut s = state.borrow_mut();
-                                if total_dx < -40.0 {
-                                    // Swipe left: next tab
-                                    if s.app.update(InputEvent::KeyDown(Key::Tab)) {
-                                        s.dirty = true;
-                                    }
+                                let direction = if total_dx < 0.0 {
+                                    Key::Right
                                 } else {
-                                    // Swipe right: previous tab
-                                    let prev_key = match (s.app.platform, s.app.current_tab) {
-                                        (_, pixel_ssh_core::Tab::Projects) => Key::Char('4'),
-                                        (_, pixel_ssh_core::Tab::Resume) => Key::Char('1'),
-                                        (_, pixel_ssh_core::Tab::About) => Key::Char('2'),
-                                        (_, pixel_ssh_core::Tab::Contact) => Key::Char('3'),
-                                        _ => Key::Char('1'),
-                                    };
-                                    if s.app.update(InputEvent::KeyDown(prev_key)) {
-                                        s.dirty = true;
-                                    }
+                                    Key::Left
+                                };
+                                if s.app.update(InputEvent::KeyDown(direction)) {
+                                    s.dirty = true;
                                 }
                                 return;
                             }
@@ -694,7 +716,7 @@ pub fn start() -> Result<(), JsValue> {
                                     let client_y = start_y - rect.top();
 
                                     let mut s = state.borrow_mut();
-                                    let (fb_w, fb_h) = s.app.system_mode.resolution();
+                                    let (fb_w, fb_h) = s.app.resolution.resolution();
                                     let fb_x = ((client_x / rect.width()) * fb_w as f64)
                                         .clamp(0.0, (fb_w - 1) as f64)
                                         as u16;
@@ -817,7 +839,7 @@ pub fn start() -> Result<(), JsValue> {
                     let content_dirty = s.dirty;
                     if content_dirty {
                         let view = s.app.render();
-                        let (target_w, target_h) = view.system_mode.resolution();
+                        let (target_w, target_h) = view.resolution.resolution();
                         let scale: u32 = if target_w <= 320 { 4 } else { 2 };
                         let draw_w = target_w as u32 * scale;
                         let draw_h = target_h as u32 * scale;
@@ -842,29 +864,35 @@ pub fn start() -> Result<(), JsValue> {
                     // Sync Cyberdeck active state attributes
                     if content_dirty {
                         if let Some(deck) = document_render.get_element_by_id("cyberdeck") {
-                            let tab_idx = match s.app.current_tab {
-                                pixel_ssh_core::Tab::Projects => 1,
-                                pixel_ssh_core::Tab::Resume => 2,
-                                pixel_ssh_core::Tab::About => 3,
-                                pixel_ssh_core::Tab::Contact => 4,
-                                _ => 1,
+                            let tab = match s.app.current_tab {
+                                pixel_ssh_core::Tab::Projects => "projects",
+                                pixel_ssh_core::Tab::Resume => "resume",
+                                pixel_ssh_core::Tab::About => "about",
+                                pixel_ssh_core::Tab::Contact => "contact",
+                                _ => "projects",
                             };
-                            let _ = deck.set_attribute("data-tab", &tab_idx.to_string());
+                            let _ = deck.set_attribute("data-tab", tab);
                             let modal_str = match s.app.active_modal {
                                 pixel_ssh_view::ActiveModal::None => "none",
                                 pixel_ssh_view::ActiveModal::Visuals => "visuals",
                                 pixel_ssh_view::ActiveModal::Help => "help",
                                 pixel_ssh_view::ActiveModal::System => "system",
+                                pixel_ssh_view::ActiveModal::Color => "color",
+                                pixel_ssh_view::ActiveModal::Theme => "theme",
                             };
                             let _ = deck.set_attribute("data-modal", modal_str);
-                            let _ = deck.set_attribute("data-mode", s.app.system_mode.short_name());
+                            let _ = deck.set_attribute("data-mode", s.app.resolution.short_name());
+                            let _ = deck.set_attribute(
+                                "data-preset",
+                                active_deck_preset(s.app.visual_effects),
+                            );
                         }
                         if let Some(indicator) =
                             document_render.get_element_by_id("deck-mode-indicator")
                         {
                             indicator.set_text_content(Some(&format!(
-                                "SYS: {}",
-                                s.app.system_mode.short_name()
+                                "RES: {}",
+                                s.app.resolution.short_name()
                             )));
                         }
                     }

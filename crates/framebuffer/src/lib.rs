@@ -3,7 +3,7 @@ pub mod font;
 use font::{
     font_8x16_for_mode, font_for_mode, unicode_to_cp437, EGA_FONT_8X14, FONT_HEIGHT, FONT_WIDTH,
 };
-use pixel_ssh_view::{is_table_border_char, ColorTheme, Element, PaletteMode, View};
+use pixel_ssh_view::{is_table_border_char, ColorPalette, Element, PaletteMode, View};
 
 pub const DEFAULT_WIDTH: u16 = 640;
 pub const DEFAULT_HEIGHT: u16 = 400;
@@ -15,7 +15,9 @@ pub struct Framebuffer {
     pub pixels: Vec<u8>,
     pub palette: [[u8; 4]; 256],
     pub font_mode: PaletteMode,
-    pub theme: ColorTheme,
+    /// Cell height comes from resolution; glyph family comes from `font_mode`.
+    pub font_height: u16,
+    pub color_palette: ColorPalette,
 }
 
 impl Default for Framebuffer {
@@ -33,23 +35,24 @@ impl Framebuffer {
             pixels: vec![0; size],
             palette: Self::default_palette(),
             font_mode: PaletteMode::default(),
-            theme: ColorTheme::default(),
+            font_height: 16,
+            color_palette: ColorPalette::default(),
         }
     }
 
     pub fn default_palette() -> [[u8; 4]; 256] {
-        Self::palette_for_theme(ColorTheme::default())
+        Self::palette_for_palette(ColorPalette::default())
     }
 
     pub fn palette_for_mode(mode: PaletteMode) -> [[u8; 4]; 256] {
-        Self::palette_for_theme(mode.to_theme())
+        Self::palette_for_palette(mode.to_theme())
     }
 
-    pub fn palette_for_theme(theme: ColorTheme) -> [[u8; 4]; 256] {
+    pub fn palette_for_palette(theme: ColorPalette) -> [[u8; 4]; 256] {
         let mut p = [[0, 0, 0, 255]; 256];
 
         match theme {
-            ColorTheme::Commander => {
+            ColorPalette::Commander => {
                 // Application palette inspired by DOS file managers. No source
                 // palette or byte-for-byte match has been recorded.
                 p[0] = [0, 0, 168, 255]; // 0: #0000a8 (Iconic Commander navy blue background)
@@ -91,7 +94,7 @@ impl Framebuffer {
                     }
                 }
             }
-            ColorTheme::VgaModern => {
+            ColorPalette::VgaModern => {
                 p[0] = [13, 17, 23, 255]; // 0: #0d1117 (Dark background)
                 p[1] = [22, 27, 34, 255]; // 1: #161b22 (Card header)
                 p[2] = [33, 38, 45, 255]; // 2: #21262d (Selected item background)
@@ -132,7 +135,7 @@ impl Framebuffer {
                     }
                 }
             }
-            ColorTheme::Ega => {
+            ColorPalette::Ega => {
                 // Application role palette using RGBI-like colors. Its role
                 // indices and RGB values are not a verified EGA/CGA palette.
                 p[0] = [0, 0, 0, 255]; // Black
@@ -156,7 +159,7 @@ impl Framebuffer {
                     p[idx] = p[idx % 16];
                 }
             }
-            ColorTheme::ZxSpectrum => {
+            ColorPalette::ZxSpectrum => {
                 // Application role palette inspired by the Spectrum's normal
                 // and bright colors; values have not been verified to hardware.
                 p[0] = [0, 0, 0, 255]; // Black bg
@@ -180,7 +183,7 @@ impl Framebuffer {
                     p[idx] = p[idx % 16];
                 }
             }
-            ColorTheme::C64 => {
+            ColorPalette::C64 => {
                 // Application role palette using C64-associated colors. No
                 // Pepto or Colodore version/settings were recorded for this RGB set.
                 p[0] = [64, 49, 141, 255]; // VIC-II #6 Blue background (#40318D)
@@ -204,7 +207,7 @@ impl Framebuffer {
                     p[idx] = p[idx % 16];
                 }
             }
-            ColorTheme::Atari => {
+            ColorPalette::Atari => {
                 // Application RGB approximation inspired by Atari colors. GTIA
                 // produces composite signals, so it has no single hardware RGB table.
                 p[0] = [0, 0, 0, 255]; // GTIA Deep dark umber / black
@@ -254,7 +257,7 @@ impl Framebuffer {
                     ];
                 }
             }
-            ColorTheme::Amber => {
+            ColorPalette::Amber => {
                 // Single-tint amber display palette. The RGB values are a design
                 // choice, not a measured P134/P20 phosphor representation.
                 p[0] = [0, 0, 0, 255]; // Tube off
@@ -279,7 +282,7 @@ impl Framebuffer {
                     *color = [v, ((v as u16 * 165) / 255) as u8, 0, 255];
                 }
             }
-            ColorTheme::GreenCrt => {
+            ColorPalette::GreenCrt => {
                 // Single-tint green display palette. The RGB values are a design
                 // choice, not a measured IBM 5151 or P1 phosphor representation.
                 p[0] = [0, 0, 0, 255]; // Tube off
@@ -309,9 +312,9 @@ impl Framebuffer {
         p
     }
 
-    pub fn set_palette_theme(&mut self, theme: ColorTheme) {
-        self.theme = theme;
-        self.palette = Self::palette_for_theme(theme);
+    pub fn set_color_palette(&mut self, palette: ColorPalette) {
+        self.color_palette = palette;
+        self.palette = Self::palette_for_palette(palette);
     }
 
     pub fn clear(&mut self, color_index: u8) {
@@ -330,8 +333,8 @@ impl Framebuffer {
         let x_end = (x + w).min(self.width);
         let y_end = (y + h).min(self.height);
 
-        match (self.theme, color_index) {
-            (ColorTheme::GreenCrt, 1) => {
+        match (self.color_palette, color_index) {
+            (ColorPalette::GreenCrt, 1) => {
                 // 25% stipple dither for cards & tracks (pure monochrome green)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -341,7 +344,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (ColorTheme::GreenCrt, 2) => {
+            (ColorPalette::GreenCrt, 2) => {
                 // 50% checkerboard dither for selection
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -351,7 +354,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (ColorTheme::Amber, 1) => {
+            (ColorPalette::Amber, 1) => {
                 // 25% stipple dither for cards & tracks (pure monochrome amber)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -361,7 +364,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (ColorTheme::Amber, 2) => {
+            (ColorPalette::Amber, 2) => {
                 // 50% checkerboard dither for selection
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -371,7 +374,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (ColorTheme::C64, 1) => {
+            (ColorPalette::C64, 1) => {
                 // Application 50% checkerboard: background blue (0) and dark grey (1).
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -381,7 +384,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (ColorTheme::C64, 2) => {
+            (ColorPalette::C64, 2) => {
                 // 50% checkerboard dither: background blue (0) and light blue (2)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -391,7 +394,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (ColorTheme::Atari, 1) => {
+            (ColorPalette::Atari, 1) => {
                 // Application 50% checkerboard: dark umber (0) and bronze (1).
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -401,7 +404,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (ColorTheme::Atari, 2) => {
+            (ColorPalette::Atari, 2) => {
                 // Application 50% checkerboard: dark umber (0) and gold (2).
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -411,7 +414,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (ColorTheme::ZxSpectrum, 1) => {
+            (ColorPalette::ZxSpectrum, 1) => {
                 // ZX Spectrum 50% checkerboard dither: black (0) and blue (1)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -421,7 +424,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (ColorTheme::ZxSpectrum, 2) => {
+            (ColorPalette::ZxSpectrum, 2) => {
                 // ZX Spectrum 50% checkerboard dither: black (0) and bright blue (2)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -455,11 +458,19 @@ impl Framebuffer {
     pub fn draw_char(&mut self, x: u16, y: u16, ch: char, fg: u8, bg: Option<u8>) {
         let fg = if is_table_border_char(ch) { 7 } else { fg };
         let code = unicode_to_cp437(ch);
-        let tall_glyph: Option<(&[u8], u16)> = if self.font_mode == PaletteMode::Ega {
+        let tall_glyph: Option<(&[u8], u16)> = if self.font_height == 16
+            && !matches!(
+                self.font_mode,
+                PaletteMode::C64 | PaletteMode::Atari | PaletteMode::ZxSpectrum
+            ) {
+            font_8x16_for_mode(self.font_mode).map(|font16| (font16[code as usize].as_slice(), 16))
+        } else if self.font_height == 14
+            && matches!(self.font_mode, PaletteMode::Ega | PaletteMode::Vga)
+        {
             let start = (code as usize) * 14;
             Some((&EGA_FONT_8X14[start..start + 14], 14))
         } else {
-            font_8x16_for_mode(self.font_mode).map(|font16| (font16[code as usize].as_slice(), 16))
+            None
         };
         if let Some((glyph, glyph_height)) = tall_glyph {
             for row in 0..glyph_height {
@@ -490,12 +501,13 @@ impl Framebuffer {
             let font = font_for_mode(self.font_mode);
             let glyph = font[code as usize];
 
-            for row in 0..FONT_HEIGHT {
+            for row in 0..self.font_height {
                 let py = y + row;
                 if py >= self.height {
                     break;
                 }
-                let byte = glyph[row as usize];
+                let source_row = (row as usize * FONT_HEIGHT as usize) / self.font_height as usize;
+                let byte = glyph[source_row];
                 let row_start = (py as usize) * (self.width as usize);
 
                 for col in 0..FONT_WIDTH {
@@ -538,17 +550,12 @@ impl Framebuffer {
         if self.width != view.width || self.height != view.height {
             self.resize(view.width, view.height);
         }
-        self.set_palette_theme(view.color_theme);
-        self.font_mode = view.resolution.to_system_mode();
+        self.set_color_palette(view.color_palette);
+        self.font_mode = view.font_mode;
+        self.font_height = view.resolution.line_height();
         self.clear(0); // clear to background
 
-        let font_height = if self.font_mode == PaletteMode::Ega {
-            14
-        } else if font_8x16_for_mode(self.font_mode).is_some() {
-            16
-        } else {
-            8
-        };
+        let font_height = self.font_height;
 
         for element in &view.elements {
             match element {
@@ -633,12 +640,15 @@ impl Framebuffer {
         let cx = ((mx / char_w) * char_w).min(width.saturating_sub(char_w));
         let cy = ((my / char_h) * char_h).min(height.saturating_sub(char_h));
 
-        // 2. Glyph lookup: check if any Text or Link element coincides with this (cx, cy) character cell
+        // 2. Glyph lookup follows paint order. Modal elements are appended after
+        // the screen beneath them, so inspect from the topmost element down.
+        // An opaque modal background intentionally hides any lower glyph.
         let mut found_char = None;
         if let Some(v) = view {
             let cell_center_x = cx + char_w / 2;
+            let cell_center_y = cy + char_h / 2;
 
-            for el in &v.elements {
+            for el in v.elements.iter().rev() {
                 match el {
                     Element::Text(t) => {
                         let t_center_y = t.y + char_h / 2;
@@ -664,6 +674,23 @@ impl Framebuffer {
                             }
                         }
                     }
+                    Element::Rect(r)
+                        if r.filled
+                            && cell_center_x >= r.x
+                            && cell_center_x < r.x.saturating_add(r.width)
+                            && cell_center_y >= r.y
+                            && cell_center_y < r.y.saturating_add(r.height) =>
+                    {
+                        break;
+                    }
+                    Element::Sprite(s)
+                        if cell_center_x >= s.x
+                            && cell_center_x < s.x.saturating_add(s.width)
+                            && cell_center_y >= s.y
+                            && cell_center_y < s.y.saturating_add(s.height) =>
+                    {
+                        break;
+                    }
                     _ => {}
                 }
             }
@@ -674,7 +701,7 @@ impl Framebuffer {
 
     /// Draws the system-specific retro software mouse cursor at `(mx, my)` taking into account active view elements.
     pub fn draw_mouse_cursor_for_view(&mut self, view: &View, mx: u16, my: u16) {
-        self.draw_mouse_cursor_internal(view.system_mode, mx, my, Some(view));
+        self.draw_mouse_cursor_internal(view.font_mode, mx, my, Some(view));
     }
 
     /// Draws the system-specific retro software mouse cursor at `(mx, my)`.
@@ -711,19 +738,16 @@ impl Framebuffer {
                 let (cx, cy, maybe_ch) =
                     Self::find_char_cell_and_glyph(self.width, self.height, mx, my, view);
 
-                if let Some(ch) = maybe_ch {
-                    let code = unicode_to_cp437(ch);
-                    let glyph_height = mode.line_height();
+                if maybe_ch.is_some() {
+                    let glyph_height = view
+                        .map(|active_view| active_view.resolution.line_height())
+                        .unwrap_or_else(|| mode.line_height());
+                    let background = self.pixels[(cy as usize) * self.width as usize + cx as usize];
                     for r in 0..glyph_height {
                         let py = cy + r;
                         if py >= self.height {
                             break;
                         }
-                        let byte = if glyph_height == 8 {
-                            font_for_mode(mode)[code as usize][r as usize]
-                        } else {
-                            font::CP437_FONT_8X16[code as usize][r as usize]
-                        };
                         let row_start = (py as usize) * (self.width as usize);
                         for c in 0..8 {
                             let px = cx + c;
@@ -731,12 +755,11 @@ impl Framebuffer {
                                 break;
                             }
                             let idx = row_start + (px as usize);
-                            let is_glyph = (byte & (0x80 >> c)) != 0;
-                            if is_glyph {
-                                self.pixels[idx] = 0; // Inverted text glyph (black)
+                            self.pixels[idx] = if self.pixels[idx] == background {
+                                cursor_bg
                             } else {
-                                self.pixels[idx] = cursor_bg; // Added cursor background
-                            }
+                                0
+                            };
                         }
                     }
                 } else {
@@ -860,11 +883,13 @@ impl Framebuffer {
 mod tests {
     use super::*;
     use crate::font::{font_for_mode, unicode_to_cp437};
+    use pixel_ssh_view::{Color, RectElement, TextElement, TextStyle};
 
     #[test]
     fn ega_glyphs_stay_within_fourteen_pixel_rows() {
         let mut fb = Framebuffer::new(8, 28);
         fb.font_mode = PaletteMode::Ega;
+        fb.font_height = 14;
         fb.draw_char(0, 0, '█', 5, None);
         assert!(fb.pixels[..14 * 8].iter().any(|pixel| *pixel != 0));
         assert!(fb.pixels[14 * 8..].iter().all(|pixel| *pixel == 0));
@@ -876,6 +901,7 @@ mod tests {
     fn ega_uses_its_own_fourteen_scanline_glyph() {
         let mut ega = Framebuffer::new(8, 16);
         ega.font_mode = PaletteMode::Ega;
+        ega.font_height = 14;
         ega.draw_char(0, 0, 'A', 5, None);
         let mut vga = Framebuffer::new(8, 16);
         vga.font_mode = PaletteMode::Vga;
@@ -1003,6 +1029,63 @@ mod tests {
     }
 
     #[test]
+    fn theme_glyphs_always_fit_the_resolution_cell_height() {
+        use pixel_ssh_view::{InterfaceTheme, ResolutionMode};
+
+        for resolution in ResolutionMode::ALL {
+            let (width, height) = resolution.resolution();
+            for theme in InterfaceTheme::ALL {
+                let mut view = View::new(width, height);
+                view.resolution = resolution;
+                view.interface_theme = theme;
+                view.font_mode = theme.font_mode();
+                view.add(Element::Text(TextElement {
+                    x: 0,
+                    y: 0,
+                    text: "A".to_string(),
+                    style: TextStyle::new(Color::from_palette(6)),
+                }));
+
+                let mut framebuffer = Framebuffer::new(width, height);
+                framebuffer.draw_view(&view);
+                assert_eq!(framebuffer.font_height, resolution.line_height());
+            }
+        }
+    }
+
+    #[test]
+    fn hit_test_uses_the_topmost_modal_glyph() {
+        let mut view = View::new(80, 32);
+        view.resolution = pixel_ssh_view::ResolutionMode::Cga;
+        view.add(Element::Text(TextElement {
+            x: 8,
+            y: 8,
+            text: "P".to_string(),
+            style: TextStyle::new(Color::from_palette(5)),
+        }));
+        view.add(Element::Rect(RectElement {
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 32,
+            color: Color::from_palette(0),
+            filled: true,
+        }));
+        view.add(Element::Text(TextElement {
+            x: 8,
+            y: 8,
+            text: "S".to_string(),
+            style: TextStyle::new(Color::from_palette(6)),
+        }));
+
+        let (_, _, glyph) = Framebuffer::find_char_cell_and_glyph(80, 32, 10, 10, Some(&view));
+        assert_eq!(glyph, Some('S'));
+
+        let (_, _, blank) = Framebuffer::find_char_cell_and_glyph(80, 32, 42, 10, Some(&view));
+        assert_eq!(blank, None, "opaque modal background hides underlying UI");
+    }
+
+    #[test]
     fn test_char_grid_mouse_cursor_snapping() {
         use pixel_ssh_view::{Color, Element, TextElement, TextStyle};
 
@@ -1075,7 +1158,7 @@ mod tests {
     fn test_dithered_fills_produce_alternating_stipple_and_checkerboard() {
         let mut fb_c64 = Framebuffer::new(320, 200);
         fb_c64.font_mode = PaletteMode::C64;
-        fb_c64.set_palette_theme(ColorTheme::C64);
+        fb_c64.set_color_palette(ColorPalette::C64);
         fb_c64.fill_rect(0, 0, 4, 4, 1); // C64 50% checkerboard with dark grey (1) and background (0)
         assert_eq!(fb_c64.pixels[0], 1); // (0,0) -> 1
         assert_eq!(fb_c64.pixels[1], 0); // (1,0) -> 0
@@ -1084,7 +1167,7 @@ mod tests {
 
         let mut fb_green = Framebuffer::new(640, 400);
         fb_green.font_mode = PaletteMode::GreenCrt;
-        fb_green.set_palette_theme(ColorTheme::GreenCrt);
+        fb_green.set_color_palette(ColorPalette::GreenCrt);
         fb_green.fill_rect(0, 0, 4, 4, 1); // Green 25% stipple
         assert_eq!(fb_green.pixels[0], 1); // (0,0) -> 1
         assert_eq!(fb_green.pixels[1], 0); // (1,0) -> 0

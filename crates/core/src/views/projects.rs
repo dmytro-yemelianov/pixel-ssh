@@ -199,12 +199,45 @@ impl App {
         // Project list sized by the selected display resolution
         let max_visible = self.projects_max_visible();
         let start = self.scroll_offset;
-        let end = (start + max_visible).min(PROJECTS.len());
+        // Keep the personal entry points at the top of the Projects screen.
+        let prefix_rows = usize::from(start == 0) * 4;
+        let end = (start + max_visible.saturating_sub(prefix_rows).max(1)).min(PROJECTS.len());
+
+        if start == 0 {
+            for (row, label) in ["[00] CV", "[@@] Contacts", "[!!] About"]
+                .iter()
+                .enumerate()
+            {
+                let selected = self.selected_list_item == row;
+                if selected {
+                    view.add(Element::Rect(RectElement {
+                        x: 0,
+                        y: (3 + row as u16) * lh,
+                        width: view.width,
+                        height: lh,
+                        color: Color::from_palette(2),
+                        filled: true,
+                    }));
+                }
+                view.add(Element::Text(TextElement {
+                    x: 16,
+                    y: (3 + row as u16) * lh,
+                    text: (*label).to_string(),
+                    style: TextStyle::new(Color::from_palette(if selected { 6 } else { 5 })).bold(),
+                }));
+            }
+            view.add(Element::Text(TextElement {
+                x: 16,
+                y: 6 * lh,
+                text: "===========".to_string(),
+                style: TextStyle::new(Color::from_palette(4)),
+            }));
+        }
 
         for (i, p) in PROJECTS[start..end].iter().enumerate() {
             let idx = start + i;
-            let is_sel = idx == self.selected_project;
-            let y = (3 + i as u16) * lh;
+            let is_sel = self.selected_list_item == idx + 3;
+            let y = (3 + prefix_rows as u16 + i as u16) * lh;
 
             if is_sel {
                 view.add(Element::Rect(RectElement {
@@ -273,7 +306,7 @@ impl App {
 
         // Scroll guidance note if more items exist
         if PROJECTS.len() > max_visible {
-            let guide_y = (3 + max_visible as u16) * lh;
+            let guide_y = (3 + prefix_rows as u16 + (end - start) as u16) * lh;
             view.add(Element::Text(TextElement {
                 x: 16,
                 y: guide_y,
@@ -364,14 +397,46 @@ impl App {
             return;
         }
 
-        let max_visible = 12;
+        let max_visible: usize = 12;
         let start = self.scroll_offset;
-        let end = (start + max_visible).min(PROJECTS.len());
+        let prefix_rows = usize::from(start == 0) * 4;
+        let end = (start + max_visible.saturating_sub(prefix_rows).max(1)).min(PROJECTS.len());
+
+        if start == 0 {
+            for (row, label) in ["[00] CV", "[@@] Contacts", "[!!] About"]
+                .iter()
+                .enumerate()
+            {
+                let selected = self.selected_list_item == row;
+                if selected {
+                    view.add(Element::Rect(RectElement {
+                        x: 2,
+                        y: 24 + (row as u16) * 12 - 1,
+                        width: 316,
+                        height: 11,
+                        color: Color::from_palette(2),
+                        filled: true,
+                    }));
+                }
+                view.add(Element::Text(TextElement {
+                    x: 4,
+                    y: 24 + (row as u16) * 12,
+                    text: (*label).to_string(),
+                    style: TextStyle::new(Color::from_palette(if selected { 6 } else { 5 })).bold(),
+                }));
+            }
+            view.add(Element::Text(TextElement {
+                x: 4,
+                y: 60,
+                text: "===========".to_string(),
+                style: TextStyle::new(Color::from_palette(4)),
+            }));
+        }
 
         for (i, p) in PROJECTS[start..end].iter().enumerate() {
             let idx = start + i;
-            let is_sel = idx == self.selected_project;
-            let y = 24 + (i as u16) * 12;
+            let is_sel = self.selected_list_item == idx + 3;
+            let y = 24 + (prefix_rows as u16 + i as u16) * 12;
 
             if is_sel {
                 view.add(Element::Rect(RectElement {
@@ -509,14 +574,46 @@ impl App {
 
         let max_visible = self.projects_max_visible();
         let start = self.scroll_offset.min(self.projects_max_scroll());
-        let end = (start + max_visible).min(PROJECTS.len());
+        let prefix_rows = usize::from(start == 0) * 4;
+        let end = (start + max_visible.saturating_sub(prefix_rows).max(1)).min(PROJECTS.len());
+
+        if start == 0 {
+            for (row, label) in ["[00] CV", "[@@] Contacts", "[!!] About"]
+                .iter()
+                .enumerate()
+            {
+                let selected = self.selected_list_item == row;
+                if selected {
+                    view.add(Element::Rect(RectElement {
+                        x: 1,
+                        y: 24 + (row as u16) * 8 - 1,
+                        width: 254,
+                        height: 8,
+                        color: Color::from_palette(2),
+                        filled: true,
+                    }));
+                }
+                view.add(Element::Text(TextElement {
+                    x: 2,
+                    y: 24 + (row as u16) * 8,
+                    text: (*label).to_string(),
+                    style: TextStyle::new(Color::from_palette(if selected { 6 } else { 5 })).bold(),
+                }));
+            }
+            view.add(Element::Text(TextElement {
+                x: 2,
+                y: 48,
+                text: "===========".to_string(),
+                style: TextStyle::new(Color::from_palette(4)),
+            }));
+        }
 
         for (i, p) in PROJECTS[start..end].iter().enumerate() {
             let idx = start + i;
-            let is_sel = idx == self.selected_project;
+            let is_sel = self.selected_list_item == idx + 3;
             // Each ZX item owns two text rows: title and tags. This prevents a
             // long tag marquee from running into the next project title.
-            let y = 24 + (i as u16) * 16;
+            let y = 24 + (prefix_rows as u16) * 8 + (i as u16) * 16;
 
             if is_sel {
                 view.add(Element::Rect(RectElement {
@@ -539,7 +636,7 @@ impl App {
             };
 
             let num = format!("{:02}", idx + 1);
-            let title = horizontal_scroll(p.title, 27, self.tick);
+            let title = horizontal_scroll(p.title, 25, self.tick);
 
             let tag_str = p
                 .tags
@@ -556,7 +653,7 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 2,
                 y,
-                text: format!("{marker}{num} {title:<27}"),
+                text: format!("{marker}[{num}] {title:<25}"),
                 style: TextStyle::new(fg).bold(),
             }));
 
@@ -713,12 +810,44 @@ impl App {
         // Project List on Terminal
         let max_visible = self.projects_max_visible();
         let start = self.scroll_offset;
-        let end = (start + max_visible).min(PROJECTS.len());
+        let prefix_rows = usize::from(start == 0) * 4;
+        let end = (start + max_visible.saturating_sub(prefix_rows).max(1)).min(PROJECTS.len());
+
+        if start == 0 {
+            for (row, label) in ["[00] CV", "[@@] Contacts", "[!!] About"]
+                .iter()
+                .enumerate()
+            {
+                let selected = self.selected_list_item == row;
+                if selected {
+                    view.add(Element::Rect(RectElement {
+                        x: 0,
+                        y: (3 + row as u16) * 16,
+                        width,
+                        height: 16,
+                        color: Color::from_palette(2),
+                        filled: true,
+                    }));
+                }
+                view.add(Element::Text(TextElement {
+                    x: 8,
+                    y: (3 + row as u16) * 16,
+                    text: (*label).to_string(),
+                    style: TextStyle::new(Color::from_palette(if selected { 6 } else { 5 })).bold(),
+                }));
+            }
+            view.add(Element::Text(TextElement {
+                x: 8,
+                y: 6 * 16,
+                text: "===========".to_string(),
+                style: TextStyle::new(Color::from_palette(4)),
+            }));
+        }
 
         for (i, p) in PROJECTS[start..end].iter().enumerate() {
             let idx = start + i;
-            let is_sel = idx == self.selected_project;
-            let y = (3 + i as u16) * 16;
+            let is_sel = self.selected_list_item == idx + 3;
+            let y = (3 + prefix_rows as u16 + i as u16) * 16;
 
             if is_sel {
                 view.add(Element::Rect(RectElement {

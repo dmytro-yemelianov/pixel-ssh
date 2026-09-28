@@ -110,7 +110,7 @@ impl AnsiRenderer {
 
     /// Renders a platform-independent View into an ANSI string stream.
     pub fn render_view(&mut self, view: &View) -> String {
-        let palette = Framebuffer::palette_for_theme(view.color_theme);
+        let palette = Framebuffer::palette_for_palette(view.color_palette);
         let default_bg = [palette[0][0], palette[0][1], palette[0][2]];
         self.clear(default_bg);
 
@@ -139,7 +139,7 @@ impl AnsiRenderer {
                                 (r.y / 16).min(self.rows.saturating_sub(1)),
                             )
                         } else {
-                            self.pixel_to_grid(r.x, r.y, view.palette_mode)
+                            self.pixel_to_grid(r.x, r.y, view.font_mode)
                         };
                         let rx_end = if is_terminal {
                             if r.width >= view.width || r.width >= 600 {
@@ -171,7 +171,7 @@ impl AnsiRenderer {
                                 (r.y / 16).min(self.rows.saturating_sub(1)),
                             )
                         } else {
-                            self.pixel_to_grid(r.x, r.y, view.palette_mode)
+                            self.pixel_to_grid(r.x, r.y, view.font_mode)
                         };
                         let (rx_end, ry_end) = if is_terminal {
                             let end_col = if r.width >= view.width || r.width >= 600 {
@@ -189,7 +189,7 @@ impl AnsiRenderer {
                             };
                             (end_col, end_row)
                         } else {
-                            self.pixel_to_grid(r.x + r.width, r.y + r.height, view.palette_mode)
+                            self.pixel_to_grid(r.x + r.width, r.y + r.height, view.font_mode)
                         };
 
                         for y in ry_start..=ry_end.min(self.rows.saturating_sub(1)) {
@@ -210,7 +210,7 @@ impl AnsiRenderer {
                             (t.y / 16).min(self.rows.saturating_sub(1)),
                         )
                     } else {
-                        self.pixel_to_grid(t.x, t.y, view.palette_mode)
+                        self.pixel_to_grid(t.x, t.y, view.font_mode)
                     };
 
                     let fg_entry = palette[t.style.fg.palette_index as usize];
@@ -251,7 +251,7 @@ impl AnsiRenderer {
                             (l.y / 16).min(self.rows.saturating_sub(1)),
                         )
                     } else {
-                        self.pixel_to_grid(l.x, l.y, view.palette_mode)
+                        self.pixel_to_grid(l.x, l.y, view.font_mode)
                     };
 
                     let fg_entry = palette[l.style.fg.palette_index as usize];
@@ -293,7 +293,7 @@ impl AnsiRenderer {
                             (s.y / 16).min(self.rows.saturating_sub(1)),
                         )
                     } else {
-                        self.pixel_to_grid(s.x, s.y, view.palette_mode)
+                        self.pixel_to_grid(s.x, s.y, view.font_mode)
                     };
 
                     let sprite_cols = (s.width / 8).max(1);
@@ -354,7 +354,7 @@ impl AnsiRenderer {
                         (cursor.y / 16).min(self.rows.saturating_sub(1)),
                     )
                 } else {
-                    self.pixel_to_grid(cursor.x, cursor.y, view.palette_mode)
+                    self.pixel_to_grid(cursor.x, cursor.y, view.font_mode)
                 }
             });
         let cursor_changed = cursor_position != self.previous_cursor;
@@ -491,7 +491,7 @@ impl AnsiRenderer {
                         (cursor.y / 16).min(self.rows.saturating_sub(1)),
                     )
                 } else {
-                    self.pixel_to_grid(cursor.x, cursor.y, view.palette_mode)
+                    self.pixel_to_grid(cursor.x, cursor.y, view.font_mode)
                 };
                 out.push_str(&format!(
                     "\x1b[{};{}H\x1b[?25h",
@@ -556,7 +556,7 @@ mod tests {
     fn test_render_view_output() {
         let mut renderer = AnsiRenderer::new(80, 25);
         let mut view = View::new(640, 400);
-        view.palette_mode = PaletteMode::Vga;
+        view.font_mode = PaletteMode::Vga;
         view.add(Element::Text(pixel_ssh_view::TextElement {
             x: 16,
             y: 4,
@@ -603,7 +603,7 @@ mod tests {
         let mut renderer = AnsiRenderer::new(cols, rows);
         let mut view = View::new(cols * 8, rows * 16);
         view.platform = Platform::Terminal;
-        view.palette_mode = PaletteMode::Vga;
+        view.font_mode = PaletteMode::Vga;
 
         // Add a horizontal rule spanning the entire view
         view.add(Element::Rect(pixel_ssh_view::RectElement {
@@ -631,8 +631,8 @@ mod tests {
         let mut renderer = AnsiRenderer::new(cols, rows);
         let mut view = View::new(cols * 8, rows * 16);
         view.platform = Platform::Terminal;
-        view.palette_mode = PaletteMode::Vga;
-        view.color_theme = ColorTheme::VgaModern;
+        view.font_mode = PaletteMode::Vga;
+        view.color_palette = ColorTheme::VgaModern;
 
         // Add a 16x16 sprite at x=0, y=0
         let data = vec![6u8; 16 * 16]; // white
@@ -658,7 +658,7 @@ mod tests {
         let mut renderer = AnsiRenderer::new(80, 25);
         let mut view = View::new(640, 400);
         view.platform = Platform::Terminal;
-        view.palette_mode = PaletteMode::Vga;
+        view.font_mode = PaletteMode::Vga;
 
         // Even if text element has bold white color (palette 6), table border chars MUST use border_rgb (palette 7)
         view.add(Element::Text(pixel_ssh_view::TextElement {
@@ -670,7 +670,7 @@ mod tests {
 
         renderer.render_view(&view);
 
-        let pal = Framebuffer::palette_for_theme(view.color_theme);
+        let pal = Framebuffer::palette_for_palette(view.color_palette);
         let border_rgb = [pal[7][0], pal[7][1], pal[7][2]];
         let text_rgb = [pal[6][0], pal[6][1], pal[6][2]];
 

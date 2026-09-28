@@ -170,6 +170,13 @@
       background: #00ffcc;
       color: #000;
     }
+    #cyberdeck[data-preset="clean"] .preset-btn[data-preset="clean"],
+    #cyberdeck[data-preset="crt"] .preset-btn[data-preset="crt"],
+    #cyberdeck[data-preset="glitch"] .preset-btn[data-preset="glitch"] {
+      border-color: #00ffcc;
+      color: #00ffcc;
+      box-shadow: 0 0 8px rgba(0, 255, 204, 0.45);
+    }
 
     .deck-tabs-row {
       display: grid;
@@ -216,24 +223,23 @@
     }
 
     /* Active Tab & Modal highlighted via data-tab and data-modal on #cyberdeck */
-    #cyberdeck[data-tab="1"] .tab-btn[data-key="1"],
-    #cyberdeck[data-tab="2"] .tab-btn[data-key="2"],
-    #cyberdeck[data-tab="3"] .tab-btn[data-key="3"],
-    #cyberdeck[data-tab="4"] .tab-btn[data-key="4"],
-    #cyberdeck[data-modal="visuals"] .tab-btn[data-key="v"],
-    #cyberdeck[data-modal="help"] .tab-btn[data-key="?"] {
+    #cyberdeck[data-tab="projects"][data-modal="none"] .tab-btn[data-key="p"],
+    #cyberdeck[data-modal="help"] .tab-btn[data-key="h"],
+    #cyberdeck[data-modal="system"] .tab-btn[data-key="s"],
+    #cyberdeck[data-modal="color"] .tab-btn[data-key="c"],
+    #cyberdeck[data-modal="theme"] .tab-btn[data-key="t"],
+    #cyberdeck[data-modal="visuals"] .preset-btn[data-key="v"] {
       background: #00ffcc !important;
       color: #06090e !important;
       border-color: #00ffcc !important;
       box-shadow: 0 0 12px rgba(0, 255, 204, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4);
       font-weight: bold;
     }
-    #cyberdeck[data-tab="1"] .tab-btn[data-key="1"] .key-sub,
-    #cyberdeck[data-tab="2"] .tab-btn[data-key="2"] .key-sub,
-    #cyberdeck[data-tab="3"] .tab-btn[data-key="3"] .key-sub,
-    #cyberdeck[data-tab="4"] .tab-btn[data-key="4"] .key-sub,
-    #cyberdeck[data-modal="visuals"] .tab-btn[data-key="v"] .key-sub,
-    #cyberdeck[data-modal="help"] .tab-btn[data-key="?"] .key-sub {
+    #cyberdeck[data-tab="projects"][data-modal="none"] .tab-btn[data-key="p"] .key-sub,
+    #cyberdeck[data-modal="help"] .tab-btn[data-key="h"] .key-sub,
+    #cyberdeck[data-modal="system"] .tab-btn[data-key="s"] .key-sub,
+    #cyberdeck[data-modal="color"] .tab-btn[data-key="c"] .key-sub,
+    #cyberdeck[data-modal="theme"] .tab-btn[data-key="t"] .key-sub {
       color: #06090e;
       opacity: 0.85;
     }
@@ -378,9 +384,10 @@
       <div class="deck-row deck-status-row">
         <div class="deck-indicator">
           <span class="deck-led"></span>
-          <span id="deck-mode-indicator">SYS: C64</span>
+          <span id="deck-mode-indicator">RES: VGA</span>
         </div>
         <div class="deck-presets">
+          <button type="button" class="deck-btn preset-btn" data-key="v">VIS</button>
           <button type="button" class="deck-btn preset-btn" data-preset="clean">CLEAN</button>
           <button type="button" class="deck-btn preset-btn" data-preset="crt">CRT</button>
           <button type="button" class="deck-btn preset-btn" data-preset="glitch">GLITCH</button>
@@ -389,12 +396,12 @@
 
       <!-- Navigation & Modal Buttons -->
       <div class="deck-row deck-tabs-row">
-        <button type="button" class="deck-btn tab-btn" data-key="1"><span class="key-sub">1</span>PRJ</button>
-        <button type="button" class="deck-btn tab-btn" data-key="2"><span class="key-sub">2</span>CV</button>
-        <button type="button" class="deck-btn tab-btn" data-key="3"><span class="key-sub">3</span>ABT</button>
-        <button type="button" class="deck-btn tab-btn" data-key="4"><span class="key-sub">4</span>CNT</button>
-        <button type="button" class="deck-btn tab-btn" data-key="v"><span class="key-sub">V</span>VIS</button>
-        <button type="button" class="deck-btn tab-btn" data-key="?"><span class="key-sub">?</span>HLP</button>
+        <button type="button" class="deck-btn tab-btn" data-key="p"><span class="key-sub">P</span>PRJ</button>
+        <button type="button" class="deck-btn tab-btn" data-key="h"><span class="key-sub">H</span>HLP</button>
+        <button type="button" class="deck-btn tab-btn" data-key="s"><span class="key-sub">S</span>SYS</button>
+        <button type="button" class="deck-btn tab-btn" data-key="c"><span class="key-sub">C</span>COL</button>
+        <button type="button" class="deck-btn tab-btn" data-key="t"><span class="key-sub">T</span>THM</button>
+        <button type="button" class="deck-btn tab-btn" data-key="q"><span class="key-sub">Q</span>QUT</button>
       </div>
 
       <!-- D-Pad and Tactical Action Buttons -->
@@ -415,9 +422,9 @@
               <span class="btn-tag">SYSTEM</span>
               <span class="btn-label">MODE</span>
             </button>
-            <button type="button" class="deck-btn action-btn tab-cycle-btn" data-key="Tab">
+            <button type="button" class="deck-btn action-btn tab-cycle-btn" data-key="v">
               <span class="btn-tag">CYCLE</span>
-              <span class="btn-label">TAB ⇥</span>
+              <span class="btn-label">VISUALS</span>
             </button>
           </div>
           <div class="action-col">
@@ -436,7 +443,7 @@
   </div>
 
   <script type="module">
-    import init from './pkg/pixel_ssh_web_client.js';
+    import init from './pkg/pixel_ssh_web_client.js?v=controls-5';
 
     function triggerKey(keyName) {
       if (navigator.vibrate) {
@@ -464,7 +471,7 @@
       }
     });
 
-    init().then(() => {
+    init({ module_or_path: './pkg/pixel_ssh_web_client_bg.wasm?v=controls-5' }).then(() => {
       const params = new URLSearchParams(window.location.search);
       const keys = params.get('keys');
       if (keys) {

@@ -113,8 +113,10 @@ impl ResolutionMode {
     }
 }
 
+/// RGB role palette.  This controls only the colors used for palette indices;
+/// it never changes resolution, layout, or glyph design.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum ColorTheme {
+pub enum ColorPalette {
     Commander,
     #[default]
     VgaModern,
@@ -126,59 +128,136 @@ pub enum ColorTheme {
     GreenCrt,
 }
 
-impl ColorTheme {
-    pub const ALL: [ColorTheme; 8] = [
-        ColorTheme::Commander,
-        ColorTheme::VgaModern,
-        ColorTheme::Ega,
-        ColorTheme::C64,
-        ColorTheme::Atari,
-        ColorTheme::ZxSpectrum,
-        ColorTheme::Amber,
-        ColorTheme::GreenCrt,
+impl ColorPalette {
+    pub const ALL: [ColorPalette; 8] = [
+        ColorPalette::VgaModern,
+        ColorPalette::Ega,
+        ColorPalette::C64,
+        ColorPalette::Atari,
+        ColorPalette::ZxSpectrum,
+        ColorPalette::Amber,
+        ColorPalette::GreenCrt,
+        ColorPalette::Commander,
     ];
 
     pub fn name(&self) -> &'static str {
         match self {
-            ColorTheme::Commander => "Volkov Commander",
-            ColorTheme::VgaModern => "VGA Modern Dark",
-            ColorTheme::Ega => "EGA / CGA RGBI",
-            ColorTheme::C64 => "Commodore 64",
-            ColorTheme::Atari => "Atari 800 GTIA",
-            ColorTheme::ZxSpectrum => "ZX Spectrum",
-            ColorTheme::Amber => "Amber CRT Phosphor",
-            ColorTheme::GreenCrt => "Green CRT Phosphor",
+            ColorPalette::Commander => "Volkov Commander",
+            ColorPalette::VgaModern => "VGA Modern Dark",
+            ColorPalette::Ega => "EGA / CGA RGBI",
+            ColorPalette::C64 => "Commodore 64",
+            ColorPalette::Atari => "Atari 800 GTIA",
+            ColorPalette::ZxSpectrum => "ZX Spectrum",
+            ColorPalette::Amber => "Amber CRT Phosphor",
+            ColorPalette::GreenCrt => "Green CRT Phosphor",
         }
     }
 
     pub fn short_name(&self) -> &'static str {
         match self {
-            ColorTheme::Commander => "Volkov",
-            ColorTheme::VgaModern => "Modern",
-            ColorTheme::Ega => "EGA",
-            ColorTheme::C64 => "C64",
-            ColorTheme::Atari => "Atari",
-            ColorTheme::ZxSpectrum => "ZX",
-            ColorTheme::Amber => "Amber",
-            ColorTheme::GreenCrt => "Green",
+            ColorPalette::Commander => "Volkov",
+            ColorPalette::VgaModern => "Modern",
+            ColorPalette::Ega => "EGA",
+            ColorPalette::C64 => "C64",
+            ColorPalette::Atari => "Atari",
+            ColorPalette::ZxSpectrum => "ZX",
+            ColorPalette::Amber => "Amber",
+            ColorPalette::GreenCrt => "Green",
         }
     }
 
     pub fn next(&self) -> Self {
         match self {
-            ColorTheme::Commander => ColorTheme::VgaModern,
-            ColorTheme::VgaModern => ColorTheme::Ega,
-            ColorTheme::Ega => ColorTheme::C64,
-            ColorTheme::C64 => ColorTheme::Atari,
-            ColorTheme::Atari => ColorTheme::ZxSpectrum,
-            ColorTheme::ZxSpectrum => ColorTheme::Amber,
-            ColorTheme::Amber => ColorTheme::GreenCrt,
-            ColorTheme::GreenCrt => ColorTheme::Commander,
+            ColorPalette::Commander => ColorPalette::VgaModern,
+            ColorPalette::VgaModern => ColorPalette::Ega,
+            ColorPalette::Ega => ColorPalette::C64,
+            ColorPalette::C64 => ColorPalette::Atari,
+            ColorPalette::Atari => ColorPalette::ZxSpectrum,
+            ColorPalette::ZxSpectrum => ColorPalette::Amber,
+            ColorPalette::Amber => ColorPalette::GreenCrt,
+            ColorPalette::GreenCrt => ColorPalette::Commander,
         }
     }
 }
 
-pub type PaletteTheme = ColorTheme;
+/// Compatibility alias for integrations compiled against the previous name.
+/// New code must use `ColorPalette`.
+pub type ColorTheme = ColorPalette;
+pub type PaletteTheme = ColorPalette;
+
+/// Interface glyph treatment. This controls the bitmap font and cursor style;
+/// it does not select an RGB palette or a screen geometry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum InterfaceTheme {
+    #[default]
+    Modern,
+    Ega,
+    C64,
+    Atari,
+    ZxSpectrum,
+    Amber,
+    GreenCrt,
+    Commander,
+}
+
+impl InterfaceTheme {
+    pub const ALL: [InterfaceTheme; 8] = [
+        InterfaceTheme::Modern,
+        InterfaceTheme::Ega,
+        InterfaceTheme::C64,
+        InterfaceTheme::Atari,
+        InterfaceTheme::ZxSpectrum,
+        InterfaceTheme::Amber,
+        InterfaceTheme::GreenCrt,
+        InterfaceTheme::Commander,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            InterfaceTheme::Modern => "Modern CP437",
+            InterfaceTheme::Ega => "EGA CP437",
+            InterfaceTheme::C64 => "Commodore 64 glyphs",
+            InterfaceTheme::Atari => "Atari glyphs",
+            InterfaceTheme::ZxSpectrum => "ZX Spectrum glyphs",
+            InterfaceTheme::Amber => "Amber CRT glyphs",
+            InterfaceTheme::GreenCrt => "Green CRT glyphs",
+            InterfaceTheme::Commander => "Commander clock",
+        }
+    }
+
+    pub fn short_name(self) -> &'static str {
+        match self {
+            InterfaceTheme::Modern => "Modern",
+            InterfaceTheme::Ega => "EGA",
+            InterfaceTheme::C64 => "C64",
+            InterfaceTheme::Atari => "Atari",
+            InterfaceTheme::ZxSpectrum => "ZX",
+            InterfaceTheme::Amber => "Amber",
+            InterfaceTheme::GreenCrt => "Green",
+            InterfaceTheme::Commander => "Clock",
+        }
+    }
+
+    pub fn font_mode(self) -> SystemMode {
+        match self {
+            InterfaceTheme::Modern | InterfaceTheme::Commander => SystemMode::Vga,
+            InterfaceTheme::Ega => SystemMode::Ega,
+            InterfaceTheme::C64 => SystemMode::C64,
+            InterfaceTheme::Atari => SystemMode::Atari,
+            InterfaceTheme::ZxSpectrum => SystemMode::ZxSpectrum,
+            InterfaceTheme::Amber => SystemMode::Amber,
+            InterfaceTheme::GreenCrt => SystemMode::GreenCrt,
+        }
+    }
+
+    pub fn next(self) -> Self {
+        let index = Self::ALL
+            .iter()
+            .position(|theme| *theme == self)
+            .unwrap_or(0);
+        Self::ALL[(index + 1) % Self::ALL.len()]
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SystemMode {
@@ -325,6 +404,8 @@ pub enum ActiveModal {
     Visuals,
     Help,
     System,
+    Color,
+    Theme,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -357,6 +438,25 @@ impl Default for VisualEffects {
 }
 
 impl VisualEffects {
+    /// The selected preset, or `Custom` after a property is edited.
+    pub fn preset_name(self) -> &'static str {
+        if self == Self::clean() {
+            "Clean"
+        } else if self == Self::crt_trinitron() {
+            "CRT"
+        } else if self == Self::crt_arcade() {
+            "Arcade"
+        } else if self == Self::phosphor_bloom() {
+            "Bloom"
+        } else if self == Self::retro_glitch() {
+            "Glitch"
+        } else if self == Self::default() {
+            "Default"
+        } else {
+            "Custom"
+        }
+    }
+
     pub fn clean() -> Self {
         Self {
             scanlines: 0.0,
@@ -443,8 +543,10 @@ pub struct View {
     pub cursor: Option<Cursor>,
     pub mouse_pos: Option<(u16, u16)>,
     pub resolution: ResolutionMode,
-    pub color_theme: ColorTheme,
-    pub palette_mode: SystemMode,
+    pub color_palette: ColorPalette,
+    pub interface_theme: InterfaceTheme,
+    /// Bitmap font and cursor treatment derived from `interface_theme`.
+    pub font_mode: SystemMode,
     pub system_mode: SystemMode,
     pub visual_effects: VisualEffects,
     pub platform: Platform,
@@ -459,8 +561,9 @@ impl View {
             cursor: None,
             mouse_pos: None,
             resolution: ResolutionMode::default(),
-            color_theme: ColorTheme::default(),
-            palette_mode: SystemMode::default(),
+            color_palette: ColorPalette::default(),
+            interface_theme: InterfaceTheme::default(),
+            font_mode: InterfaceTheme::default().font_mode(),
             system_mode: SystemMode::default(),
             visual_effects: VisualEffects::default(),
             platform: Platform::default(),

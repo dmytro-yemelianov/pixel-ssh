@@ -19,7 +19,9 @@ pub(crate) struct SystemDialogGeometry {
 
 impl App {
     pub(crate) fn system_dialog_geometry(&self) -> SystemDialogGeometry {
-        self.dialog_geometry(21)
+        // Header + label + eight choices + footer fit in thirteen rows and
+        // leave the compact navigation bar uncovered.
+        self.dialog_geometry(13)
     }
 
     pub(crate) fn standard_dialog_geometry(&self) -> SystemDialogGeometry {
@@ -424,6 +426,80 @@ impl App {
         _height: u16,
         cols: u16,
     ) {
+        let entries: Vec<String> = pixel_ssh_view::ResolutionMode::ALL
+            .iter()
+            .map(|resolution| {
+                let (width, height) = resolution.resolution();
+                format!("{:<4} {:>3}x{:<3}", resolution.short_name(), width, height)
+            })
+            .collect();
+        self.render_selector_modal(
+            view,
+            cols,
+            "SYSTEM: RESOLUTION",
+            "Resolution",
+            &entries,
+            pixel_ssh_view::ResolutionMode::ALL
+                .iter()
+                .position(|resolution| *resolution == self.resolution)
+                .unwrap_or(0),
+            "#resolution-",
+        );
+    }
+
+    /// Renders the RGB palette selector. Palette changes do not alter glyphs
+    /// or screen geometry.
+    pub(crate) fn render_color_modal(&self, view: &mut View, _width: u16, _height: u16, cols: u16) {
+        let entries: Vec<String> = pixel_ssh_view::ColorPalette::ALL
+            .iter()
+            .map(|palette| palette.name().to_string())
+            .collect();
+        self.render_selector_modal(
+            view,
+            cols,
+            "COLOR: RGB PALETTE",
+            "Color palette",
+            &entries,
+            pixel_ssh_view::ColorPalette::ALL
+                .iter()
+                .position(|palette| *palette == self.color_palette)
+                .unwrap_or(0),
+            "#palette-",
+        );
+    }
+
+    /// Renders the interface theme selector. Theme changes only glyph and
+    /// cursor treatment; palette and resolution remain intact.
+    pub(crate) fn render_theme_modal(&self, view: &mut View, _width: u16, _height: u16, cols: u16) {
+        let entries: Vec<String> = pixel_ssh_view::InterfaceTheme::ALL
+            .iter()
+            .map(|theme| theme.name().to_string())
+            .collect();
+        self.render_selector_modal(
+            view,
+            cols,
+            "THEME: INTERFACE GLYPHS",
+            "Interface theme",
+            &entries,
+            pixel_ssh_view::InterfaceTheme::ALL
+                .iter()
+                .position(|theme| *theme == self.interface_theme)
+                .unwrap_or(0),
+            "#theme-",
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)] // Rendering data is explicit at each selector call site.
+    fn render_selector_modal(
+        &self,
+        view: &mut View,
+        cols: u16,
+        title: &str,
+        label: &str,
+        entries: &[String],
+        selected: usize,
+        link_prefix: &str,
+    ) {
         let SystemDialogGeometry {
             box_x,
             box_y,
@@ -433,8 +509,6 @@ impl App {
             box_rows,
             char_h,
         } = self.system_dialog_geometry();
-
-        // Dialog drop shadow (pure black index 13)
         view.add(Element::Rect(RectElement {
             x: box_x + 8,
             y: box_y + char_h,
@@ -443,8 +517,6 @@ impl App {
             color: Color::from_palette(13),
             filled: true,
         }));
-
-        // Dialog background
         view.add(Element::Rect(RectElement {
             x: box_x,
             y: box_y,
@@ -453,8 +525,6 @@ impl App {
             color: Color::from_palette(0),
             filled: true,
         }));
-
-        // Header bar
         view.add(Element::Rect(RectElement {
             x: box_x,
             y: box_y,
@@ -463,248 +533,117 @@ impl App {
             color: Color::from_palette(1),
             filled: true,
         }));
-
-        // Top Border with embedded Title and Close indicator slot
         let title = if cols >= 80 {
-            "SELECT RESOLUTION & COLOR THEME"
-        } else {
+            title
+        } else if title.starts_with("SYSTEM") {
             "SYSTEM"
+        } else if title.starts_with("COLOR") {
+            "COLOR"
+        } else {
+            "THEME"
         };
-        let title_part = format!("╔═ [ {title} ] ");
-        let close_slot = "      ═╗";
-        let filler_len = (box_cols as usize)
-            .saturating_sub(title_part.chars().count() + close_slot.chars().count());
-        let top_str = format!("{}{}{}", title_part, "═".repeat(filler_len), close_slot);
+        let top_start = format!("╔═ [ {title} ] ");
+        let top = format!(
+            "{}{}══════╗",
+            top_start,
+            "═".repeat((box_cols as usize).saturating_sub(top_start.chars().count() + 7))
+        );
         view.add(Element::Text(TextElement {
             x: box_x,
             y: box_y,
-            text: top_str,
+            text: top,
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
-
-        // Clickable close button overlay
-        let close_x = (box_x + box_w).saturating_sub(48);
         view.add(Element::Link(LinkElement::new(
-            close_x,
+            box_x + box_w.saturating_sub(40),
             box_y,
             "[X]",
             "#close-modal",
             TextStyle::new(Color::from_palette(10)).bold(),
         )));
-
-        // Side borders
-        for r in 1..(box_rows - 1) {
-            let ry = box_y + r * char_h;
+        for row in 1..box_rows.saturating_sub(1) {
+            let y = box_y + row * char_h;
             view.add(Element::Text(TextElement {
                 x: box_x,
-                y: ry,
+                y,
                 text: "║".to_string(),
                 style: TextStyle::new(Color::from_palette(3)),
             }));
             view.add(Element::Text(TextElement {
                 x: box_x + box_w.saturating_sub(8),
-                y: ry,
+                y,
                 text: "║".to_string(),
                 style: TextStyle::new(Color::from_palette(3)),
             }));
         }
-
-        let row_start_y = box_y + char_h;
-        if cols >= 80 {
-            let col1_x = box_x + 24;
-            let col2_x = box_x + 320;
-
-            // Section Headers
-            view.add(Element::Text(TextElement {
-                x: col1_x,
-                y: row_start_y,
-                text: "── RESOLUTION [1-8] ──".to_string(),
-                style: TextStyle::new(Color::from_palette(4)).bold(),
-            }));
-            view.add(Element::Text(TextElement {
-                x: col2_x,
-                y: row_start_y,
-                text: "── COLOR THEME [A-H] ──".to_string(),
-                style: TextStyle::new(Color::from_palette(4)).bold(),
-            }));
-
-            // Resolution List (Left Column)
-            for (i, res) in pixel_ssh_view::ResolutionMode::ALL.iter().enumerate() {
-                let y = row_start_y + ((i + 1) as u16) * char_h;
-                if y + char_h >= box_y + box_h {
-                    break;
-                }
-
-                let is_cur = self.resolution == *res;
-                let (w, h) = res.resolution();
-
-                if is_cur {
-                    view.add(Element::Rect(RectElement {
-                        x: col1_x,
-                        y,
-                        width: 272,
-                        height: char_h,
-                        color: Color::from_palette(2),
-                        filled: true,
-                    }));
-                }
-
-                let marker = if is_cur { "►" } else { " " };
-                let line_text = format!(
-                    "{} [{}] {:<4} {:>3}x{:<3} {}",
-                    marker,
-                    i + 1,
-                    res.short_name(),
-                    w,
-                    h,
-                    if is_cur { "[*]" } else { "" }
-                );
-
-                let fg = if is_cur {
-                    Color::from_palette(6)
+        let list_x = box_x + if cols >= 80 { 64 } else { 16 };
+        view.add(Element::Text(TextElement {
+            x: list_x,
+            y: box_y + char_h,
+            text: format!("{label} [1-8]"),
+            style: TextStyle::new(Color::from_palette(4)).bold(),
+        }));
+        let available_chars = (box_cols.saturating_sub((list_x - box_x) / 8 + 2)) as usize;
+        let entry_chars = available_chars.saturating_sub(10);
+        for (index, entry) in entries.iter().enumerate() {
+            let y = box_y + (index as u16 + 2) * char_h;
+            if y + char_h >= box_y + box_h {
+                break;
+            }
+            let active = index == selected;
+            if active {
+                view.add(Element::Rect(RectElement {
+                    x: list_x.saturating_sub(8),
+                    y,
+                    width: box_w.saturating_sub((list_x - box_x) + 24),
+                    height: char_h,
+                    color: Color::from_palette(2),
+                    filled: true,
+                }));
+            }
+            let marker = if active { "►" } else { " " };
+            let entry = entry.chars().take(entry_chars).collect::<String>();
+            let text = format!(
+                "{marker} [{}] {:<entry_chars$} {}",
+                index + 1,
+                entry,
+                if active { "[*]" } else { "" }
+            );
+            let mut option = LinkElement::new(
+                list_x,
+                y,
+                text,
+                format!("{link_prefix}{index}"),
+                if active {
+                    TextStyle::new(Color::from_palette(6)).bold()
                 } else {
-                    Color::from_palette(5)
-                };
-                view.add(Element::Text(TextElement {
-                    x: col1_x,
-                    y,
-                    text: line_text,
-                    style: TextStyle::new(fg).bold(),
-                }));
-            }
-
-            // Color Theme List (Right Column)
-            for (i, theme) in pixel_ssh_view::ColorTheme::ALL.iter().enumerate() {
-                let y = row_start_y + ((i + 1) as u16) * char_h;
-                if y + char_h >= box_y + box_h {
-                    break;
-                }
-
-                let is_cur = self.color_theme == *theme;
-                let key_char = match i {
-                    0 => 'A',
-                    1 => 'B',
-                    2 => 'C',
-                    3 => 'D',
-                    4 => 'E',
-                    5 => 'F',
-                    6 => 'G',
-                    _ => 'H',
-                };
-
-                if is_cur {
-                    view.add(Element::Rect(RectElement {
-                        x: col2_x,
-                        y,
-                        width: 256,
-                        height: char_h,
-                        color: Color::from_palette(2),
-                        filled: true,
-                    }));
-                }
-
-                let marker = if is_cur { "►" } else { " " };
-                let line_text = format!(
-                    "{} [{}] {:<16} {}",
-                    marker,
-                    key_char,
-                    theme.short_name(),
-                    if is_cur { "[*]" } else { "" }
-                );
-
-                let fg = if is_cur {
-                    Color::from_palette(6)
-                } else {
-                    Color::from_palette(5)
-                };
-                view.add(Element::Text(TextElement {
-                    x: col2_x,
-                    y,
-                    text: line_text,
-                    style: TextStyle::new(fg).bold(),
-                }));
-            }
-        } else {
-            // Compact stacked list: every choice remains visible and clickable.
-            view.add(Element::Text(TextElement {
-                x: box_x + 16,
-                y: row_start_y,
-                text: "RESOLUTION [1-8]".to_string(),
-                style: TextStyle::new(Color::from_palette(4)).bold(),
-            }));
-            for (i, res) in pixel_ssh_view::ResolutionMode::ALL.iter().enumerate() {
-                let y = row_start_y + ((i + 1) as u16) * char_h;
-                let is_cur = self.resolution == *res;
-                let (w, h) = res.resolution();
-                let marker = if is_cur { "►" } else { " " };
-                let line_text = format!(
-                    "{} [{}] {:<4} {:>3}x{:<3}",
-                    marker,
-                    i + 1,
-                    res.short_name(),
-                    w,
-                    h
-                );
-                view.add(Element::Text(TextElement {
-                    x: box_x + 16,
-                    y,
-                    text: line_text,
-                    style: TextStyle::new(if is_cur {
-                        Color::from_palette(6)
-                    } else {
-                        Color::from_palette(5)
-                    })
-                    .bold(),
-                }));
-            }
-            let theme_header_y = row_start_y + 10 * char_h;
-            view.add(Element::Text(TextElement {
-                x: box_x + 16,
-                y: theme_header_y,
-                text: "COLOR THEME [A-H]".to_string(),
-                style: TextStyle::new(Color::from_palette(4)).bold(),
-            }));
-            for (i, theme) in pixel_ssh_view::ColorTheme::ALL.iter().enumerate() {
-                let y = theme_header_y + ((i + 1) as u16) * char_h;
-                let is_cur = self.color_theme == *theme;
-                let key_char = (b'A' + i as u8) as char;
-                let marker = if is_cur { "►" } else { " " };
-                let line_text = format!("{} [{}] {}", marker, key_char, theme.short_name());
-                view.add(Element::Text(TextElement {
-                    x: box_x + 16,
-                    y,
-                    text: line_text,
-                    style: TextStyle::new(if is_cur {
-                        Color::from_palette(6)
-                    } else {
-                        Color::from_palette(5)
-                    })
-                    .bold(),
-                }));
-            }
+                    TextStyle::new(Color::from_palette(5))
+                },
+            );
+            // These rows are buttons, not text hyperlinks.  Underlining them
+            // draws a scanline across the next compact character row.
+            option.style.underline = false;
+            view.add(Element::Link(option));
         }
-
-        // Bottom border
-        let bot_y = box_y + (box_rows - 1) * char_h;
+        let bottom_y = box_y + (box_rows - 1) * char_h;
         view.add(Element::Rect(RectElement {
             x: box_x,
-            y: bot_y,
+            y: bottom_y,
             width: box_w,
             height: char_h,
             color: Color::from_palette(1),
             filled: true,
         }));
-        let prompt = if cols >= 80 {
-            "╚══ Click [1-8] Resolution • [A-H] Theme • [ESC] Close "
-        } else {
-            "╚═ [1-8] Res [A-H] Theme "
-        };
-        let filler_len = (box_cols as usize).saturating_sub(prompt.chars().count() + 1);
-        let bot_border = format!("{}{}{}", prompt, "═".repeat(filler_len), "╝");
+        let prompt = "╚══ [1-8] Select • [ESC] Close ";
+        let bottom = format!(
+            "{}{}╝",
+            prompt,
+            "═".repeat((box_cols as usize).saturating_sub(prompt.chars().count() + 1))
+        );
         view.add(Element::Text(TextElement {
             x: box_x,
-            y: bot_y,
-            text: bot_border,
+            y: bottom_y,
+            text: bottom,
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }
@@ -717,6 +656,10 @@ impl App {
         _height: u16,
         cols: u16,
     ) {
+        if cols < 80 {
+            self.render_compact_visuals_modal(view, cols);
+            return;
+        }
         let SystemDialogGeometry {
             box_x,
             box_y,
@@ -897,8 +840,150 @@ impl App {
         }));
     }
 
+    fn render_compact_visuals_modal(&self, view: &mut View, cols: u16) {
+        let SystemDialogGeometry {
+            box_x,
+            box_y,
+            box_w,
+            box_h,
+            box_cols,
+            box_rows,
+            char_h,
+        } = self.standard_dialog_geometry();
+        view.add(Element::Rect(RectElement {
+            x: box_x + 8,
+            y: box_y + char_h,
+            width: box_w,
+            height: box_h,
+            color: Color::from_palette(13),
+            filled: true,
+        }));
+        view.add(Element::Rect(RectElement {
+            x: box_x,
+            y: box_y,
+            width: box_w,
+            height: box_h,
+            color: Color::from_palette(0),
+            filled: true,
+        }));
+        view.add(Element::Rect(RectElement {
+            x: box_x,
+            y: box_y,
+            width: box_w,
+            height: char_h,
+            color: Color::from_palette(1),
+            filled: true,
+        }));
+        let title = "VISUALS";
+        let top_start = format!("╔═[ {title} ]");
+        let top = format!(
+            "{}{}══╗",
+            top_start,
+            "═".repeat((box_cols as usize).saturating_sub(top_start.chars().count() + 3))
+        );
+        view.add(Element::Text(TextElement {
+            x: box_x,
+            y: box_y,
+            text: top,
+            style: TextStyle::new(Color::from_palette(6)).bold(),
+        }));
+        view.add(Element::Link(LinkElement::new(
+            box_x + box_w.saturating_sub(32),
+            box_y,
+            "X",
+            "#close-modal",
+            TextStyle::new(Color::from_palette(10)).bold(),
+        )));
+        for row in 1..box_rows.saturating_sub(1) {
+            let y = box_y + row * char_h;
+            view.add(Element::Text(TextElement {
+                x: box_x,
+                y,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+            view.add(Element::Text(TextElement {
+                x: box_x + box_w.saturating_sub(8),
+                y,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+        }
+        let preset = self.visual_effects.preset_name();
+        let preset_text = if cols == 40 {
+            format!("PRESET:{preset:<7} A CRT C D E")
+        } else {
+            format!("PRE:{preset:<6} A C D E")
+        };
+        view.add(Element::Text(TextElement {
+            x: box_x + 8,
+            y: box_y + char_h,
+            text: preset_text.chars().take((box_cols - 2) as usize).collect(),
+            style: TextStyle::new(Color::from_palette(4)).bold(),
+        }));
+        let sliders = [
+            ("Scan", self.visual_effects.scanlines),
+            ("Grid", self.visual_effects.pixel_grid),
+            ("Chrom", self.visual_effects.chromatic),
+            ("Glow", self.visual_effects.afterglow),
+            ("Curve", self.visual_effects.curvature),
+            ("Jitt", self.visual_effects.jitter),
+            ("Magn", self.visual_effects.magnet),
+            ("Hum", self.visual_effects.antenna_hum),
+            ("Noise", self.visual_effects.noise),
+        ];
+        for (index, (name, value)) in sliders.iter().enumerate() {
+            let y = box_y + (index as u16 + 2) * char_h;
+            let selected = index == self.selected_fx_slider;
+            let marker = if selected { "►" } else { " " };
+            let width = if cols == 40 { 10 } else { 7 };
+            let filled = ((*value * width as f32).round() as usize).min(width);
+            let line = format!(
+                "{marker}{name:<5}[{}{}]{:>3}%",
+                "█".repeat(filled),
+                "░".repeat(width - filled),
+                (*value * 100.0).round() as u8
+            );
+            view.add(Element::Text(TextElement {
+                x: box_x + 8,
+                y,
+                text: line.chars().take((box_cols - 2) as usize).collect(),
+                style: if selected {
+                    TextStyle::new(Color::from_palette(6)).bold()
+                } else {
+                    TextStyle::new(Color::from_palette(5))
+                },
+            }));
+        }
+        let bottom_y = box_y + (box_rows - 1) * char_h;
+        view.add(Element::Rect(RectElement {
+            x: box_x,
+            y: bottom_y,
+            width: box_w,
+            height: char_h,
+            color: Color::from_palette(1),
+            filled: true,
+        }));
+        let prompt = "╚═ ◄► tune  ESC close ";
+        let bottom = format!(
+            "{}{}╝",
+            prompt,
+            "═".repeat((box_cols as usize).saturating_sub(prompt.chars().count() + 1))
+        );
+        view.add(Element::Text(TextElement {
+            x: box_x,
+            y: bottom_y,
+            text: bottom,
+            style: TextStyle::new(Color::from_palette(4)),
+        }));
+    }
+
     /// Renders the Help & keyboard navigation modal dialog.
     pub(crate) fn render_help_modal(&self, view: &mut View, _width: u16, _height: u16, cols: u16) {
+        if cols < 80 {
+            self.render_compact_help_modal(view, cols);
+            return;
+        }
         let SystemDialogGeometry {
             box_x,
             box_y,
@@ -981,10 +1066,7 @@ impl App {
         }
 
         let shortcuts = [
-            (
-                "1-10/Fk",
-                "Bottom navigation: Prj, CV, About, Contact, Help, Visual...",
-            ),
+            ("P H S C T Q", "Projects, Help, System, Color, Theme, Quit"),
             ("Enter", "Open project details / Return to catalog"),
             ("h / l", "Navigate previous / next project in detail view"),
             (
@@ -993,10 +1075,9 @@ impl App {
             ),
             ("Wheel", "Smooth vertical mouse-wheel scrolling"),
             ("v / V", "Toggle CRT Visual Effects modal dialog"),
-            (
-                "s / S",
-                "Toggle System Resolution modal dialog (SVGA, VGA, EGA...)",
-            ),
+            ("s / S", "Open the resolution selector (SVGA, VGA, EGA...)"),
+            ("c / C", "Open the independent RGB color palette selector"),
+            ("t / T", "Open the independent interface theme selector"),
             ("? / h", "Toggle this Help & Navigation shortcuts dialog"),
             (
                 "Top-R",
@@ -1045,6 +1126,139 @@ impl App {
             x: box_x,
             y: bot_y,
             text: bot_border,
+            style: TextStyle::new(Color::from_palette(4)),
+        }));
+    }
+
+    fn render_compact_help_modal(&self, view: &mut View, cols: u16) {
+        let SystemDialogGeometry {
+            box_x,
+            box_y,
+            box_w,
+            box_h,
+            box_cols,
+            box_rows,
+            char_h,
+        } = self.standard_dialog_geometry();
+        view.add(Element::Rect(RectElement {
+            x: box_x + 8,
+            y: box_y + char_h,
+            width: box_w,
+            height: box_h,
+            color: Color::from_palette(13),
+            filled: true,
+        }));
+        view.add(Element::Rect(RectElement {
+            x: box_x,
+            y: box_y,
+            width: box_w,
+            height: box_h,
+            color: Color::from_palette(0),
+            filled: true,
+        }));
+        view.add(Element::Rect(RectElement {
+            x: box_x,
+            y: box_y,
+            width: box_w,
+            height: char_h,
+            color: Color::from_palette(1),
+            filled: true,
+        }));
+        let title = "HELP";
+        let start = format!("╔═[ {title} ]");
+        let top = format!(
+            "{}{}══╗",
+            start,
+            "═".repeat((box_cols as usize).saturating_sub(start.chars().count() + 3))
+        );
+        view.add(Element::Text(TextElement {
+            x: box_x,
+            y: box_y,
+            text: top,
+            style: TextStyle::new(Color::from_palette(6)).bold(),
+        }));
+        view.add(Element::Link(LinkElement::new(
+            box_x + box_w.saturating_sub(32),
+            box_y,
+            "X",
+            "#close-modal",
+            TextStyle::new(Color::from_palette(10)).bold(),
+        )));
+        for row in 1..box_rows.saturating_sub(1) {
+            let y = box_y + row * char_h;
+            view.add(Element::Text(TextElement {
+                x: box_x,
+                y,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+            view.add(Element::Text(TextElement {
+                x: box_x + box_w.saturating_sub(8),
+                y,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+        }
+        let rows = if cols == 40 {
+            [
+                "P  Projects",
+                "H/? Help",
+                "S  Resolution",
+                "C  RGB palette",
+                "T  UI theme",
+                "Q  Return/Quit",
+                "V  Visuals",
+                "UP/DN j/k Scroll",
+                "LT/RT h/l Detail",
+                "ENT Open/return",
+                "ESC Close dialog",
+            ]
+        } else {
+            [
+                "P Projects",
+                "H/? Help",
+                "S Resolution",
+                "C Palette",
+                "T Theme",
+                "Q Return",
+                "V Visuals",
+                "UP/DN j/k Scroll",
+                "LT/RT h/l Detail",
+                "ENT Open/back",
+                "ESC Close",
+            ]
+        };
+        for (index, line) in rows.iter().enumerate() {
+            let y = box_y + (index as u16 + 1) * char_h;
+            if y >= box_y + (box_rows - 1) * char_h {
+                break;
+            }
+            view.add(Element::Text(TextElement {
+                x: box_x + 8,
+                y,
+                text: line.chars().take((box_cols - 2) as usize).collect(),
+                style: TextStyle::new(Color::from_palette(5)),
+            }));
+        }
+        let bottom_y = box_y + (box_rows - 1) * char_h;
+        view.add(Element::Rect(RectElement {
+            x: box_x,
+            y: bottom_y,
+            width: box_w,
+            height: char_h,
+            color: Color::from_palette(1),
+            filled: true,
+        }));
+        let prompt = "╚═ ESC close ";
+        let bottom = format!(
+            "{}{}╝",
+            prompt,
+            "═".repeat((box_cols as usize).saturating_sub(prompt.chars().count() + 1))
+        );
+        view.add(Element::Text(TextElement {
+            x: box_x,
+            y: bottom_y,
+            text: bottom,
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }

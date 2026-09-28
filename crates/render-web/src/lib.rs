@@ -595,7 +595,7 @@ impl WebGlRenderer {
         let hum_loc = self.gl.get_uniform_location(&self.program, "u_antenna_hum");
         self.gl.uniform1f(hum_loc.as_ref(), fx.antenna_hum);
 
-        let mono_val = match fb.theme {
+        let mono_val = match fb.color_palette {
             pixel_ssh_view::ColorTheme::Amber => 1,
             pixel_ssh_view::ColorTheme::GreenCrt => 2,
             _ => 0,

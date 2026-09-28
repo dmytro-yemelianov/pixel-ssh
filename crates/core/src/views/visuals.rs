@@ -49,8 +49,10 @@ impl App {
         view.add(Element::Text(TextElement {
             x: 16,
             y: 64,
-            text: "Real-time GPU fragment shader pipeline: Click presets or effect rows to tune:"
-                .to_string(),
+            text: format!(
+                "Preset: {:<7} • select a preset or tune each property below",
+                self.visual_effects.preset_name()
+            ),
             style: TextStyle::new(Color::from_palette(4)),
         }));
 
@@ -360,6 +362,13 @@ impl App {
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
 
+        view.add(Element::Text(TextElement {
+            x: 4,
+            y: 20,
+            text: format!("PRESET: {}", self.visual_effects.preset_name()),
+            style: TextStyle::new(Color::from_palette(4)),
+        }));
+
         let presets = [
             ("CLN", 4, self.visual_effects == VisualEffects::clean()),
             (
@@ -523,6 +532,13 @@ impl App {
             y: 12,
             text: "CRT VISUAL FX (WebGL2):".to_string(),
             style: TextStyle::new(Color::from_palette(6)).bold(),
+        }));
+
+        view.add(Element::Text(TextElement {
+            x: 2,
+            y: 20,
+            text: format!("PRESET:{}", self.visual_effects.preset_name()),
+            style: TextStyle::new(Color::from_palette(4)),
         }));
 
         let presets = [

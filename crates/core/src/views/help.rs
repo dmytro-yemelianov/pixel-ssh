@@ -34,23 +34,15 @@ impl App {
             filled: true,
         }));
 
-        let shortcuts = if self.platform == Platform::Web {
-            vec![
-                "[1 - 6] Switch Tabs        [Tab] Cycle Focus/Tabs     [S/P] Cycle System Mode",
-                "[Up/Down/k/j] Navigate    [PgUp/PgDn] Page Scroll    [Enter] Select / Details",
-                "[h/l] Prev/Next Project   [Esc/q] Return / Back      [?] Toggle Help Guide",
-                "[Z,X,M,V,B,N,G,H,Y] Direct CRT FX Toggles     [A,W,C,D,E,R] Shader Presets",
-            ]
-        } else {
-            vec![
-                "[1 - 5] Switch Tabs        [Tab] Cycle Focus/Tabs     [S/P] Cycle System Mode",
-                "[Up/Down/k/j] Navigate    [PgUp/PgDn] Page Scroll    [Enter] Select / Details",
-                "[h/l] Prev/Next Project   [Esc/q] Return / Back      [?] Toggle Help Guide",
-            ]
-        };
+        let shortcuts = vec![
+            "[P/H/S/C/T/Q] Projects, Help, Resolution, Color, Theme, Quit",
+            "[V] Visuals  [Tab] Cycle views  [Up/Down or j/k] Navigate",
+            "[Enter] Select / details  [Esc] Back  [PgUp/PgDn] Page scroll",
+            "[h/l] Previous/next project in detail; h opens Help on the list",
+        ];
 
         let mouse_items = vec![
-            "Tabs & System:    Click tab headers or [S] button to switch views/palettes",
+            "Menu controls:   Click Prj, Hlp, Sys, Col, Thm, or Qut",
             "Resume / About:   Click ▲ / ▼ or drag/click vertical scrollbar track",
             "Wheel Navigation: Scroll up and down through content lines and projects",
             "Project Rows:     Click project row to select; click again for details",
@@ -114,22 +106,17 @@ impl App {
             filled: true,
         }));
 
-        let tab_line = if self.platform == Platform::Web {
-            "[1-6] Tabs  [S] System"
-        } else {
-            "[1-5] Tabs  [S] System"
-        };
-
         let mut lines = vec![
             ("KEYBOARD SHORTCUTS:", 7, true),
-            (tab_line, 5, false),
-            ("[?] Help  [h/l] Prev/Next", 5, false),
+            ("P Prj H Hlp S Sys C Col", 5, false),
+            ("T Theme Q Quit V Visuals", 5, false),
+            ("[h/l] Prev/Next in detail", 5, false),
             ("[k/j] Scroll [Enter] Detail", 5, false),
-            ("[Esc/q] Return to list", 5, false),
+            ("[Esc] Return to list", 5, false),
         ];
 
         if self.platform == Platform::Web {
-            lines.push(("[Z-N] Direct FX [A,W..] Pre", 5, false));
+            lines.push(("[V] Visual effects + presets", 5, false));
         }
 
         lines.extend_from_slice(&[
@@ -190,21 +177,18 @@ impl App {
             filled: true,
         }));
 
-        let tab_line = if self.platform == Platform::Web {
-            "1-6: Tabs   S: Sys Mode"
-        } else {
-            "1-5: Tabs   S: Sys Mode"
-        };
+        let tab_line = "P Prj H Hlp S Sys C Col";
 
         let mut lines = vec![
             ("KEYBOARD CONTROLS:", 7, true),
             (tab_line, 5, false),
-            ("?: Help    h/l: Prev/Next", 5, false),
+            ("T Theme Q Quit V Visuals", 5, false),
+            ("h/l: Prev/Next in detail", 5, false),
             ("k/j: Scroll Enter: Detail", 5, false),
             ("Esc: Return to list", 5, false),
             ("", 5, false),
             ("MOUSE & TOUCH:", 7, true),
-            ("Click tabs, S:Sys, or rows", 5, false),
+            ("Click menu or project rows", 5, false),
             ("Click scrollbar or use wheel", 5, false),
             ("Click links to open directly", 5, false),
             ("", 5, false),
@@ -238,7 +222,7 @@ impl App {
                     style,
                 }));
             }
-            y += 10;
+            y += 8;
         }
     }
 
@@ -265,15 +249,15 @@ impl App {
 
         let sections = [
             ("KEYBOARD SHORTCUTS:", vec![
-                "[1 - 5]            Switch tabs: [1] Projects  [2] Resume  [3] About  [4] Contact  [5] Help",
+                "[P/H/S/C/T/Q]      Projects, Help, Resolution, Color, Theme, Quit",
                 "[?]                Toggle this Help Reference from any tab",
                 "[Tab]              Cycle forward to next tab / switch links in detail",
-                "[S] or [P]         Cycle Mocked System Color Palette (VGA, Sinclair, C64, Atari, Amber, Green)",
+                "[S/C/T]           Independent resolution, color palette, and interface theme selectors",
                 "[Up/Down] or [k/j] Navigate project list OR vertically scroll content",
                 "[PgUp / PgDn]      Fast scroll Resume & About content up / down",
                 "[Home / End]       Jump directly to the start or end of lists and text",
                 "[Enter]            Open detailed project view OR trigger focused link",
-                "[Esc] or [q]       Close project detail / return to list (or exit SSH session)",
+                "[Esc] or [q]       Close project detail / return to list",
                 "[Ctrl+C]           Terminate session and cleanly return to your host shell",
             ]),
             ("TERMINAL HOST INTEGRATION:", vec![

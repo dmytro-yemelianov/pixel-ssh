@@ -19,17 +19,18 @@ impl App {
         let (width, height) = if self.platform == Platform::Terminal {
             (self.terminal_cols * 8, self.terminal_rows * 16)
         } else {
-            self.system_mode.resolution()
+            self.resolution.resolution()
         };
         let (cols, _rows) = if self.platform == Platform::Terminal {
             (self.terminal_cols, self.terminal_rows)
         } else {
-            self.system_mode.char_grid()
+            self.resolution.char_grid()
         };
         let mut view = View::new(width, height);
         view.resolution = self.resolution;
-        view.color_theme = self.color_theme;
-        view.palette_mode = self.palette_mode;
+        view.color_palette = self.color_palette;
+        view.interface_theme = self.interface_theme;
+        view.font_mode = self.interface_theme.font_mode();
         view.system_mode = self.system_mode;
         view.visual_effects = self.visual_effects;
         view.platform = self.platform;
@@ -230,6 +231,8 @@ impl App {
         if self.active_modal != ActiveModal::None {
             match self.active_modal {
                 ActiveModal::System => self.render_system_modal(&mut view, width, height, cols),
+                ActiveModal::Color => self.render_color_modal(&mut view, width, height, cols),
+                ActiveModal::Theme => self.render_theme_modal(&mut view, width, height, cols),
                 ActiveModal::Visuals => self.render_visuals_modal(&mut view, width, height, cols),
                 ActiveModal::Help => self.render_help_modal(&mut view, width, height, cols),
                 ActiveModal::None => {}
@@ -313,9 +316,9 @@ impl App {
             } else if self.current_tab == Tab::Resume || self.current_tab == Tab::About {
                 "[j/k] Scroll [ESC] Return"
             } else if self.platform == Platform::Web {
-                "[1-4]Nav [VIS] [SYS] [j/k] [Enter]"
+                "P/H/S/C/T/Q V:Visual j/k:Nav"
             } else {
-                "[1-5]Tabs [S]Sys [j/k]Scroll [Enter]"
+                "P/H/S/C/T/Q j/k:Scroll Enter"
             };
 
             view.add(Element::Text(TextElement {
@@ -347,9 +350,9 @@ impl App {
             } else if self.current_tab == Tab::Resume || self.current_tab == Tab::About {
                 "j/k: Scroll ESC: Exit"
             } else if self.platform == Platform::Web {
-                "1-4:Tab VIS SYS k/j:Nav"
+                "P/H/S/C/T/Q V:FX j/k:Nav"
             } else {
-                "1-5:Tab S:Sys k/j:Nav ?:Help"
+                "P/H/S/C/T/Q j/k:Nav"
             };
             view.add(Element::Text(TextElement {
                 x: 2,
@@ -429,231 +432,66 @@ impl App {
         height: u16,
         cols: u16,
     ) {
-        if cols >= 80 {
-            let nav_y = if self.platform == Platform::Terminal {
-                (self.terminal_rows.saturating_sub(2)) * 16
-            } else {
-                height.saturating_sub(32)
-            };
-
-            // Full background across the navigation row
-            view.add(Element::Rect(RectElement {
-                x: 0,
-                y: nav_y,
-                width,
-                height: 16,
-                color: Color::from_palette(13), // authentic black background
-                filled: true,
-            }));
-
-            let is_web = self.platform == Platform::Web;
-            let active_prj = self.current_tab == Tab::Projects
-                && !self.show_detail
-                && self.active_modal == ActiveModal::None;
-            let active_cv =
-                self.current_tab == Tab::Resume && self.active_modal == ActiveModal::None;
-            let active_abt =
-                self.current_tab == Tab::About && self.active_modal == ActiveModal::None;
-            let active_cnt =
-                self.current_tab == Tab::Contact && self.active_modal == ActiveModal::None;
-            let active_hlp = self.active_modal == ActiveModal::Help
-                || (self.current_tab == Tab::Help && !is_web);
-            let active_vis = self.active_modal == ActiveModal::Visuals;
-            let active_res = self.active_modal == ActiveModal::System;
-            let active_thm = false;
-            let active_view = self.show_detail && self.current_tab == Tab::Projects;
-            let active_quit = false;
-
-            let items: [(usize, &str, bool); 10] = [
-                (1, "Prj", active_prj),
-                (2, if is_web { "CV" } else { "Resume" }, active_cv),
-                (3, "About", active_abt),
-                (4, "Contct", active_cnt),
-                (5, "Help", active_hlp),
-                (6, if is_web { "Visual" } else { "Sys" }, active_vis),
-                (7, "Res", active_res),
-                (8, "Theme", active_thm),
-                (9, "View", active_view),
-                (10, "Quit", active_quit),
-            ];
-
-            let slot_w = width / 10;
-            for (i, &(key_num, label, is_active)) in items.iter().enumerate() {
-                let slot_x = (i as u16) * slot_w;
-                let num_str = format!("{key_num}");
-                let num_w = (num_str.len() as u16) * 8;
-
-                // Number text (bright white or yellow)
-                view.add(Element::Text(TextElement {
-                    x: slot_x + 2,
-                    y: nav_y,
-                    text: num_str,
-                    style: TextStyle::new(Color::from_palette(14)).bold(),
-                }));
-
-                // Button badge background
-                let badge_x = slot_x + num_w + 3;
-                let badge_w = slot_w.saturating_sub(num_w + 5);
-                let badge_bg = if is_active {
-                    Color::from_palette(6) // Volkov bright yellow
-                } else {
-                    Color::from_palette(3) // Volkov cyan
-                };
-                let badge_fg = if is_active {
-                    Color::from_palette(0) // dark navy blue
-                } else {
-                    Color::from_palette(13) // black
-                };
-
-                view.add(Element::Rect(RectElement {
-                    x: badge_x,
-                    y: nav_y,
-                    width: badge_w,
-                    height: 16,
-                    color: badge_bg,
-                    filled: true,
-                }));
-
-                view.add(Element::Text(TextElement {
-                    x: badge_x + 2,
-                    y: nav_y,
-                    text: label.to_string(),
-                    style: TextStyle::new(badge_fg).bold(),
-                }));
-            }
-        } else if cols == 40 {
-            let nav_y = height.saturating_sub(20);
-            view.add(Element::Rect(RectElement {
-                x: 0,
-                y: nav_y,
-                width,
-                height: 10,
-                color: Color::from_palette(13),
-                filled: true,
-            }));
-
-            let active_prj = self.current_tab == Tab::Projects
-                && !self.show_detail
-                && self.active_modal == ActiveModal::None;
-            let active_cv =
-                self.current_tab == Tab::Resume && self.active_modal == ActiveModal::None;
-            let active_abt =
-                self.current_tab == Tab::About && self.active_modal == ActiveModal::None;
-            let active_cnt =
-                self.current_tab == Tab::Contact && self.active_modal == ActiveModal::None;
-            let active_hlp = self.active_modal == ActiveModal::Help;
-            let active_sys = self.active_modal == ActiveModal::System;
-
-            let items = [
-                (1, "PRJ", active_prj),
-                (2, "CV", active_cv),
-                (3, "ABT", active_abt),
-                (4, "CNT", active_cnt),
-                (5, "?", active_hlp),
-                (6, "SYS", active_sys),
-            ];
-
-            let slot_w = width / 6;
-            for (i, &(k, lbl, active)) in items.iter().enumerate() {
-                let sx = (i as u16) * slot_w;
-                let bg = if active {
-                    Color::from_palette(6)
-                } else {
-                    Color::from_palette(3)
-                };
-                let fg = if active {
-                    Color::from_palette(0)
-                } else {
-                    Color::from_palette(13)
-                };
-                view.add(Element::Rect(RectElement {
-                    x: sx + 10,
-                    y: nav_y,
-                    width: slot_w.saturating_sub(12),
-                    height: 9,
-                    color: bg,
-                    filled: true,
-                }));
-                view.add(Element::Text(TextElement {
-                    x: sx + 2,
-                    y: nav_y,
-                    text: format!("{k}"),
-                    style: TextStyle::new(Color::from_palette(14)).bold(),
-                }));
-                view.add(Element::Text(TextElement {
-                    x: sx + 12,
-                    y: nav_y,
-                    text: lbl.to_string(),
-                    style: TextStyle::new(fg).bold(),
-                }));
-            }
+        let compact = cols < 80;
+        let nav_y = if self.platform == Platform::Terminal {
+            (self.terminal_rows.saturating_sub(2)) * 16
+        } else if compact {
+            height.saturating_sub(20)
         } else {
-            // 32 columns (ZX Spectrum)
-            let nav_y = height.saturating_sub(20);
+            height.saturating_sub(32)
+        };
+        let row_h = if compact { 10 } else { 16 };
+        let items = [
+            (
+                "Prj",
+                self.current_tab == Tab::Projects
+                    && !self.show_detail
+                    && self.active_modal == ActiveModal::None,
+            ),
+            (
+                "Hlp",
+                self.active_modal == ActiveModal::Help || self.current_tab == Tab::Help,
+            ),
+            ("Sys", self.active_modal == ActiveModal::System),
+            ("Col", self.active_modal == ActiveModal::Color),
+            ("Thm", self.active_modal == ActiveModal::Theme),
+            ("Qut", false),
+        ];
+        view.add(Element::Rect(RectElement {
+            x: 0,
+            y: nav_y,
+            width,
+            height: row_h,
+            color: Color::from_palette(13),
+            filled: true,
+        }));
+        let slot_w = width / items.len() as u16;
+        for (index, &(label, active)) in items.iter().enumerate() {
+            let x = index as u16 * slot_w;
+            let bg = if active {
+                Color::from_palette(6)
+            } else {
+                Color::from_palette(3)
+            };
+            let fg = if active {
+                Color::from_palette(0)
+            } else {
+                Color::from_palette(13)
+            };
             view.add(Element::Rect(RectElement {
-                x: 0,
+                x: x + 1,
                 y: nav_y,
-                width,
-                height: 10,
-                color: Color::from_palette(13),
+                width: slot_w.saturating_sub(2),
+                height: row_h,
+                color: bg,
                 filled: true,
             }));
-
-            let active_prj = self.current_tab == Tab::Projects
-                && !self.show_detail
-                && self.active_modal == ActiveModal::None;
-            let active_cv =
-                self.current_tab == Tab::Resume && self.active_modal == ActiveModal::None;
-            let active_abt =
-                self.current_tab == Tab::About && self.active_modal == ActiveModal::None;
-            let active_cnt =
-                self.current_tab == Tab::Contact && self.active_modal == ActiveModal::None;
-            let active_hlp = self.active_modal == ActiveModal::Help;
-            let active_sys = self.active_modal == ActiveModal::System;
-
-            let items = [
-                (1, "PR", active_prj),
-                (2, "CV", active_cv),
-                (3, "AB", active_abt),
-                (4, "CT", active_cnt),
-                (5, "?", active_hlp),
-                (6, "SY", active_sys),
-            ];
-
-            let slot_w = width / 6;
-            for (i, &(k, lbl, active)) in items.iter().enumerate() {
-                let sx = (i as u16) * slot_w;
-                let bg = if active {
-                    Color::from_palette(6)
-                } else {
-                    Color::from_palette(3)
-                };
-                let fg = if active {
-                    Color::from_palette(0)
-                } else {
-                    Color::from_palette(13)
-                };
-                view.add(Element::Rect(RectElement {
-                    x: sx + 9,
-                    y: nav_y,
-                    width: slot_w.saturating_sub(11),
-                    height: 9,
-                    color: bg,
-                    filled: true,
-                }));
-                view.add(Element::Text(TextElement {
-                    x: sx + 1,
-                    y: nav_y,
-                    text: format!("{k}"),
-                    style: TextStyle::new(Color::from_palette(14)).bold(),
-                }));
-                view.add(Element::Text(TextElement {
-                    x: sx + 11,
-                    y: nav_y,
-                    text: lbl.to_string(),
-                    style: TextStyle::new(fg).bold(),
-                }));
-            }
+            view.add(Element::Text(TextElement {
+                x: x + 3,
+                y: nav_y,
+                text: label.to_string(),
+                style: TextStyle::new(fg).bold(),
+            }));
         }
     }
 }

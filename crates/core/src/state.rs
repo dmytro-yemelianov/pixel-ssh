@@ -5,7 +5,7 @@ use crate::data::{
     RESUME_LINES_32, RESUME_LINES_40, RESUME_LINES_80,
 };
 use pixel_ssh_view::{
-    ActiveModal, ColorTheme, Platform, ResolutionMode, SystemMode, VisualEffects,
+    ActiveModal, ColorPalette, InterfaceTheme, Platform, ResolutionMode, SystemMode, VisualEffects,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,6 +25,8 @@ pub struct App {
     pub active_modal: ActiveModal,
     pub screensaver_active: bool,
     pub screensaver_tick: usize,
+    /// Focused row in the Projects list: CV, Contacts, About, then projects.
+    pub selected_list_item: usize,
     pub selected_project: usize,
     pub show_detail: bool,
     pub status: String,
@@ -33,8 +35,13 @@ pub struct App {
     pub about_scroll: usize,
     pub detail_scroll: usize,
     pub resolution: ResolutionMode,
-    pub color_theme: ColorTheme,
+    /// RGB palette, independent from screen geometry and interface glyphs.
+    pub color_palette: ColorPalette,
+    /// Interface glyph treatment, independent from RGB palette and geometry.
+    pub interface_theme: InterfaceTheme,
+    /// Geometry compatibility field. It always follows `resolution`.
     pub system_mode: SystemMode,
+    /// Font/cursor compatibility field. It always follows `interface_theme`.
     pub palette_mode: SystemMode,
     pub visual_effects: VisualEffects,
     pub tick: usize,
@@ -59,7 +66,8 @@ impl App {
 
     pub fn new_web() -> Self {
         let resolution = ResolutionMode::default();
-        let color_theme = ColorTheme::default();
+        let color_palette = ColorPalette::default();
+        let interface_theme = InterfaceTheme::default();
         let system_mode = resolution.to_system_mode();
         Self {
             platform: Platform::Web,
@@ -67,19 +75,21 @@ impl App {
             active_modal: ActiveModal::None,
             screensaver_active: false,
             screensaver_tick: 0,
+            selected_list_item: 0,
             selected_project: 0,
             show_detail: false,
             status: String::from(
-                "Ready. [1-4] Nav | [V] Visuals | [S] System | [?] Help | [Enter] Detail",
+                "Ready. P Projects | H Help | S System | C Color | T Theme | V Visuals",
             ),
             scroll_offset: 0,
             resume_scroll: 0,
             about_scroll: 0,
             detail_scroll: 0,
             resolution,
-            color_theme,
+            color_palette,
+            interface_theme,
             system_mode,
-            palette_mode: system_mode,
+            palette_mode: interface_theme.font_mode(),
             visual_effects: VisualEffects::default(),
             tick: 0,
             clock_time: None,
@@ -93,7 +103,8 @@ impl App {
 
     pub fn new_terminal() -> Self {
         let resolution = ResolutionMode::default();
-        let color_theme = ColorTheme::default();
+        let color_palette = ColorPalette::default();
+        let interface_theme = InterfaceTheme::default();
         let system_mode = resolution.to_system_mode();
         Self {
             platform: Platform::Terminal,
@@ -101,17 +112,21 @@ impl App {
             active_modal: ActiveModal::None,
             screensaver_active: false,
             screensaver_tick: 0,
+            selected_list_item: 0,
             selected_project: 0,
             show_detail: false,
-            status: String::from("Ready. [1-5] Tabs | [S] System | [Enter] Detail | [j/k] Scroll"),
+            status: String::from(
+                "Ready. P Projects | H Help | S System | C Color | T Theme | j/k Scroll",
+            ),
             scroll_offset: 0,
             resume_scroll: 0,
             about_scroll: 0,
             detail_scroll: 0,
             resolution,
-            color_theme,
+            color_palette,
+            interface_theme,
             system_mode,
-            palette_mode: system_mode,
+            palette_mode: interface_theme.font_mode(),
             visual_effects: VisualEffects::clean(),
             tick: 0,
             clock_time: None,
@@ -132,18 +147,15 @@ impl App {
         self.status = format!("Resolution: {} ({}x{}, {}x{} cols)", res.name(), w, h, c, r);
     }
 
-    pub fn set_color_theme(&mut self, theme: ColorTheme) {
-        self.color_theme = theme;
-        self.palette_mode = match theme {
-            ColorTheme::Amber => SystemMode::Amber,
-            ColorTheme::GreenCrt => SystemMode::GreenCrt,
-            ColorTheme::Ega => SystemMode::Ega,
-            ColorTheme::C64 => SystemMode::C64,
-            ColorTheme::Atari => SystemMode::Atari,
-            ColorTheme::ZxSpectrum => SystemMode::ZxSpectrum,
-            ColorTheme::Commander | ColorTheme::VgaModern => SystemMode::Vga,
-        };
-        self.status = format!("Theme: {}", theme.name());
+    pub fn set_color_palette(&mut self, palette: ColorPalette) {
+        self.color_palette = palette;
+        self.status = format!("Color palette: {}", palette.name());
+    }
+
+    pub fn set_interface_theme(&mut self, theme: InterfaceTheme) {
+        self.interface_theme = theme;
+        self.palette_mode = theme.font_mode();
+        self.status = format!("Interface theme: {}", theme.name());
     }
 
     pub fn adjust_selected_slider(&mut self, delta: f32) {
@@ -174,6 +186,7 @@ impl App {
                 self.visual_effects.antenna_hum =
                     (self.visual_effects.antenna_hum + delta).clamp(0.0, 1.0)
             }
+            8 => self.visual_effects.noise = (self.visual_effects.noise + delta).clamp(0.0, 1.0),
             _ => {}
         }
     }

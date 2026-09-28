@@ -11,7 +11,7 @@ use tokio::sync::Mutex;
 
 use pixel_ssh_core::{App, Tab};
 use pixel_ssh_render_ansi::AnsiRenderer;
-use pixel_ssh_view::{InputEvent, Key};
+use pixel_ssh_view::{ActiveModal, InputEvent, Key};
 
 struct ClientHandler {
     app: App,
@@ -382,10 +382,12 @@ impl Handler for AppSession {
                 };
 
                 if let Some(k) = key {
-                    // Check if user pressed 'q' on main screen (not in detail, not in help)
+                    // Quit the SSH session only from the plain Projects screen.
+                    // In a modal or detail view, Q first returns through the app.
                     if (k == Key::Char('q') || k == Key::Char('Q'))
                         && !client.app.show_detail
-                        && client.app.current_tab != Tab::Help
+                        && client.app.current_tab == Tab::Projects
+                        && client.app.active_modal == ActiveModal::None
                     {
                         if let Some(tx) = &client.tx {
                             let _ = tx.try_send(

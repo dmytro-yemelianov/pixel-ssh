@@ -3,10 +3,42 @@
 use crate::data::PROJECTS;
 use crate::state::{App, Tab};
 use pixel_ssh_view::{
-    ActiveModal, ColorTheme, InputEvent, Key, Platform, ResolutionMode, VisualEffects,
+    ActiveModal, ColorPalette, InputEvent, InterfaceTheme, Key, Platform, ResolutionMode,
+    VisualEffects,
 };
 
+const PROJECT_LIST_PREFIX_ITEMS: usize = 3;
+
 impl App {
+    fn select_list_item(&mut self, item: usize) {
+        self.selected_list_item = item.min(PROJECT_LIST_PREFIX_ITEMS + PROJECTS.len() - 1);
+        if self.selected_list_item < PROJECT_LIST_PREFIX_ITEMS {
+            self.scroll_offset = 0;
+            return;
+        }
+
+        self.selected_project = self.selected_list_item - PROJECT_LIST_PREFIX_ITEMS;
+        self.ensure_selected_project_visible();
+        let first_page_capacity = self.projects_max_visible().saturating_sub(4).max(1);
+        if self.scroll_offset == 0 && self.selected_project >= first_page_capacity {
+            self.scroll_offset = 1;
+        }
+    }
+
+    fn activate_selected_list_item(&mut self) {
+        match self.selected_list_item {
+            0 => self.current_tab = Tab::Resume,
+            1 => self.current_tab = Tab::Contact,
+            2 => self.current_tab = Tab::About,
+            _ => {
+                self.selected_project = self.selected_list_item - PROJECT_LIST_PREFIX_ITEMS;
+                self.show_detail = true;
+                self.detail_scroll = 0;
+                self.selected_detail_item = 0;
+            }
+        }
+    }
+
     /// Updates the application state with a normalized input event.
     /// Returns `true` if the state changed and a re-render is required (`dirty`).
     pub fn update(&mut self, event: InputEvent) -> bool {
@@ -35,26 +67,45 @@ impl App {
                                         return true;
                                     }
                                 }
-                                Key::Char(c @ 'a'..='h') | Key::Char(c @ 'A'..='H') => {
-                                    let idx = match c.to_ascii_uppercase() {
-                                        'A' => 0,
-                                        'B' => 1,
-                                        'C' => 2,
-                                        'D' => 3,
-                                        'E' => 4,
-                                        'F' => 5,
-                                        'G' => 6,
-                                        _ => 7,
-                                    };
-                                    if idx < ColorTheme::ALL.len() {
-                                        self.set_color_theme(ColorTheme::ALL[idx]);
+                                _ => {}
+                            }
+                            return true; // Modal captures and swallows all other keys
+                        }
+                        ActiveModal::Color => {
+                            match key {
+                                Key::Escape | Key::Char('c') | Key::Char('C') => {
+                                    self.active_modal = ActiveModal::None;
+                                    return true;
+                                }
+                                Key::Char(c @ '1'..='8') => {
+                                    let idx = (c as usize) - ('1' as usize);
+                                    if idx < ColorPalette::ALL.len() {
+                                        self.set_color_palette(ColorPalette::ALL[idx]);
                                         self.active_modal = ActiveModal::None;
                                         return true;
                                     }
                                 }
                                 _ => {}
                             }
-                            return true; // Modal captures and swallows all other keys
+                            return true;
+                        }
+                        ActiveModal::Theme => {
+                            match key {
+                                Key::Escape | Key::Char('t') | Key::Char('T') => {
+                                    self.active_modal = ActiveModal::None;
+                                    return true;
+                                }
+                                Key::Char(c @ '1'..='8') => {
+                                    let idx = (c as usize) - ('1' as usize);
+                                    if idx < InterfaceTheme::ALL.len() {
+                                        self.set_interface_theme(InterfaceTheme::ALL[idx]);
+                                        self.active_modal = ActiveModal::None;
+                                        return true;
+                                    }
+                                }
+                                _ => {}
+                            }
+                            return true;
                         }
                         ActiveModal::Visuals => {
                             match key {
@@ -236,41 +287,29 @@ impl App {
                         Key::Escape
                         | Key::Char('q')
                         | Key::Char('Q')
-                        | Key::Char('0')
-                        | Key::F(10) => {
+                        | Key::Char('p')
+                        | Key::Char('P') => {
                             self.current_tab = Tab::Projects;
                             return true;
                         }
-                        Key::Char('1') | Key::F(1) => {
-                            self.current_tab = Tab::Projects;
-                            return true;
-                        }
-                        Key::Char('2') | Key::F(2) => {
-                            self.current_tab = Tab::Resume;
-                            return true;
-                        }
-                        Key::Char('3') | Key::F(3) => {
-                            self.current_tab = Tab::About;
-                            return true;
-                        }
-                        Key::Char('4') | Key::F(4) => {
-                            self.current_tab = Tab::Contact;
-                            return true;
-                        }
-                        Key::Char('5') | Key::F(5) | Key::Char('?') => {
+                        Key::Char('h') | Key::Char('H') | Key::Char('?') => {
                             self.active_modal = ActiveModal::Help;
                             return true;
                         }
-                        Key::Char('6') | Key::F(6) | Key::Char('v') | Key::Char('V') => {
+                        Key::Char('v') | Key::Char('V') => {
                             self.active_modal = ActiveModal::Visuals;
                             return true;
                         }
-                        Key::Char('7') | Key::F(7) | Key::Char('s') | Key::Char('S') => {
+                        Key::Char('s') | Key::Char('S') => {
                             self.active_modal = ActiveModal::System;
                             return true;
                         }
-                        Key::Char('8') | Key::F(8) | Key::Char('t') | Key::Char('T') => {
-                            self.set_color_theme(self.color_theme.next());
+                        Key::Char('c') | Key::Char('C') => {
+                            self.active_modal = ActiveModal::Color;
+                            return true;
+                        }
+                        Key::Char('t') | Key::Char('T') => {
+                            self.active_modal = ActiveModal::Theme;
                             return true;
                         }
                         Key::Tab => {
@@ -343,32 +382,17 @@ impl App {
                 }
 
                 match key {
-                    // Universal workstation switching (Keys 1..=10 and F1..=F10 matching bottom navigation bar)
-                    Key::Char('1') | Key::F(1) => {
+                    // Workstation controls use their visible first letters.
+                    // Digits remain available inside selector modals only.
+                    Key::Char('p') | Key::Char('P') => {
                         self.current_tab = Tab::Projects;
                         self.show_detail = false;
                         self.active_modal = ActiveModal::None;
                         true
                     }
-                    Key::Char('2') | Key::F(2) => {
-                        self.current_tab = Tab::Resume;
-                        self.show_detail = false;
-                        self.active_modal = ActiveModal::None;
-                        true
-                    }
-                    Key::Char('3') | Key::F(3) => {
-                        self.current_tab = Tab::About;
-                        self.show_detail = false;
-                        self.active_modal = ActiveModal::None;
-                        true
-                    }
-                    Key::Char('4') | Key::F(4) => {
-                        self.current_tab = Tab::Contact;
-                        self.show_detail = false;
-                        self.active_modal = ActiveModal::None;
-                        true
-                    }
-                    Key::Char('5') | Key::F(5) => {
+                    Key::Char('H') | Key::Char('?') | Key::Char('h')
+                        if !(self.current_tab == Tab::Projects && self.show_detail) =>
+                    {
                         if self.platform == Platform::Web {
                             self.active_modal = if self.active_modal == ActiveModal::Help {
                                 ActiveModal::None
@@ -381,60 +405,6 @@ impl App {
                         }
                         true
                     }
-                    Key::Char('6') | Key::F(6) => {
-                        if self.platform == Platform::Web {
-                            self.active_modal = if self.active_modal == ActiveModal::Visuals {
-                                ActiveModal::None
-                            } else {
-                                ActiveModal::Visuals
-                            };
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    Key::Char('7') | Key::F(7) => {
-                        if self.platform == Platform::Web {
-                            self.active_modal = if self.active_modal == ActiveModal::System {
-                                ActiveModal::None
-                            } else {
-                                ActiveModal::System
-                            };
-                            true
-                        } else {
-                            let next = self.system_mode.next();
-                            self.set_resolution(next.to_resolution());
-                            self.set_color_theme(next.to_theme());
-                            self.system_mode = next;
-                            true
-                        }
-                    }
-                    Key::Char('8') | Key::F(8) | Key::Char('t') | Key::Char('T') => {
-                        self.set_color_theme(self.color_theme.next());
-                        true
-                    }
-                    Key::Char('9') | Key::F(9) => {
-                        if self.current_tab == Tab::Projects {
-                            self.show_detail = !self.show_detail;
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    Key::Char('0') | Key::F(10) => {
-                        if self.active_modal != ActiveModal::None {
-                            self.active_modal = ActiveModal::None;
-                            true
-                        } else if self.current_tab != Tab::Projects || self.show_detail {
-                            self.current_tab = Tab::Projects;
-                            self.show_detail = false;
-                            true
-                        } else {
-                            false
-                        }
-                    }
-
-                    // Visuals modal toggle shortcut ('v' / 'V') on Web
                     Key::Char('v') | Key::Char('V') if self.platform == Platform::Web => {
                         self.active_modal = if self.active_modal == ActiveModal::Visuals {
                             ActiveModal::None
@@ -443,40 +413,17 @@ impl App {
                         };
                         true
                     }
-
-                    // Help toggle shortcut ('?')
-                    Key::Char('?') => {
-                        if self.platform == Platform::Web {
-                            self.active_modal = if self.active_modal == ActiveModal::Help {
-                                ActiveModal::None
-                            } else {
-                                ActiveModal::Help
-                            };
-                        } else if self.current_tab == Tab::Help {
-                            self.current_tab = Tab::Projects;
-                        } else {
-                            self.current_tab = Tab::Help;
-                            self.show_detail = false;
-                        }
+                    Key::Char('s') | Key::Char('S') => {
+                        self.active_modal = ActiveModal::System;
                         true
                     }
-
-                    // System Mode selector ('s' / 'S')
-                    Key::Char('s') | Key::Char('S') | Key::Char('p') | Key::Char('P') => {
-                        if self.platform == Platform::Web {
-                            self.active_modal = if self.active_modal == ActiveModal::System {
-                                ActiveModal::None
-                            } else {
-                                ActiveModal::System
-                            };
-                            true
-                        } else {
-                            let next = self.system_mode.next();
-                            self.set_resolution(next.to_resolution());
-                            self.set_color_theme(next.to_theme());
-                            self.system_mode = next;
-                            true
-                        }
+                    Key::Char('c') | Key::Char('C') if self.current_tab != Tab::Visuals => {
+                        self.active_modal = ActiveModal::Color;
+                        true
+                    }
+                    Key::Char('t') | Key::Char('T') => {
+                        self.active_modal = ActiveModal::Theme;
+                        true
                     }
 
                     // Tab key: In detail view, cycles interactive items; otherwise cycles views
@@ -513,6 +460,7 @@ impl App {
                         } else {
                             self.selected_project = PROJECTS.len().saturating_sub(1);
                         }
+                        self.selected_list_item = self.selected_project + PROJECT_LIST_PREFIX_ITEMS;
                         self.detail_scroll = 0;
                         self.selected_detail_item = 0;
                         true
@@ -521,6 +469,7 @@ impl App {
                         if self.current_tab == Tab::Projects && self.show_detail =>
                     {
                         self.selected_project = (self.selected_project + 1) % PROJECTS.len();
+                        self.selected_list_item = self.selected_project + PROJECT_LIST_PREFIX_ITEMS;
                         self.detail_scroll = 0;
                         self.selected_detail_item = 0;
                         true
@@ -679,7 +628,7 @@ impl App {
                         );
                         true
                     }
-                    Key::Char('h') | Key::Char('H')
+                    Key::Char('h')
                         if self.platform == Platform::Web && self.current_tab == Tab::Visuals =>
                     {
                         self.selected_fx_slider = 7;
@@ -829,9 +778,8 @@ impl App {
                                         self.selected_detail_item.saturating_sub(1);
                                     return true;
                                 }
-                            } else if self.selected_project > 0 {
-                                self.selected_project -= 1;
-                                self.ensure_selected_project_visible();
+                            } else if self.selected_list_item > 0 {
+                                self.select_list_item(self.selected_list_item - 1);
                                 return true;
                             }
                         }
@@ -863,9 +811,10 @@ impl App {
                                         (self.selected_detail_item + 1).min(1);
                                     return true;
                                 }
-                            } else if self.selected_project + 1 < PROJECTS.len() {
-                                self.selected_project += 1;
-                                self.ensure_selected_project_visible();
+                            } else if self.selected_list_item + 1
+                                < PROJECT_LIST_PREFIX_ITEMS + PROJECTS.len()
+                            {
+                                self.select_list_item(self.selected_list_item + 1);
                                 return true;
                             }
                         }
@@ -911,8 +860,7 @@ impl App {
                             if self.show_detail {
                                 self.detail_scroll = 0;
                             } else {
-                                self.selected_project = 0;
-                                self.scroll_offset = 0;
+                                self.select_list_item(0);
                             }
                             return true;
                         }
@@ -929,8 +877,9 @@ impl App {
                             if self.show_detail {
                                 self.detail_scroll = self.detail_max_scroll();
                             } else {
-                                self.selected_project = PROJECTS.len().saturating_sub(1);
-                                self.scroll_offset = self.projects_max_scroll();
+                                self.select_list_item(
+                                    PROJECT_LIST_PREFIX_ITEMS + PROJECTS.len() - 1,
+                                );
                             }
                             return true;
                         }
@@ -942,16 +891,14 @@ impl App {
                                 self.show_detail = false;
                                 self.detail_scroll = 0;
                             } else {
-                                self.show_detail = !self.show_detail;
-                                self.detail_scroll = 0;
-                                self.selected_detail_item = 0;
+                                self.activate_selected_list_item();
                             }
                             true
                         } else {
                             false
                         }
                     }
-                    Key::Escape | Key::Char('q') => {
+                    Key::Escape | Key::Char('q') | Key::Char('Q') => {
                         if self.active_modal != ActiveModal::None {
                             self.active_modal = ActiveModal::None;
                             true
@@ -967,7 +914,8 @@ impl App {
                             self.current_tab = Tab::Projects;
                             true
                         } else {
-                            false
+                            self.screensaver_active = true;
+                            true
                         }
                     }
                     _ => false,
@@ -1005,14 +953,16 @@ impl App {
                             self.detail_scroll = self.detail_scroll.saturating_sub(delta);
                         }
                         return true;
-                    } else if dy > 0 && self.selected_project + 1 < PROJECTS.len() {
-                        self.selected_project =
-                            (self.selected_project + delta).min(PROJECTS.len() - 1);
-                        self.ensure_selected_project_visible();
+                    } else if dy > 0
+                        && self.selected_list_item + 1 < PROJECT_LIST_PREFIX_ITEMS + PROJECTS.len()
+                    {
+                        self.select_list_item(
+                            (self.selected_list_item + delta)
+                                .min(PROJECT_LIST_PREFIX_ITEMS + PROJECTS.len() - 1),
+                        );
                         return true;
-                    } else if dy < 0 && self.selected_project > 0 {
-                        self.selected_project = self.selected_project.saturating_sub(delta);
-                        self.ensure_selected_project_visible();
+                    } else if dy < 0 && self.selected_list_item > 0 {
+                        self.select_list_item(self.selected_list_item.saturating_sub(delta));
                         return true;
                     }
                 }
@@ -1020,8 +970,8 @@ impl App {
             }
             InputEvent::PointerDown { x, y, .. } => {
                 self.mouse_pos = Some((x, y));
-                let (cols, _rows) = self.system_mode.char_grid();
-                let (width, height) = self.system_mode.resolution();
+                let (cols, _rows) = self.resolution.char_grid();
+                let (width, height) = self.resolution.resolution();
 
                 // 0. If screensaver active, any click wakes and dismisses it
                 if self.screensaver_active {
@@ -1043,7 +993,7 @@ impl App {
                 };
 
                 if fkey_y_range.contains(&y) {
-                    let slot_count = if cols >= 80 { 10 } else { 6 };
+                    let slot_count = 6;
                     let slot_w = width / slot_count;
                     let slot = ((x / slot_w) as usize).min(slot_count as usize - 1);
                     match slot {
@@ -1054,71 +1004,29 @@ impl App {
                             return true;
                         }
                         1 => {
-                            self.current_tab = Tab::Resume;
-                            self.show_detail = false;
-                            self.active_modal = ActiveModal::None;
+                            self.active_modal = ActiveModal::Help;
                             return true;
                         }
                         2 => {
-                            self.current_tab = Tab::About;
-                            self.show_detail = false;
-                            self.active_modal = ActiveModal::None;
+                            self.active_modal = ActiveModal::System;
                             return true;
                         }
                         3 => {
-                            self.current_tab = Tab::Contact;
-                            self.show_detail = false;
-                            self.active_modal = ActiveModal::None;
+                            self.active_modal = ActiveModal::Color;
                             return true;
                         }
                         4 => {
-                            self.active_modal = if self.active_modal == ActiveModal::Help {
-                                ActiveModal::None
-                            } else {
-                                ActiveModal::Help
-                            };
+                            self.active_modal = ActiveModal::Theme;
                             return true;
                         }
                         5 => {
-                            if cols < 80 || self.platform != Platform::Web {
-                                self.active_modal = if self.active_modal == ActiveModal::System {
-                                    ActiveModal::None
-                                } else {
-                                    ActiveModal::System
-                                };
-                            } else {
-                                self.active_modal = if self.active_modal == ActiveModal::Visuals {
-                                    ActiveModal::None
-                                } else {
-                                    ActiveModal::Visuals
-                                };
-                            }
-                            return true;
-                        }
-                        6 => {
-                            self.active_modal = if self.active_modal == ActiveModal::System {
-                                ActiveModal::None
-                            } else {
-                                ActiveModal::System
-                            };
-                            return true;
-                        }
-                        7 => {
-                            self.set_color_theme(self.color_theme.next());
-                            return true;
-                        }
-                        8 => {
-                            if self.current_tab == Tab::Projects {
-                                self.show_detail = !self.show_detail;
-                                return true;
-                            }
-                        }
-                        9 => {
                             if self.active_modal != ActiveModal::None {
                                 self.active_modal = ActiveModal::None;
                             } else if self.current_tab != Tab::Projects || self.show_detail {
                                 self.current_tab = Tab::Projects;
                                 self.show_detail = false;
+                            } else {
+                                self.screensaver_active = true;
                             }
                             return true;
                         }
@@ -1129,7 +1037,10 @@ impl App {
                 // 2. Active Modal Dialog click handling: strictly captures all mouse events
                 if self.active_modal != ActiveModal::None {
                     let char_h: u16 = self.resolution.line_height();
-                    let geometry = if self.active_modal == ActiveModal::System {
+                    let geometry = if matches!(
+                        self.active_modal,
+                        ActiveModal::System | ActiveModal::Color | ActiveModal::Theme
+                    ) {
                         self.system_dialog_geometry()
                     } else {
                         self.standard_dialog_geometry()
@@ -1154,42 +1065,31 @@ impl App {
                         return true;
                     }
 
-                    // System modal dual-column selection
-                    if self.active_modal == ActiveModal::System {
-                        let row_start_y = box_y + char_h;
-                        if y >= row_start_y + char_h {
-                            let row_idx = ((y - (row_start_y + char_h)) / char_h) as usize;
-                            if cols >= 80 {
-                                let col1_x = box_x + 24;
-                                let col2_x = box_x + 320;
-                                if x >= col1_x && x < col2_x {
-                                    if row_idx < ResolutionMode::ALL.len() {
-                                        self.set_resolution(ResolutionMode::ALL[row_idx]);
-                                        self.active_modal = ActiveModal::None;
-                                        return true;
-                                    }
-                                } else if x >= col2_x
-                                    && x < box_x + box_w - 8
-                                    && row_idx < ColorTheme::ALL.len()
-                                {
-                                    self.set_color_theme(ColorTheme::ALL[row_idx]);
+                    // Resolution, RGB palette, and interface theme are three
+                    // independent one-column selectors with the same row geometry.
+                    if matches!(
+                        self.active_modal,
+                        ActiveModal::System | ActiveModal::Color | ActiveModal::Theme
+                    ) {
+                        if y >= box_y + 2 * char_h {
+                            let row_idx = ((y - (box_y + 2 * char_h)) / char_h) as usize;
+                            match self.active_modal {
+                                ActiveModal::System if row_idx < ResolutionMode::ALL.len() => {
+                                    self.set_resolution(ResolutionMode::ALL[row_idx]);
                                     self.active_modal = ActiveModal::None;
-                                    return true;
                                 }
-                            } else if row_idx < ResolutionMode::ALL.len() {
-                                self.set_resolution(ResolutionMode::ALL[row_idx]);
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if row_idx >= 10 && row_idx < 10 + ColorTheme::ALL.len() {
-                                let thm_idx = row_idx - 10;
-                                if thm_idx < ColorTheme::ALL.len() {
-                                    self.set_color_theme(ColorTheme::ALL[thm_idx]);
+                                ActiveModal::Color if row_idx < ColorPalette::ALL.len() => {
+                                    self.set_color_palette(ColorPalette::ALL[row_idx]);
                                     self.active_modal = ActiveModal::None;
-                                    return true;
                                 }
+                                ActiveModal::Theme if row_idx < InterfaceTheme::ALL.len() => {
+                                    self.set_interface_theme(InterfaceTheme::ALL[row_idx]);
+                                    self.active_modal = ActiveModal::None;
+                                }
+                                _ => {}
                             }
                         }
-                        return true; // Any other click inside modal is swallowed
+                        return true;
                     }
 
                     // Visuals modal presets & sliders
@@ -1724,23 +1624,42 @@ impl App {
                         } else {
                             24
                         };
-                        let row_h = if cols >= 80 {
+                        let project_row_h = if cols >= 80 {
                             self.resolution.line_height()
                         } else if cols == 40 {
                             12
                         } else {
                             16
                         };
-                        let list_bot = list_top + (self.projects_max_visible() as u16) * row_h;
-                        if y >= list_top && y < list_bot {
-                            let row_idx = ((y - list_top) / row_h) as usize;
+                        let prefix_row_h = if cols == 32 { 8 } else { project_row_h };
+                        let prefix_rows = usize::from(self.scroll_offset == 0) * 4;
+                        if self.scroll_offset == 0 && y >= list_top {
+                            let prefix_y_end = list_top + prefix_rows as u16 * prefix_row_h;
+                            if y < prefix_y_end {
+                                let row = ((y - list_top) / prefix_row_h) as usize;
+                                if row < PROJECT_LIST_PREFIX_ITEMS {
+                                    if self.selected_list_item == row {
+                                        self.activate_selected_list_item();
+                                    } else {
+                                        self.select_list_item(row);
+                                    }
+                                }
+                                return true;
+                            }
+                        }
+                        let project_top = list_top + prefix_rows as u16 * prefix_row_h;
+                        let list_bot = project_top
+                            + (self.projects_max_visible().saturating_sub(prefix_rows) as u16)
+                                * project_row_h;
+                        if y >= project_top && y < list_bot {
+                            let row_idx = ((y - project_top) / project_row_h) as usize;
                             let project_idx = self.scroll_offset + row_idx;
                             if project_idx < PROJECTS.len() {
-                                if self.selected_project == project_idx {
-                                    self.show_detail = true;
+                                let list_item = project_idx + PROJECT_LIST_PREFIX_ITEMS;
+                                if self.selected_list_item == list_item {
+                                    self.activate_selected_list_item();
                                 } else {
-                                    self.selected_project = project_idx;
-                                    self.ensure_selected_project_visible();
+                                    self.select_list_item(list_item);
                                 }
                                 return true;
                             }
