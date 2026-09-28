@@ -477,10 +477,10 @@ fn test_native_zx_content_stays_above_bottom_navigation() {
     let projects = app.render();
     let nav_y = projects.height - 20;
     assert!(projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y == 156 && t.text.contains("of 16")
+        Element::Text(t) if t.y == 152 && t.text.contains("/16")
     )));
     assert!(!projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y > 156 && t.y < nav_y && t.text.contains("of 16")
+        Element::Text(t) if t.y > 152 && t.y < nav_y && t.text.contains("/16")
     )));
 
     app.current_tab = Tab::Resume;
@@ -498,6 +498,61 @@ fn test_native_zx_content_stays_above_bottom_navigation() {
         bottom_border + 8 <= nav_y,
         "Article bottom overlaps ZX navigation"
     );
+}
+
+#[test]
+fn test_zx_projects_use_two_rows_with_reachable_scroll_and_clicks() {
+    let mut app = App::new_web();
+    app.set_resolution(ResolutionMode::ZxSpectrum);
+
+    assert_eq!(app.projects_max_visible(), 8);
+    assert_eq!(app.projects_max_scroll(), PROJECTS.len() - 8);
+
+    let view = app.render();
+    for row in 0..app.projects_max_visible() {
+        let title_y = 24 + row as u16 * 16;
+        assert!(view.elements.iter().any(|element| matches!(element,
+            Element::Text(text) if text.y == title_y && text.x == 2 && text.text.starts_with(if row == 0 { ">01 " } else { " " })
+        )));
+        assert!(view.elements.iter().any(|element| matches!(element,
+            Element::Text(text) if text.y == title_y + 8 && text.x == 2 && text.text.starts_with("  <")
+        )));
+    }
+
+    assert!(app.update(InputEvent::KeyDown(Key::End)));
+    assert_eq!(app.selected_project, PROJECTS.len() - 1);
+    assert_eq!(app.scroll_offset, app.projects_max_scroll());
+
+    // The first and last title/tag rows in the final window select project 9
+    // and project 16 respectively. The position line below them is inert.
+    assert!(app.update(InputEvent::PointerDown {
+        x: 2,
+        y: 24,
+        button: Button::Left,
+    }));
+    assert_eq!(app.selected_project, 8);
+    assert!(app.update(InputEvent::PointerDown {
+        x: 2,
+        y: 24 + 7 * 16 + 8,
+        button: Button::Left,
+    }));
+    assert_eq!(app.selected_project, PROJECTS.len() - 1);
+    assert!(!app.update(InputEvent::PointerDown {
+        x: 2,
+        y: 24 + 8 * 16,
+        button: Button::Left,
+    }));
+
+    assert!(app.update(InputEvent::KeyDown(Key::Home)));
+    assert!(app.update(InputEvent::Wheel { dx: 0, dy: 4 }));
+    assert_eq!(app.selected_project, 4);
+    assert!(app.update(InputEvent::Wheel { dx: 0, dy: -4 }));
+    assert_eq!(app.selected_project, 0);
+    for _ in 0..PROJECTS.len() - 1 {
+        assert!(app.update(InputEvent::KeyDown(Key::Down)));
+    }
+    assert_eq!(app.selected_project, PROJECTS.len() - 1);
+    assert_eq!(app.scroll_offset, app.projects_max_scroll());
 }
 
 #[test]

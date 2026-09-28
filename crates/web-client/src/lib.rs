@@ -296,6 +296,10 @@ pub fn start() -> Result<(), JsValue> {
                     "ArrowDown" => Some(Key::Down),
                     "ArrowLeft" => Some(Key::Left),
                     "ArrowRight" => Some(Key::Right),
+                    "PageUp" => Some(Key::PageUp),
+                    "PageDown" => Some(Key::PageDown),
+                    "Home" => Some(Key::Home),
+                    "End" => Some(Key::End),
                     "Enter" => Some(Key::Enter),
                     "Escape" => Some(Key::Escape),
                     "Tab" => {

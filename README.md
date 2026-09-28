@@ -6,7 +6,7 @@ An interactive portfolio with a shared Rust application core and two front ends:
 
 The web client supports SVGA 800×600, SGA 640×480, VGA 640×400, EGA 640×350, CGA/C64 320×200, Atari 320×192, and ZX Spectrum 256×192 layouts. Resolution and color theme are independent choices. VGA Modern Dark is the default theme; Volkov Commander is available as a palette choice.
 
-The framebuffer uses 8-bit color indices. WebGL2 looks up the active 256-color palette from a 256×1 RGBA texture, then applies optional CRT effects. VGA-sized layouts use an 8×16 CP437 font. EGA uses a separately sourced 8×14 CP437 bitmap; compact layouts use 8×8 fonts. The EGA bitmap is licensed under CC BY-SA 4.0; see [its attribution](crates/framebuffer/assets/README.md).
+The framebuffer uses 8-bit color indices. WebGL2 looks up the active 256-color palette from a 256×1 RGBA texture, then applies optional CRT effects. VGA-sized layouts use an 8×16 CP437-ordered bitmap and compact layouts use 8×8 bitmaps. EGA uses a separately sourced 8×14 CP437 bitmap, licensed under CC BY-SA 4.0; see [its attribution](crates/framebuffer/assets/README.md). The provenance status for every bundled font and named palette is documented in [the asset audit](docs/font-palette-provenance.md).
 
 In the browser, `1`–`4` open Projects, CV, About, and Contact. `5` or `?` opens Help; `6` or `v` opens Visuals. `7` or `F7` opens the System dialog, where `1`–`8` select a resolution and `A`–`H` select a theme. `8`, `F8`, or `t` cycles themes when the dialog is closed. The bottom bar and portrait touch controls provide screen-specific shortcuts. Arrow keys navigate lists, Enter opens a project, and Escape returns or closes a dialog.
 

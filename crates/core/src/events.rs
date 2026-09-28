@@ -831,9 +831,7 @@ impl App {
                                 }
                             } else if self.selected_project > 0 {
                                 self.selected_project -= 1;
-                                if self.selected_project < self.scroll_offset {
-                                    self.scroll_offset = self.selected_project;
-                                }
+                                self.ensure_selected_project_visible();
                                 return true;
                             }
                         }
@@ -867,11 +865,7 @@ impl App {
                                 }
                             } else if self.selected_project + 1 < PROJECTS.len() {
                                 self.selected_project += 1;
-                                let max_vis = self.projects_max_visible();
-                                if self.selected_project >= self.scroll_offset + max_vis {
-                                    self.scroll_offset =
-                                        self.selected_project.saturating_sub(max_vis - 1);
-                                }
+                                self.ensure_selected_project_visible();
                                 return true;
                             }
                         }
@@ -936,8 +930,7 @@ impl App {
                                 self.detail_scroll = self.detail_max_scroll();
                             } else {
                                 self.selected_project = PROJECTS.len().saturating_sub(1);
-                                let max_vis = self.projects_max_visible();
-                                self.scroll_offset = PROJECTS.len().saturating_sub(max_vis);
+                                self.scroll_offset = self.projects_max_scroll();
                             }
                             return true;
                         }
@@ -1013,16 +1006,13 @@ impl App {
                         }
                         return true;
                     } else if dy > 0 && self.selected_project + 1 < PROJECTS.len() {
-                        self.selected_project += 1;
-                        if self.selected_project >= self.scroll_offset + 12 {
-                            self.scroll_offset = self.selected_project - 11;
-                        }
+                        self.selected_project =
+                            (self.selected_project + delta).min(PROJECTS.len() - 1);
+                        self.ensure_selected_project_visible();
                         return true;
                     } else if dy < 0 && self.selected_project > 0 {
-                        self.selected_project -= 1;
-                        if self.selected_project < self.scroll_offset {
-                            self.scroll_offset = self.selected_project;
-                        }
+                        self.selected_project = self.selected_project.saturating_sub(delta);
+                        self.ensure_selected_project_visible();
                         return true;
                     }
                 }
@@ -1739,15 +1729,9 @@ impl App {
                         } else if cols == 40 {
                             12
                         } else {
-                            11
+                            16
                         };
-                        let list_bot = if cols >= 80 {
-                            list_top
-                                + (self.projects_max_visible() as u16)
-                                    * self.resolution.line_height()
-                        } else {
-                            height.saturating_sub(16)
-                        };
+                        let list_bot = list_top + (self.projects_max_visible() as u16) * row_h;
                         if y >= list_top && y < list_bot {
                             let row_idx = ((y - list_top) / row_h) as usize;
                             let project_idx = self.scroll_offset + row_idx;
@@ -1756,6 +1740,7 @@ impl App {
                                     self.show_detail = true;
                                 } else {
                                     self.selected_project = project_idx;
+                                    self.ensure_selected_project_visible();
                                 }
                                 return true;
                             }

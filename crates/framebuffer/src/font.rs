@@ -1,7 +1,7 @@
 use pixel_ssh_view::PaletteMode;
 
-// IBM EGA 8x8 font with complete CP437 glyphs (0x00 - 0xFF)
-// Generated from nasinnia/data/ibm-ega-8x8.json
+// CP437-ordered 8x8 glyph data. The historic source and reuse rights for this
+// table have not been verified; see docs/font-palette-provenance.md.
 pub const FONT_WIDTH: u16 = 8;
 pub const FONT_HEIGHT: u16 = 8;
 
@@ -268,7 +268,8 @@ pub static CP437_FONT_8X8: [[u8; 8]; 256] = [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // CP437 0xFF
 ];
 
-// Sinclair ZX Spectrum authentic ROM 8x8 font
+// ZX-themed 8x8 glyph data. This table has no recorded ROM source or license;
+// see docs/font-palette-provenance.md.
 pub static ZX_SPECTRUM_FONT_8X8: [[u8; 8]; 256] = [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // 0x00
     [0x7E, 0x81, 0xA5, 0x81, 0xBD, 0x99, 0x81, 0x7E], // 0x01
@@ -528,7 +529,8 @@ pub static ZX_SPECTRUM_FONT_8X8: [[u8; 8]; 256] = [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // 0xFF
 ];
 
-// Commodore 64 authentic PETSCII 901225-01 8x8 font
+// C64-themed 8x8 glyph data. This table has no recorded character-ROM source
+// or license; see docs/font-palette-provenance.md.
 pub static C64_FONT_8X8: [[u8; 8]; 256] = [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // 0x00
     [0x7E, 0x81, 0xA5, 0x81, 0xBD, 0x99, 0x81, 0x7E], // 0x01
@@ -788,7 +790,8 @@ pub static C64_FONT_8X8: [[u8; 8]; 256] = [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // 0xFF
 ];
 
-// Atari 8-bit authentic REVAPAL ROM 8x8 font
+// Atari-themed 8x8 glyph data. This table has no recorded ROM source or
+// license; see docs/font-palette-provenance.md.
 pub static ATARI_FONT_8X8: [[u8; 8]; 256] = [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // 0x00
     [0x7E, 0x81, 0xA5, 0x81, 0xBD, 0x99, 0x81, 0x7E], // 0x01
@@ -1048,8 +1051,8 @@ pub static ATARI_FONT_8X8: [[u8; 8]; 256] = [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // 0xFF
 ];
 
-// IBM VGA 8x16 font with complete CP437 glyphs (0x00 - 0xFF)
-// Generated from nasinnia/data/ibm-vga-8x16.json
+// CP437-ordered 8x16 glyph data. The historic source and reuse rights for this
+// table have not been verified; see docs/font-palette-provenance.md.
 pub static CP437_FONT_8X16: [[u8; 16]; 256] = [
     [
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

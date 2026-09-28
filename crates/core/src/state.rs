@@ -126,6 +126,7 @@ impl App {
     pub fn set_resolution(&mut self, res: ResolutionMode) {
         self.resolution = res;
         self.system_mode = res.to_system_mode();
+        self.ensure_selected_project_visible();
         let (w, h) = self.resolution.resolution();
         let (c, r) = self.resolution.char_grid();
         self.status = format!("Resolution: {} ({}x{}, {}x{} cols)", res.name(), w, h, c, r);
@@ -191,8 +192,35 @@ impl App {
                 100 => 24,
                 80 => 15,
                 40 => 12,
-                _ => 10,
+                // ZX gives each item a title row and a separate tag row. Eight
+                // two-row items fit above the navigation bar and leave one row
+                // for the list position and controls.
+                _ => 8,
             }
+        }
+    }
+
+    pub fn projects_max_scroll(&self) -> usize {
+        PROJECTS.len().saturating_sub(self.projects_max_visible())
+    }
+
+    /// Keeps the current project in the visible window after a navigation or
+    /// resolution change. Rendering can then use one shared row count.
+    pub fn ensure_selected_project_visible(&mut self) {
+        if PROJECTS.is_empty() {
+            self.selected_project = 0;
+            self.scroll_offset = 0;
+            return;
+        }
+
+        self.selected_project = self.selected_project.min(PROJECTS.len() - 1);
+        let visible = self.projects_max_visible();
+        self.scroll_offset = self.scroll_offset.min(self.projects_max_scroll());
+
+        if self.selected_project < self.scroll_offset {
+            self.scroll_offset = self.selected_project;
+        } else if self.selected_project >= self.scroll_offset + visible {
+            self.scroll_offset = self.selected_project + 1 - visible;
         }
     }
 

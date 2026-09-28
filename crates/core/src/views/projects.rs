@@ -507,21 +507,23 @@ impl App {
             return;
         }
 
-        let max_visible = 12;
-        let start = self.scroll_offset;
+        let max_visible = self.projects_max_visible();
+        let start = self.scroll_offset.min(self.projects_max_scroll());
         let end = (start + max_visible).min(PROJECTS.len());
 
         for (i, p) in PROJECTS[start..end].iter().enumerate() {
             let idx = start + i;
             let is_sel = idx == self.selected_project;
-            let y = 24 + (i as u16) * 11;
+            // Each ZX item owns two text rows: title and tags. This prevents a
+            // long tag marquee from running into the next project title.
+            let y = 24 + (i as u16) * 16;
 
             if is_sel {
                 view.add(Element::Rect(RectElement {
                     x: 1,
                     y: y - 1,
                     width: 254,
-                    height: 11,
+                    height: 16,
                     color: Color::from_palette(2),
                     filled: true,
                 }));
@@ -537,7 +539,7 @@ impl App {
             };
 
             let num = format!("{:02}", idx + 1);
-            let title = horizontal_scroll(p.title, 12, self.tick);
+            let title = horizontal_scroll(p.title, 27, self.tick);
 
             let tag_str = p
                 .tags
@@ -545,8 +547,8 @@ impl App {
                 .map(|t| format!("<{t}>"))
                 .collect::<Vec<_>>()
                 .join(" ");
-            let tag_display = if is_sel || tag_str.chars().count() > 12 {
-                horizontal_scroll(&tag_str, 12, self.tick)
+            let tag_display = if is_sel || tag_str.chars().count() > 29 {
+                horizontal_scroll(&tag_str, 29, self.tick)
             } else {
                 tag_str
             };
@@ -554,21 +556,23 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 2,
                 y,
-                text: format!("{marker}{num:<2} {title:<12} {tag_display}"),
+                text: format!("{marker}{num} {title:<27}"),
                 style: TextStyle::new(fg).bold(),
+            }));
+
+            view.add(Element::Text(TextElement {
+                x: 2,
+                y: y + 8,
+                text: format!("  {tag_display:<29}"),
+                style: TextStyle::new(Color::from_palette(4)),
             }));
         }
 
         if PROJECTS.len() > max_visible {
             view.add(Element::Text(TextElement {
                 x: 2,
-                y: 156,
-                text: format!(
-                    "{}-{} of {}. [j/k]Nav [Enter]",
-                    start + 1,
-                    end,
-                    PROJECTS.len()
-                ),
+                y: 24 + (max_visible as u16) * 16,
+                text: format!("{:02}-{:02}/{} j/k ENTER", start + 1, end, PROJECTS.len()),
                 style: TextStyle::new(Color::from_palette(4)),
             }));
         }

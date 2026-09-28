@@ -50,7 +50,8 @@ impl Framebuffer {
 
         match theme {
             ColorTheme::Commander => {
-                // Volkov Commander / Norton Commander classic DOS palette
+                // Application palette inspired by DOS file managers. No source
+                // palette or byte-for-byte match has been recorded.
                 p[0] = [0, 0, 168, 255]; // 0: #0000a8 (Iconic Commander navy blue background)
                 p[1] = [0, 168, 168, 255]; // 1: #00aaaa (Cyan header bar / accent)
                 p[2] = [0, 168, 168, 255]; // 2: #00aaaa (Selected item cyan background bar)
@@ -132,7 +133,8 @@ impl Framebuffer {
                 }
             }
             ColorTheme::Ega => {
-                // Classic IBM EGA / CGA 16-color RGBI hardware palette
+                // Application role palette using RGBI-like colors. Its role
+                // indices and RGB values are not a verified EGA/CGA palette.
                 p[0] = [0, 0, 0, 255]; // Black
                 p[1] = [0, 0, 170, 255]; // Blue
                 p[2] = [0, 170, 0, 255]; // Green
@@ -155,7 +157,8 @@ impl Framebuffer {
                 }
             }
             ColorTheme::ZxSpectrum => {
-                // Official Sinclair ZX Spectrum 16-color palette (8 normal + 8 bright)
+                // Application role palette inspired by the Spectrum's normal
+                // and bright colors; values have not been verified to hardware.
                 p[0] = [0, 0, 0, 255]; // Black bg
                 p[1] = [0, 0, 192, 255]; // Blue header / dither base
                 p[2] = [0, 0, 255, 255]; // Bright blue selection
@@ -178,7 +181,8 @@ impl Framebuffer {
                 }
             }
             ColorTheme::C64 => {
-                // Strict Commodore 64 VIC-II hardware palette (Pepto / Colodore standard)
+                // Application role palette using C64-associated colors. No
+                // Pepto or Colodore version/settings were recorded for this RGB set.
                 p[0] = [64, 49, 141, 255]; // VIC-II #6 Blue background (#40318D)
                 p[1] = [51, 51, 51, 255]; // VIC-II #11 Dark Grey (card dither base)
                 p[2] = [112, 109, 235, 255]; // VIC-II #14 Light Blue (selection dither base)
@@ -201,7 +205,8 @@ impl Framebuffer {
                 }
             }
             ColorTheme::Atari => {
-                // Strict Atari 800 GTIA hardware color palette
+                // Application RGB approximation inspired by Atari colors. GTIA
+                // produces composite signals, so it has no single hardware RGB table.
                 p[0] = [0, 0, 0, 255]; // GTIA Deep dark umber / black
                 p[1] = [64, 40, 16, 255]; // GTIA Dark bronze (card dither base)
                 p[2] = [144, 96, 24, 255]; // GTIA Gold selection (dither base)
@@ -250,7 +255,8 @@ impl Framebuffer {
                 }
             }
             ColorTheme::Amber => {
-                // Strictly monochromatic Amber CRT phosphor (P134/P20 - pure 588nm yellow-orange emission, blue = 0)
+                // Single-tint amber display palette. The RGB values are a design
+                // choice, not a measured P134/P20 phosphor representation.
                 p[0] = [0, 0, 0, 255]; // Tube off
                 p[1] = [50, 32, 0, 255]; // Dim amber (card dither base)
                 p[2] = [95, 61, 0, 255]; // Medium-low amber (selection dither base)
@@ -274,7 +280,8 @@ impl Framebuffer {
                 }
             }
             ColorTheme::GreenCrt => {
-                // Strictly monochromatic P1 phosphor Green CRT (IBM 5151 / MDA - pure green emission, red = 0, blue = 0)
+                // Single-tint green display palette. The RGB values are a design
+                // choice, not a measured IBM 5151 or P1 phosphor representation.
                 p[0] = [0, 0, 0, 255]; // Tube off
                 p[1] = [0, 45, 0, 255]; // Dim green (card dither base)
                 p[2] = [0, 90, 0, 255]; // Medium-low green (selection dither base)
@@ -365,7 +372,7 @@ impl Framebuffer {
                 }
             }
             (ColorTheme::C64, 1) => {
-                // Authentic C64 GEOS-style 50% checkerboard dither: background blue (0) and dark grey (1)
+                // Application 50% checkerboard: background blue (0) and dark grey (1).
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
                     for cx in x..x_end {
@@ -385,7 +392,7 @@ impl Framebuffer {
                 }
             }
             (ColorTheme::Atari, 1) => {
-                // Authentic Atari GEM 50% dither: dark umber (0) and bronze (1)
+                // Application 50% checkerboard: dark umber (0) and bronze (1).
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
                     for cx in x..x_end {
@@ -395,7 +402,7 @@ impl Framebuffer {
                 }
             }
             (ColorTheme::Atari, 2) => {
-                // Authentic Atari GEM 50% dither: dark umber (0) and gold (2)
+                // Application 50% checkerboard: dark umber (0) and gold (2).
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
                     for cx in x..x_end {
@@ -693,7 +700,8 @@ impl Framebuffer {
                 // Classic DOS text mode full character cell block cursor.
                 // Takes the whole single character (8px wide, 16px high or 8px high on CGA).
                 // Adds cursor background (Bright Red on VGA/EGA/CGA, Amber beam on Amber, Green phosphor on Green)
-                // and inverts the symbol glyph at the symbol place (to black / 0) for authentic DOS NC legibility.
+                // and inverts the symbol glyph at the symbol place (to black / 0)
+                // for a high-contrast DOS-style cursor.
                 let cursor_bg = match mode {
                     PaletteMode::Amber => 6,    // High intensity Amber beam
                     PaletteMode::GreenCrt => 6, // High intensity Green phosphor beam
@@ -755,7 +763,7 @@ impl Framebuffer {
                 }
             }
             PaletteMode::C64 => {
-                // Official Commodore 1351 / GEOS hardware mouse arrow pointer (11x14 sprite).
+                // C64-style 11x14 mouse pointer.
                 const C64_GEOS_ARROW: [[u8; 11]; 14] = [
                     [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     [1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -785,7 +793,7 @@ impl Framebuffer {
                 }
             }
             PaletteMode::ZxSpectrum => {
-                // Official Sinclair ZX Spectrum AMX / Kempston mouse arrow pointer (8x12 pixels).
+                // ZX-style 8x12 mouse pointer.
                 const ZX_AMX_ARROW: [[u8; 8]; 12] = [
                     [1, 1, 0, 0, 0, 0, 0, 0],
                     [1, 2, 1, 0, 0, 0, 0, 0],
@@ -813,7 +821,7 @@ impl Framebuffer {
                 }
             }
             PaletteMode::Atari => {
-                // Official Atari GEM desktop arrow pointer (11x16 pixels).
+                // Atari-style 11x16 mouse pointer.
                 const ATARI_ARROW: [[u8; 11]; 16] = [
                     [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     [1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -886,7 +894,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fonts_are_unique_and_authentic_per_system() {
+    fn fonts_are_distinct_per_system() {
         let vga = font_for_mode(PaletteMode::Vga);
         let zx = font_for_mode(PaletteMode::ZxSpectrum);
         let c64 = font_for_mode(PaletteMode::C64);
@@ -1038,7 +1046,7 @@ mod tests {
     }
 
     #[test]
-    fn test_monochrome_palettes_have_strict_phosphor_purity() {
+    fn monochrome_palettes_keep_unwanted_rgb_channels_zero() {
         let green_p = Framebuffer::palette_for_mode(PaletteMode::GreenCrt);
         for (i, entry) in green_p.iter().enumerate() {
             assert_eq!(
