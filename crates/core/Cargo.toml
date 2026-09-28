@@ -1,0 +1,9 @@
+[package]
+name = "pixel-ssh-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Platform-independent application logic and session state"
+
+[dependencies]
+pixel-ssh-view = { path = "../view" }

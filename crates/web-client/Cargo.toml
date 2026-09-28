@@ -1,0 +1,27 @@
+[package]
+name = "pixel-ssh-web-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WebAssembly client running the pixel-first application in the browser"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pixel-ssh-core = { path = "../core" }
+pixel-ssh-view = { path = "../view" }
+pixel-ssh-framebuffer = { path = "../framebuffer" }
+pixel-ssh-render-web = { path = "../render-web" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Document",
+    "HtmlCanvasElement",
+    "KeyboardEvent",
+    "MouseEvent",
+    "console",
+] }
+js-sys = "0.3"

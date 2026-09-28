@@ -1,0 +1,25 @@
+[workspace]
+members = [
+    "crates/view",
+    "crates/core",
+    "crates/framebuffer",
+    "crates/render-web",
+    "crates/render-ansi",
+    "crates/web-client",
+    "crates/ssh-server",
+    "crates/web-gateway",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Dmytro Yemelianov <dmytro@yemelianov.dev>"]
+license = "MIT"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

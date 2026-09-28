@@ -1,0 +1,21 @@
+[package]
+name = "pixel-ssh-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native Rust SSH server exposing the pixel application via ANSI terminal"
+
+[[bin]]
+name = "pixel-ssh-server"
+path = "src/main.rs"
+
+[dependencies]
+pixel-ssh-core = { path = "../core" }
+pixel-ssh-view = { path = "../view" }
+pixel-ssh-render-ansi = { path = "../render-ansi" }
+
+russh = "0.50.0"
+tokio = { version = "1", features = ["full"] }
+rand = "0.8"
+log = "0.4"
+env_logger = "0.11"

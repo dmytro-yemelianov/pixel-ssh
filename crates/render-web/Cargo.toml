@@ -1,0 +1,23 @@
+[package]
+name = "pixel-ssh-render-web"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WebGL2 indexed framebuffer renderer for WebAssembly"
+
+[dependencies]
+pixel-ssh-framebuffer = { path = "../framebuffer" }
+pixel-ssh-view = { path = "../view" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = [
+    "WebGl2RenderingContext",
+    "WebGlProgram",
+    "WebGlShader",
+    "WebGlTexture",
+    "WebGlBuffer",
+    "WebGlUniformLocation",
+    "HtmlCanvasElement",
+] }
+js-sys = "0.3"

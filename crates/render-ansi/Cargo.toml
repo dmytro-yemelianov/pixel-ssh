@@ -1,0 +1,9 @@
+[package]
+name = "pixel-ssh-render-ansi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Terminal ANSI renderer and control-character sanitizer"
+
+[dependencies]
+pixel-ssh-view = { path = "../view" }
