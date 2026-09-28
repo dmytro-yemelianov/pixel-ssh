@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make the native 32-column ZX layout readable on the Projects and CV screens, with usable keyboard and touch scrolling. Audit the font and palette claims that appear in code and user-facing copy. Preserve the independent resolution and color theme choices; Volkov Commander remains an optional palette.
+Make the native 32-column ZX layout readable on the Projects and CV screens, with usable keyboard and touch scrolling. Audit the font and palette claims that appear in code and user-facing copy. Each system now applies its native font and palette; `S` cycles only the eight systems.
 
 ## Compact layout requirements
 

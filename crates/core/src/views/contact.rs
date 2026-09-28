@@ -204,7 +204,7 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 16,
                 y: hint_y,
-                text: "Click a contact channel above • P/H/S/C/T/Q menu below".to_string(),
+                text: "Click a contact channel above • P/H/S/V/Q menu below".to_string(),
                 style: TextStyle::new(Color::from_palette(4)),
             }));
         }

@@ -105,129 +105,57 @@ fn test_all_systems_and_tabs_render_within_bounds() {
 }
 
 #[test]
-fn test_system_switching_key_and_click() {
-    // On Web: 's' opens System modal, digit key selects mode
-    let mut app = App::new_web();
-    assert_eq!(app.system_mode, SystemMode::Vga);
-    assert_eq!(app.system_mode.char_grid(), (80, 25));
-    assert_eq!(app.system_mode.resolution(), (640, 400));
+fn system_key_and_footer_cycle_native_presets() {
+    for initial in ResolutionMode::ALL {
+        let mut app = App::new_web();
+        app.set_resolution(initial);
+        let next = initial.next();
+        assert!(app.update(InputEvent::KeyDown(Key::Char('s'))));
+        assert_eq!(app.resolution, next);
+        assert_eq!(app.active_modal, ActiveModal::None);
+        assert_eq!(app.system_mode, next.to_system_mode());
+        let expected_palette = match next {
+            ResolutionMode::Svga | ResolutionMode::Sga | ResolutionMode::Vga => {
+                ColorPalette::VgaModern
+            }
+            ResolutionMode::Ega | ResolutionMode::Cga => ColorPalette::Ega,
+            ResolutionMode::C64 => ColorPalette::C64,
+            ResolutionMode::Atari => ColorPalette::Atari,
+            ResolutionMode::ZxSpectrum => ColorPalette::ZxSpectrum,
+        };
+        assert_eq!(app.color_palette, expected_palette);
+        assert_eq!(app.palette_mode, app.interface_theme.font_mode());
 
-    // Press 's' opens System modal
-    assert!(app.update(InputEvent::KeyDown(Key::Char('s'))));
-    assert_eq!(app.active_modal, ActiveModal::System);
-
-    // Key '8' in System modal selects ZxSpectrum (8th mode in ALL)
-    assert!(app.update(InputEvent::KeyDown(Key::Char('8'))));
-    assert_eq!(app.system_mode, SystemMode::ZxSpectrum);
-    assert_eq!(app.system_mode.char_grid(), (32, 24));
-    assert_eq!(app.system_mode.resolution(), (256, 192));
-    assert_eq!(app.active_modal, ActiveModal::None);
-
-    // Terminal uses the same explicit System selector.
-    let mut app_term = App::new_terminal();
-    assert_eq!(app_term.system_mode, SystemMode::Vga);
-    assert!(app_term.update(InputEvent::KeyDown(Key::Char('s'))));
-    assert_eq!(app_term.active_modal, ActiveModal::System);
-    assert!(app_term.update(InputEvent::KeyDown(Key::Char('4'))));
-    assert_eq!(app_term.system_mode, SystemMode::Ega);
-    assert_eq!(app_term.resolution, ResolutionMode::Ega);
-    assert_eq!(app_term.color_palette, ColorPalette::VgaModern);
-    assert!(app_term.update(InputEvent::KeyDown(Key::Char('s'))));
-    assert_eq!(app_term.active_modal, ActiveModal::System);
-}
-
-#[test]
-fn test_system_dialog_clicks_match_all_visible_choices() {
-    for initial_resolution in [
-        ResolutionMode::Vga,
-        ResolutionMode::Ega,
-        ResolutionMode::C64,
-        ResolutionMode::ZxSpectrum,
-    ] {
-        for (index, expected) in ResolutionMode::ALL.iter().enumerate() {
-            let mut app = App::new_web();
-            app.set_resolution(initial_resolution);
-            app.active_modal = ActiveModal::System;
-            let geometry = app.system_dialog_geometry();
-            let view = app.render();
-            assert!(view.elements.iter().any(|element| matches!(element,
-                Element::Link(link) if link.text.contains(&format!("[{}]", index + 1))
-            )));
-            let y = geometry.box_y + (2 + index as u16) * geometry.char_h + 1;
-            assert!(app.update(InputEvent::PointerDown {
-                x: geometry.box_x + 32,
-                y,
-                button: Button::Left
-            }));
-            assert_eq!(
-                app.resolution, *expected,
-                "resolution row {index} in {initial_resolution:?}"
-            );
-            assert_eq!(app.active_modal, ActiveModal::None);
-        }
-
-        for (index, expected) in ColorPalette::ALL.iter().enumerate() {
-            let mut app = App::new_web();
-            app.set_resolution(initial_resolution);
-            app.active_modal = ActiveModal::Color;
-            let geometry = app.system_dialog_geometry();
-            let view = app.render();
-            assert!(view.elements.iter().any(|element| matches!(element,
-                Element::Link(link) if link.text.contains(&format!("[{}]", index + 1))
-            )));
-            let y = geometry.box_y + (2 + index as u16) * geometry.char_h + 1;
-            let x = geometry.box_x
-                + if initial_resolution.char_grid().0 >= 80 {
-                    72
-                } else {
-                    24
-                };
-            assert!(app.update(InputEvent::PointerDown {
-                x,
-                y,
-                button: Button::Left
-            }));
-            assert_eq!(
-                app.color_palette, *expected,
-                "palette row {index} in {initial_resolution:?}"
-            );
-            assert_eq!(app.active_modal, ActiveModal::None);
-        }
-
-        for (index, expected) in InterfaceTheme::ALL.iter().enumerate() {
-            let mut app = App::new_web();
-            app.set_resolution(initial_resolution);
-            app.active_modal = ActiveModal::Theme;
-            let geometry = app.system_dialog_geometry();
-            let y = geometry.box_y + (2 + index as u16) * geometry.char_h + 1;
-            assert!(app.update(InputEvent::PointerDown {
-                x: geometry.box_x + 24,
-                y,
-                button: Button::Left
-            }));
-            assert_eq!(app.interface_theme, *expected);
-            assert_eq!(app.resolution, initial_resolution);
-            assert_eq!(app.active_modal, ActiveModal::None);
-        }
+        let (width, height) = app.resolution.resolution();
+        let nav_y = if app.resolution.char_grid().0 < 80 {
+            height - 20
+        } else {
+            height - 32
+        };
+        assert!(app.update(InputEvent::PointerDown {
+            x: width * 2 / 5 + 1,
+            y: nav_y + 2,
+            button: Button::Left,
+        }));
+        assert_eq!(app.resolution, next.next());
     }
 }
 
 #[test]
-fn test_article_theme_shortcut_opens_theme_selector() {
+fn article_system_key_cycles_without_opening_selector() {
     let mut app = App::new_web();
     app.current_tab = Tab::Resume;
-    assert!(app.update(InputEvent::KeyDown(Key::Char('t'))));
-    assert_eq!(app.active_modal, ActiveModal::Theme);
-    assert!(app.update(InputEvent::KeyDown(Key::Char('3'))));
-    assert_eq!(app.interface_theme, InterfaceTheme::C64);
+    assert!(app.update(InputEvent::KeyDown(Key::Char('s'))));
+    assert_eq!(app.resolution, ResolutionMode::Ega);
     assert_eq!(app.active_modal, ActiveModal::None);
+    assert_eq!(app.current_tab, Tab::Resume);
 }
 
 #[test]
 fn test_terminal_mode_omits_visuals_tab_and_cycles_cleanly() {
     let mut app = App::new_terminal();
     assert_eq!(app.platform, Platform::Terminal);
-    assert!(app.status.contains("S System"));
+    assert!(app.status.contains("S Cycle system"));
 
     // Render in 80 cols and verify no Visuals tab is in the header
     let view = app.render();
@@ -438,37 +366,22 @@ fn test_zx_spectrum_navpanel_no_overlapping_chars() {
 }
 
 #[test]
-fn test_zx_theme_keeps_vga_layout_on_projects_and_article() {
+fn native_zx_system_uses_its_own_geometry_and_colors() {
     let mut app = App::new_web();
-    assert_eq!(app.color_palette, ColorPalette::VgaModern);
-    app.set_color_palette(ColorPalette::ZxSpectrum);
-    assert_eq!(app.resolution, ResolutionMode::Vga);
-
+    app.set_resolution(ResolutionMode::ZxSpectrum);
+    assert_eq!(app.color_palette, ColorPalette::ZxSpectrum);
+    assert_eq!(app.interface_theme, InterfaceTheme::ZxSpectrum);
     let projects = app.render();
-    assert_eq!((projects.width, projects.height), (640, 400));
-    assert!(projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.x == 16 && t.y == 112 && t.text.contains("[01]")
-    )));
-    assert!(!projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y == 24 && t.text.contains("[01]")
-    )));
-
+    assert_eq!((projects.width, projects.height), (256, 192));
     app.current_tab = Tab::Resume;
     let article = app.render();
-    assert_eq!((article.width, article.height), (640, 400));
-    assert!(article.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y == 32 && t.text.contains("CURRICULUM VITAE")
-    )));
-    assert!(article.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y == 48 && t.x == 32
-    )));
+    assert_eq!((article.width, article.height), (256, 192));
 }
 
 #[test]
 fn test_native_zx_content_stays_above_bottom_navigation() {
     let mut app = App::new_web();
     app.set_resolution(ResolutionMode::ZxSpectrum);
-    app.set_color_palette(ColorPalette::ZxSpectrum);
 
     let projects = app.render();
     let nav_y = projects.height - 20;
@@ -1108,33 +1021,13 @@ fn test_modal_and_article_strict_event_capture() {
     app.current_tab = Tab::Projects;
     app.selected_project = 0;
 
-    // 1. Open System modal
-    app.active_modal = ActiveModal::System;
-
-    // Pressing Down/Up or Tab should NOT navigate project list or switch tabs
+    // Help captures navigation while open.
+    app.active_modal = ActiveModal::Help;
     app.update(InputEvent::KeyDown(Key::Down));
-    assert_eq!(
-        app.selected_project, 0,
-        "Modal must not allow Down arrow to leak to background project list"
-    );
-    assert_eq!(app.current_tab, Tab::Projects);
-
+    assert_eq!(app.selected_project, 0);
     app.update(InputEvent::KeyDown(Key::Tab));
-    assert_eq!(
-        app.current_tab,
-        Tab::Projects,
-        "Modal must not allow Tab to leak to background tab bar"
-    );
-
-    // Selecting resolution '4' (EGA)
-    app.update(InputEvent::KeyDown(Key::Char('4')));
-    assert_eq!(app.resolution, ResolutionMode::Ega);
-    assert_eq!(app.active_modal, ActiveModal::None);
-
-    // Open Color and select the final Commander palette row.
-    app.active_modal = ActiveModal::Color;
-    app.update(InputEvent::KeyDown(Key::Char('8')));
-    assert_eq!(app.color_palette, ColorPalette::Commander);
+    assert_eq!(app.current_tab, Tab::Projects);
+    app.update(InputEvent::KeyDown(Key::Escape));
     assert_eq!(app.active_modal, ActiveModal::None);
 
     // 2. Open Visuals modal
@@ -1158,7 +1051,7 @@ fn test_modal_and_article_strict_event_capture() {
     assert_eq!(app.active_modal, ActiveModal::None);
 
     // 4. Click outside modal dismisses it without clicking background
-    app.active_modal = ActiveModal::System;
+    app.active_modal = ActiveModal::Help;
     app.update(InputEvent::PointerDown {
         x: 5,
         y: 5,
@@ -1215,21 +1108,122 @@ fn test_volkov_commander_clock_badge_without_forcing_panel_layout() {
 }
 
 #[test]
-fn visual_setting_axes_are_independent() {
+fn system_change_applies_native_font_and_palette() {
     let mut app = App::new_web();
-    let original_palette = app.color_palette;
-    let original_theme = app.interface_theme;
+    for resolution in ResolutionMode::ALL {
+        app.set_resolution(resolution);
+        assert_eq!(app.palette_mode, app.interface_theme.font_mode());
+        assert_eq!(app.system_mode, resolution.to_system_mode());
+    }
+    app.set_resolution(ResolutionMode::Vga);
+    assert_eq!(app.color_palette, ColorPalette::VgaModern);
+    assert_eq!(app.interface_theme, InterfaceTheme::Modern);
+}
 
-    app.set_resolution(ResolutionMode::ZxSpectrum);
-    assert_eq!(app.color_palette, original_palette);
-    assert_eq!(app.interface_theme, original_theme);
+#[test]
+fn compact_views_keep_text_inside_screen() {
+    let mut overflows = Vec::new();
+    for resolution in [
+        ResolutionMode::Cga,
+        ResolutionMode::C64,
+        ResolutionMode::Atari,
+        ResolutionMode::ZxSpectrum,
+    ] {
+        for modal in [ActiveModal::None, ActiveModal::Visuals, ActiveModal::Help] {
+            let mut app = App::new_web();
+            app.set_resolution(resolution);
+            app.active_modal = modal;
+            for (tab, detail, last_page) in [
+                (Tab::Projects, false, false),
+                (Tab::Projects, false, true),
+                (Tab::Projects, true, false),
+                (Tab::Projects, true, true),
+                (Tab::Resume, false, false),
+                (Tab::Resume, false, true),
+                (Tab::About, false, false),
+                (Tab::About, false, true),
+            ] {
+                app.current_tab = tab;
+                app.show_detail = detail;
+                app.selected_project = PROJECTS.len() - 1;
+                app.scroll_offset = if last_page {
+                    app.projects_max_scroll()
+                } else {
+                    0
+                };
+                app.detail_scroll = if last_page {
+                    app.detail_max_scroll()
+                } else {
+                    0
+                };
+                app.resume_scroll = if last_page {
+                    app.resume_max_scroll()
+                } else {
+                    0
+                };
+                app.about_scroll = if last_page { app.about_max_scroll() } else { 0 };
+                let view = app.render();
+                for element in &view.elements {
+                    let (x, y, count, label) = match element {
+                        Element::Text(t) => (t.x, t.y, t.text.chars().count(), t.text.as_str()),
+                        Element::Link(l) => (l.x, l.y, l.text.chars().count(), l.text.as_str()),
+                        _ => continue,
+                    };
+                    if x as usize + count * 8 > view.width as usize {
+                        overflows.push(format!(
+                            "{resolution:?} {modal:?} {tab:?}: ({x},{y}) {label}"
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    assert!(overflows.is_empty(), "{}", overflows.join("\n"));
+}
 
-    app.set_color_palette(ColorPalette::C64);
-    assert_eq!(app.resolution, ResolutionMode::ZxSpectrum);
-    assert_eq!(app.interface_theme, original_theme);
+#[test]
+fn compact_visuals_controls_reach_last_property_and_show_preset() {
+    for resolution in [ResolutionMode::Cga, ResolutionMode::ZxSpectrum] {
+        let mut app = App::new_web();
+        app.set_resolution(resolution);
+        app.active_modal = ActiveModal::Visuals;
+        let geometry = app.standard_dialog_geometry();
+        let view = app.render();
+        assert!(view.elements.iter().any(|element| matches!(element,
+            Element::Text(text) if text.text.contains("PRESET: Default")
+        )));
+        assert!(app.update(InputEvent::KeyDown(Key::Up)));
+        assert_eq!(app.selected_fx_slider, 8);
+        assert!(app.update(InputEvent::KeyDown(Key::Right)));
+        assert!(app.visual_effects.noise > 0.0);
+        assert!(app.update(InputEvent::PointerDown {
+            x: geometry.box_x + 9,
+            y: geometry.box_y + 12 * geometry.char_h + 1,
+            button: Button::Left,
+        }));
+        assert_eq!(app.visual_effects, VisualEffects::clean());
+        assert!(app.update(InputEvent::KeyDown(Key::Char('s'))));
+        assert_eq!(app.resolution, resolution.next());
+        assert_eq!(app.active_modal, ActiveModal::None);
+    }
+}
 
-    app.set_interface_theme(InterfaceTheme::Modern);
-    assert_eq!(app.resolution, ResolutionMode::ZxSpectrum);
-    assert_eq!(app.color_palette, ColorPalette::C64);
-    assert_eq!(app.palette_mode, InterfaceTheme::Modern.font_mode());
+#[test]
+fn wide_visuals_pointer_matches_rendered_rows() {
+    let mut app = App::new_web();
+    app.active_modal = ActiveModal::Visuals;
+    let geometry = app.standard_dialog_geometry();
+    assert!(app.update(InputEvent::PointerDown {
+        x: geometry.box_x + 144 + 56,
+        y: geometry.box_y + 11 * geometry.char_h + 1,
+        button: Button::Left,
+    }));
+    assert_eq!(app.selected_fx_slider, 8);
+    assert!((app.visual_effects.noise - 0.5).abs() < 0.01);
+    assert!(app.update(InputEvent::PointerDown {
+        x: geometry.box_x + 180,
+        y: geometry.box_y + geometry.char_h + 1,
+        button: Button::Left,
+    }));
+    assert_eq!(app.visual_effects, VisualEffects::crt_trinitron());
 }

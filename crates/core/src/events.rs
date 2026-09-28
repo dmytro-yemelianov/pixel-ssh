@@ -2,10 +2,7 @@
 
 use crate::data::PROJECTS;
 use crate::state::{App, Tab};
-use pixel_ssh_view::{
-    ActiveModal, ColorPalette, InputEvent, InterfaceTheme, Key, Platform, ResolutionMode,
-    VisualEffects,
-};
+use pixel_ssh_view::{ActiveModal, InputEvent, Key, Platform, VisualEffects};
 
 const PROJECT_LIST_PREFIX_ITEMS: usize = 3;
 
@@ -50,63 +47,15 @@ impl App {
                     return true;
                 }
 
+                if matches!(key, Key::Char('s') | Key::Char('S')) {
+                    self.set_resolution(self.resolution.next());
+                    self.active_modal = ActiveModal::None;
+                    return true;
+                }
+
                 // If active modal is open, modal captures all keys exclusively!
                 if self.active_modal != ActiveModal::None {
                     match self.active_modal {
-                        ActiveModal::System => {
-                            match key {
-                                Key::Escape | Key::Char('s') | Key::Char('S') => {
-                                    self.active_modal = ActiveModal::None;
-                                    return true;
-                                }
-                                Key::Char(c @ '1'..='8') => {
-                                    let idx = (c as usize) - ('1' as usize);
-                                    if idx < ResolutionMode::ALL.len() {
-                                        self.set_resolution(ResolutionMode::ALL[idx]);
-                                        self.active_modal = ActiveModal::None;
-                                        return true;
-                                    }
-                                }
-                                _ => {}
-                            }
-                            return true; // Modal captures and swallows all other keys
-                        }
-                        ActiveModal::Color => {
-                            match key {
-                                Key::Escape | Key::Char('c') | Key::Char('C') => {
-                                    self.active_modal = ActiveModal::None;
-                                    return true;
-                                }
-                                Key::Char(c @ '1'..='8') => {
-                                    let idx = (c as usize) - ('1' as usize);
-                                    if idx < ColorPalette::ALL.len() {
-                                        self.set_color_palette(ColorPalette::ALL[idx]);
-                                        self.active_modal = ActiveModal::None;
-                                        return true;
-                                    }
-                                }
-                                _ => {}
-                            }
-                            return true;
-                        }
-                        ActiveModal::Theme => {
-                            match key {
-                                Key::Escape | Key::Char('t') | Key::Char('T') => {
-                                    self.active_modal = ActiveModal::None;
-                                    return true;
-                                }
-                                Key::Char(c @ '1'..='8') => {
-                                    let idx = (c as usize) - ('1' as usize);
-                                    if idx < InterfaceTheme::ALL.len() {
-                                        self.set_interface_theme(InterfaceTheme::ALL[idx]);
-                                        self.active_modal = ActiveModal::None;
-                                        return true;
-                                    }
-                                }
-                                _ => {}
-                            }
-                            return true;
-                        }
                         ActiveModal::Visuals => {
                             match key {
                                 Key::Escape | Key::Char('v') | Key::Char('V') => {
@@ -144,11 +93,11 @@ impl App {
                                     return true;
                                 }
                                 Key::Up | Key::Char('k') => {
-                                    self.selected_fx_slider = (self.selected_fx_slider + 7) % 8;
+                                    self.selected_fx_slider = (self.selected_fx_slider + 8) % 9;
                                     return true;
                                 }
                                 Key::Down | Key::Char('j') => {
-                                    self.selected_fx_slider = (self.selected_fx_slider + 1) % 8;
+                                    self.selected_fx_slider = (self.selected_fx_slider + 1) % 9;
                                     return true;
                                 }
                                 Key::Left | Key::Char('h') => {
@@ -300,18 +249,7 @@ impl App {
                             self.active_modal = ActiveModal::Visuals;
                             return true;
                         }
-                        Key::Char('s') | Key::Char('S') => {
-                            self.active_modal = ActiveModal::System;
-                            return true;
-                        }
-                        Key::Char('c') | Key::Char('C') => {
-                            self.active_modal = ActiveModal::Color;
-                            return true;
-                        }
-                        Key::Char('t') | Key::Char('T') => {
-                            self.active_modal = ActiveModal::Theme;
-                            return true;
-                        }
+
                         Key::Tab => {
                             self.current_tab = match self.current_tab {
                                 Tab::Resume => Tab::About,
@@ -383,7 +321,7 @@ impl App {
 
                 match key {
                     // Workstation controls use their visible first letters.
-                    // Digits remain available inside selector modals only.
+                    // Digits have no global navigation assignment.
                     Key::Char('p') | Key::Char('P') => {
                         self.current_tab = Tab::Projects;
                         self.show_detail = false;
@@ -411,18 +349,6 @@ impl App {
                         } else {
                             ActiveModal::Visuals
                         };
-                        true
-                    }
-                    Key::Char('s') | Key::Char('S') => {
-                        self.active_modal = ActiveModal::System;
-                        true
-                    }
-                    Key::Char('c') | Key::Char('C') if self.current_tab != Tab::Visuals => {
-                        self.active_modal = ActiveModal::Color;
-                        true
-                    }
-                    Key::Char('t') | Key::Char('T') => {
-                        self.active_modal = ActiveModal::Theme;
                         true
                     }
 
@@ -993,7 +919,7 @@ impl App {
                 };
 
                 if fkey_y_range.contains(&y) {
-                    let slot_count = 6;
+                    let slot_count = 5;
                     let slot_w = width / slot_count;
                     let slot = ((x / slot_w) as usize).min(slot_count as usize - 1);
                     match slot {
@@ -1008,18 +934,15 @@ impl App {
                             return true;
                         }
                         2 => {
-                            self.active_modal = ActiveModal::System;
+                            self.set_resolution(self.resolution.next());
+                            self.active_modal = ActiveModal::None;
                             return true;
                         }
                         3 => {
-                            self.active_modal = ActiveModal::Color;
+                            self.active_modal = ActiveModal::Visuals;
                             return true;
                         }
                         4 => {
-                            self.active_modal = ActiveModal::Theme;
-                            return true;
-                        }
-                        5 => {
                             if self.active_modal != ActiveModal::None {
                                 self.active_modal = ActiveModal::None;
                             } else if self.current_tab != Tab::Projects || self.show_detail {
@@ -1037,14 +960,7 @@ impl App {
                 // 2. Active Modal Dialog click handling: strictly captures all mouse events
                 if self.active_modal != ActiveModal::None {
                     let char_h: u16 = self.resolution.line_height();
-                    let geometry = if matches!(
-                        self.active_modal,
-                        ActiveModal::System | ActiveModal::Color | ActiveModal::Theme
-                    ) {
-                        self.system_dialog_geometry()
-                    } else {
-                        self.standard_dialog_geometry()
-                    };
+                    let geometry = self.standard_dialog_geometry();
                     let (box_x, box_y, box_w, box_h) = (
                         geometry.box_x,
                         geometry.box_y,
@@ -1065,67 +981,58 @@ impl App {
                         return true;
                     }
 
-                    // Resolution, RGB palette, and interface theme are three
-                    // independent one-column selectors with the same row geometry.
-                    if matches!(
-                        self.active_modal,
-                        ActiveModal::System | ActiveModal::Color | ActiveModal::Theme
-                    ) {
-                        if y >= box_y + 2 * char_h {
-                            let row_idx = ((y - (box_y + 2 * char_h)) / char_h) as usize;
-                            match self.active_modal {
-                                ActiveModal::System if row_idx < ResolutionMode::ALL.len() => {
-                                    self.set_resolution(ResolutionMode::ALL[row_idx]);
-                                    self.active_modal = ActiveModal::None;
-                                }
-                                ActiveModal::Color if row_idx < ColorPalette::ALL.len() => {
-                                    self.set_color_palette(ColorPalette::ALL[row_idx]);
-                                    self.active_modal = ActiveModal::None;
-                                }
-                                ActiveModal::Theme if row_idx < InterfaceTheme::ALL.len() => {
-                                    self.set_interface_theme(InterfaceTheme::ALL[row_idx]);
-                                    self.active_modal = ActiveModal::None;
-                                }
-                                _ => {}
-                            }
-                        }
-                        return true;
-                    }
-
                     // Visuals modal presets & sliders
                     if self.active_modal == ActiveModal::Visuals {
-                        let preset_y = box_y + char_h + 4;
-                        if y >= preset_y && y < preset_y + char_h + 2 {
-                            if x >= box_x + 80 && x < box_x + 135 {
+                        if cols < 80 && y >= box_y + 12 * char_h && y < box_y + 13 * char_h {
+                            let preset = ((x.saturating_sub(box_x + 8)) / 40).min(4);
+                            self.visual_effects = match preset {
+                                0 => VisualEffects::clean(),
+                                1 => VisualEffects::crt_trinitron(),
+                                2 => VisualEffects::crt_arcade(),
+                                3 => VisualEffects::phosphor_bloom(),
+                                _ => VisualEffects::retro_glitch(),
+                            };
+                            self.status = format!("Preset: {}", self.visual_effects.preset_name());
+                            return true;
+                        }
+                        let preset_y = box_y + char_h;
+                        if cols >= 80 && y >= preset_y && y < preset_y + char_h {
+                            if x >= box_x + 104 && x < box_x + 160 {
                                 self.visual_effects = VisualEffects::clean();
                                 self.status = "Preset: Clean".to_string();
                                 return true;
-                            } else if x >= box_x + 140 && x < box_x + 225 {
+                            } else if x >= box_x + 176 && x < box_x + 264 {
                                 self.visual_effects = VisualEffects::crt_trinitron();
                                 self.status = "Preset: 80s Trinitron".to_string();
                                 return true;
-                            } else if x >= box_x + 230 && x < box_x + 300 {
+                            } else if x >= box_x + 280 && x < box_x + 352 {
                                 self.visual_effects = VisualEffects::crt_arcade();
                                 self.status = "Preset: Arcade Cabinet".to_string();
                                 return true;
-                            } else if x >= box_x + 305 && x < box_x + 360 {
+                            } else if x >= box_x + 368 && x < box_x + 432 {
                                 self.visual_effects = VisualEffects::phosphor_bloom();
                                 self.status = "Preset: Phosphor Bloom".to_string();
                                 return true;
-                            } else if x >= box_x + 365 && x < box_x + 430 {
+                            } else if x >= box_x + 440 && x < box_x + 512 {
                                 self.visual_effects = VisualEffects::retro_glitch();
                                 self.status = "Preset: Retro Glitch".to_string();
                                 return true;
                             }
                         }
 
-                        let slider_start_y = preset_y + char_h + 4;
-                        if y >= slider_start_y && y < slider_start_y + 8 * char_h {
+                        let slider_start_y = box_y + if cols < 80 { 2 } else { 3 } * char_h;
+                        if y >= slider_start_y && y < slider_start_y + 9 * char_h {
                             let slider_idx = ((y - slider_start_y) / char_h) as usize;
-                            if slider_idx < 8 {
+                            if slider_idx < 9 {
                                 self.selected_fx_slider = slider_idx;
-                                let track_start = box_x + 115;
-                                let track_w = 110;
+                                let track_start = if cols < 80 { box_x + 64 } else { box_x + 144 };
+                                let track_w = if cols == 32 {
+                                    56
+                                } else if cols == 40 {
+                                    80
+                                } else {
+                                    112
+                                };
                                 if x >= track_start && x <= track_start + track_w {
                                     let ratio =
                                         ((x - track_start) as f32 / track_w as f32).clamp(0.0, 1.0);
@@ -1138,7 +1045,8 @@ impl App {
                                         5 => self.visual_effects.jitter = ratio,
                                         6 => self.visual_effects.magnet = ratio,
                                         7 => self.visual_effects.antenna_hum = ratio,
-                                        _ => {}
+                                        8 => self.visual_effects.noise = ratio,
+                                        _ => unreachable!(),
                                     }
                                 }
                                 return true;

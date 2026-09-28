@@ -227,12 +227,9 @@ impl App {
             }
         }
 
-        // Active Modal dialog overlay (System, Visuals, Help)
+        // Active Modal dialog overlay (Visuals, Help)
         if self.active_modal != ActiveModal::None {
             match self.active_modal {
-                ActiveModal::System => self.render_system_modal(&mut view, width, height, cols),
-                ActiveModal::Color => self.render_color_modal(&mut view, width, height, cols),
-                ActiveModal::Theme => self.render_theme_modal(&mut view, width, height, cols),
                 ActiveModal::Visuals => self.render_visuals_modal(&mut view, width, height, cols),
                 ActiveModal::Help => self.render_help_modal(&mut view, width, height, cols),
                 ActiveModal::None => {}
@@ -316,9 +313,9 @@ impl App {
             } else if self.current_tab == Tab::Resume || self.current_tab == Tab::About {
                 "[j/k] Scroll [ESC] Return"
             } else if self.platform == Platform::Web {
-                "P/H/S/C/T/Q V:Visual j/k:Nav"
+                "P/H/S/V/Q j/k:Nav"
             } else {
-                "P/H/S/C/T/Q j/k:Scroll Enter"
+                "P/H/S/V/Q j/k:Scroll Enter"
             };
 
             view.add(Element::Text(TextElement {
@@ -349,10 +346,8 @@ impl App {
                 "ESC: Close Dialog"
             } else if self.current_tab == Tab::Resume || self.current_tab == Tab::About {
                 "j/k: Scroll ESC: Exit"
-            } else if self.platform == Platform::Web {
-                "P/H/S/C/T/Q V:FX j/k:Nav"
             } else {
-                "P/H/S/C/T/Q j/k:Nav"
+                "P/H/S/V/Q j/k:Nav"
             };
             view.add(Element::Text(TextElement {
                 x: 2,
@@ -452,9 +447,8 @@ impl App {
                 "Hlp",
                 self.active_modal == ActiveModal::Help || self.current_tab == Tab::Help,
             ),
-            ("Sys", self.active_modal == ActiveModal::System),
-            ("Col", self.active_modal == ActiveModal::Color),
-            ("Thm", self.active_modal == ActiveModal::Theme),
+            ("Sys", false),
+            ("Vis", self.active_modal == ActiveModal::Visuals),
             ("Qut", false),
         ];
         view.add(Element::Rect(RectElement {

@@ -35,9 +35,9 @@ pub struct App {
     pub about_scroll: usize,
     pub detail_scroll: usize,
     pub resolution: ResolutionMode,
-    /// RGB palette, independent from screen geometry and interface glyphs.
+    /// Native RGB palette of the selected display system.
     pub color_palette: ColorPalette,
-    /// Interface glyph treatment, independent from RGB palette and geometry.
+    /// Native glyph treatment of the selected display system.
     pub interface_theme: InterfaceTheme,
     /// Geometry compatibility field. It always follows `resolution`.
     pub system_mode: SystemMode,
@@ -78,9 +78,7 @@ impl App {
             selected_list_item: 0,
             selected_project: 0,
             show_detail: false,
-            status: String::from(
-                "Ready. P Projects | H Help | S System | C Color | T Theme | V Visuals",
-            ),
+            status: String::from("Ready. P Projects | H Help | S Cycle system | V Visuals"),
             scroll_offset: 0,
             resume_scroll: 0,
             about_scroll: 0,
@@ -115,9 +113,7 @@ impl App {
             selected_list_item: 0,
             selected_project: 0,
             show_detail: false,
-            status: String::from(
-                "Ready. P Projects | H Help | S System | C Color | T Theme | j/k Scroll",
-            ),
+            status: String::from("Ready. P Projects | H Help | S Cycle system | j/k Scroll"),
             scroll_offset: 0,
             resume_scroll: 0,
             about_scroll: 0,
@@ -141,21 +137,29 @@ impl App {
     pub fn set_resolution(&mut self, res: ResolutionMode) {
         self.resolution = res;
         self.system_mode = res.to_system_mode();
+        self.color_palette = match res {
+            ResolutionMode::Svga | ResolutionMode::Sga | ResolutionMode::Vga => {
+                ColorPalette::VgaModern
+            }
+            ResolutionMode::Ega | ResolutionMode::Cga => ColorPalette::Ega,
+            ResolutionMode::C64 => ColorPalette::C64,
+            ResolutionMode::Atari => ColorPalette::Atari,
+            ResolutionMode::ZxSpectrum => ColorPalette::ZxSpectrum,
+        };
+        self.interface_theme = match res {
+            ResolutionMode::Svga | ResolutionMode::Sga | ResolutionMode::Vga => {
+                InterfaceTheme::Modern
+            }
+            ResolutionMode::Ega | ResolutionMode::Cga => InterfaceTheme::Ega,
+            ResolutionMode::C64 => InterfaceTheme::C64,
+            ResolutionMode::Atari => InterfaceTheme::Atari,
+            ResolutionMode::ZxSpectrum => InterfaceTheme::ZxSpectrum,
+        };
+        self.palette_mode = self.interface_theme.font_mode();
         self.ensure_selected_project_visible();
         let (w, h) = self.resolution.resolution();
         let (c, r) = self.resolution.char_grid();
-        self.status = format!("Resolution: {} ({}x{}, {}x{} cols)", res.name(), w, h, c, r);
-    }
-
-    pub fn set_color_palette(&mut self, palette: ColorPalette) {
-        self.color_palette = palette;
-        self.status = format!("Color palette: {}", palette.name());
-    }
-
-    pub fn set_interface_theme(&mut self, theme: InterfaceTheme) {
-        self.interface_theme = theme;
-        self.palette_mode = theme.font_mode();
-        self.status = format!("Interface theme: {}", theme.name());
+        self.status = format!("System: {} ({}x{}, {}x{} cols)", res.name(), w, h, c, r);
     }
 
     pub fn adjust_selected_slider(&mut self, delta: f32) {

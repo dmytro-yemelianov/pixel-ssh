@@ -35,14 +35,14 @@ impl App {
         }));
 
         let shortcuts = vec![
-            "[P/H/S/C/T/Q] Projects, Help, Resolution, Color, Theme, Quit",
+            "[P/H/S/V/Q] Projects, Help, cycle System, Visuals, Quit",
             "[V] Visuals  [Tab] Cycle views  [Up/Down or j/k] Navigate",
             "[Enter] Select / details  [Esc] Back  [PgUp/PgDn] Page scroll",
             "[h/l] Previous/next project in detail; h opens Help on the list",
         ];
 
         let mouse_items = vec![
-            "Menu controls:   Click Prj, Hlp, Sys, Col, Thm, or Qut",
+            "Menu controls:   Click Prj, Hlp, Sys, Vis, or Qut",
             "Resume / About:   Click ▲ / ▼ or drag/click vertical scrollbar track",
             "Wheel Navigation: Scroll up and down through content lines and projects",
             "Project Rows:     Click project row to select; click again for details",
@@ -108,8 +108,8 @@ impl App {
 
         let mut lines = vec![
             ("KEYBOARD SHORTCUTS:", 7, true),
-            ("P Prj H Hlp S Sys C Col", 5, false),
-            ("T Theme Q Quit V Visuals", 5, false),
+            ("P Prj H Hlp S Sys V Vis", 5, false),
+            ("Q Quit; S cycles systems", 5, false),
             ("[h/l] Prev/Next in detail", 5, false),
             ("[k/j] Scroll [Enter] Detail", 5, false),
             ("[Esc] Return to list", 5, false),
@@ -177,12 +177,12 @@ impl App {
             filled: true,
         }));
 
-        let tab_line = "P Prj H Hlp S Sys C Col";
+        let tab_line = "P Prj H Hlp S Sys V Vis";
 
         let mut lines = vec![
             ("KEYBOARD CONTROLS:", 7, true),
             (tab_line, 5, false),
-            ("T Theme Q Quit V Visuals", 5, false),
+            ("Q Quit; S cycles systems", 5, false),
             ("h/l: Prev/Next in detail", 5, false),
             ("k/j: Scroll Enter: Detail", 5, false),
             ("Esc: Return to list", 5, false),
@@ -249,10 +249,10 @@ impl App {
 
         let sections = [
             ("KEYBOARD SHORTCUTS:", vec![
-                "[P/H/S/C/T/Q]      Projects, Help, Resolution, Color, Theme, Quit",
+                "[P/H/S/V/Q]      Projects, Help, cycle System, Visuals, Quit",
                 "[?]                Toggle this Help Reference from any tab",
                 "[Tab]              Cycle forward to next tab / switch links in detail",
-                "[S/C/T]           Independent resolution, color palette, and interface theme selectors",
+                "[S]               Cycle display systems with native font and colors",
                 "[Up/Down] or [k/j] Navigate project list OR vertically scroll content",
                 "[PgUp / PgDn]      Fast scroll Resume & About content up / down",
                 "[Home / End]       Jump directly to the start or end of lists and text",

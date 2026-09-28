@@ -104,47 +104,9 @@ pub fn start() -> Result<(), JsValue> {
                     has_explicit_system = true;
                 }
             }
-            if key == "palette" {
-                let palette = match value {
-                    "modern" | "vga" => Some(pixel_ssh_view::ColorPalette::VgaModern),
-                    "ega" | "cga" => Some(pixel_ssh_view::ColorPalette::Ega),
-                    "c64" => Some(pixel_ssh_view::ColorPalette::C64),
-                    "atari" => Some(pixel_ssh_view::ColorPalette::Atari),
-                    "zx" => Some(pixel_ssh_view::ColorPalette::ZxSpectrum),
-                    "amber" => Some(pixel_ssh_view::ColorPalette::Amber),
-                    "green" => Some(pixel_ssh_view::ColorPalette::GreenCrt),
-                    "commander" | "volkov" => Some(pixel_ssh_view::ColorPalette::Commander),
-                    _ => None,
-                };
-                if let Some(palette) = palette {
-                    app.set_color_palette(palette);
-                }
-            }
-            if key == "theme" {
-                let theme = match value {
-                    "modern" | "vga" => Some(pixel_ssh_view::InterfaceTheme::Modern),
-                    "ega" | "cga" => Some(pixel_ssh_view::InterfaceTheme::Ega),
-                    "c64" => Some(pixel_ssh_view::InterfaceTheme::C64),
-                    "atari" => Some(pixel_ssh_view::InterfaceTheme::Atari),
-                    "zx" => Some(pixel_ssh_view::InterfaceTheme::ZxSpectrum),
-                    "amber" => Some(pixel_ssh_view::InterfaceTheme::Amber),
-                    "green" => Some(pixel_ssh_view::InterfaceTheme::GreenCrt),
-                    "commander" | "volkov" => Some(pixel_ssh_view::InterfaceTheme::Commander),
-                    _ => None,
-                };
-                if let Some(theme) = theme {
-                    app.set_interface_theme(theme);
-                }
-            }
         }
         if search.contains("modal=visuals") {
             app.active_modal = pixel_ssh_view::ActiveModal::Visuals;
-        } else if search.contains("modal=system") {
-            app.active_modal = pixel_ssh_view::ActiveModal::System;
-        } else if search.contains("modal=color") {
-            app.active_modal = pixel_ssh_view::ActiveModal::Color;
-        } else if search.contains("modal=theme") {
-            app.active_modal = pixel_ssh_view::ActiveModal::Theme;
         } else if search.contains("modal=help") {
             app.active_modal = pixel_ssh_view::ActiveModal::Help;
         }
@@ -304,16 +266,13 @@ pub fn start() -> Result<(), JsValue> {
                 pixel_ssh_view::ActiveModal::None => "none",
                 pixel_ssh_view::ActiveModal::Visuals => "visuals",
                 pixel_ssh_view::ActiveModal::Help => "help",
-                pixel_ssh_view::ActiveModal::System => "system",
-                pixel_ssh_view::ActiveModal::Color => "color",
-                pixel_ssh_view::ActiveModal::Theme => "theme",
             };
             let _ = deck.set_attribute("data-modal", modal_str);
             let _ = deck.set_attribute("data-mode", s.app.resolution.short_name());
             let _ = deck.set_attribute("data-preset", active_deck_preset(s.app.visual_effects));
         }
         if let Some(indicator) = document.get_element_by_id("deck-mode-indicator") {
-            indicator.set_text_content(Some(&format!("RES: {}", s.app.resolution.short_name())));
+            indicator.set_text_content(Some(&format!("SYS: {}", s.app.resolution.short_name())));
         }
     }
 
@@ -876,9 +835,6 @@ pub fn start() -> Result<(), JsValue> {
                                 pixel_ssh_view::ActiveModal::None => "none",
                                 pixel_ssh_view::ActiveModal::Visuals => "visuals",
                                 pixel_ssh_view::ActiveModal::Help => "help",
-                                pixel_ssh_view::ActiveModal::System => "system",
-                                pixel_ssh_view::ActiveModal::Color => "color",
-                                pixel_ssh_view::ActiveModal::Theme => "theme",
                             };
                             let _ = deck.set_attribute("data-modal", modal_str);
                             let _ = deck.set_attribute("data-mode", s.app.resolution.short_name());
@@ -891,7 +847,7 @@ pub fn start() -> Result<(), JsValue> {
                             document_render.get_element_by_id("deck-mode-indicator")
                         {
                             indicator.set_text_content(Some(&format!(
-                                "RES: {}",
+                                "SYS: {}",
                                 s.app.resolution.short_name()
                             )));
                         }

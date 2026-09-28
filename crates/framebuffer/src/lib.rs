@@ -616,8 +616,9 @@ impl Framebuffer {
         }
     }
 
-    /// Finds the exact character cell bounds and underlying character glyph at `(mx, my)`.
-    /// Strictly snaps both horizontally (`cx = (mx / char_w) * char_w`) and vertically (`cy = (my / char_h) * char_h`).
+    /// Finds the visible character under the pointer. Text can start between
+    /// grid lines, so a glyph uses its rendered origin; empty space uses the
+    /// resolution's character grid.
     pub fn find_char_cell_and_glyph(
         width: u16,
         height: u16,
@@ -636,58 +637,60 @@ impl Framebuffer {
             }
         });
 
-        // 1. Strict 2D character-grid snapping: cx and cy are ALWAYS exact multiples of char_w and char_h
+        // Use the grid only as a fallback for empty cells.
         let cx = ((mx / char_w) * char_w).min(width.saturating_sub(char_w));
         let cy = ((my / char_h) * char_h).min(height.saturating_sub(char_h));
 
         // 2. Glyph lookup follows paint order. Modal elements are appended after
         // the screen beneath them, so inspect from the topmost element down.
         // An opaque modal background intentionally hides any lower glyph.
-        let mut found_char = None;
         if let Some(v) = view {
-            let cell_center_x = cx + char_w / 2;
-            let cell_center_y = cy + char_h / 2;
-
             for el in v.elements.iter().rev() {
                 match el {
                     Element::Text(t) => {
-                        let t_center_y = t.y + char_h / 2;
-                        if t_center_y >= cy && t_center_y < cy + char_h {
-                            let char_count = t.text.chars().count() as u16;
-                            let text_w = char_count * char_w;
-                            if cell_center_x >= t.x && cell_center_x < t.x + text_w {
-                                let col_idx = (cell_center_x - t.x) / char_w;
-                                found_char = t.text.chars().nth(col_idx as usize);
-                                break;
-                            }
+                        let text_w = (t.text.chars().count() as u16).saturating_mul(char_w);
+                        if mx >= t.x
+                            && mx < t.x.saturating_add(text_w)
+                            && my >= t.y
+                            && my < t.y.saturating_add(char_h)
+                        {
+                            let col_idx = (mx - t.x) / char_w;
+                            return (
+                                t.x + col_idx * char_w,
+                                t.y,
+                                t.text.chars().nth(col_idx as usize),
+                            );
                         }
                     }
                     Element::Link(l) => {
-                        let l_center_y = l.y + char_h / 2;
-                        if l_center_y >= cy && l_center_y < cy + char_h {
-                            let char_count = l.text.chars().count() as u16;
-                            let text_w = char_count * char_w;
-                            if cell_center_x >= l.x && cell_center_x < l.x + text_w {
-                                let col_idx = (cell_center_x - l.x) / char_w;
-                                found_char = l.text.chars().nth(col_idx as usize);
-                                break;
-                            }
+                        let text_w = (l.text.chars().count() as u16).saturating_mul(char_w);
+                        if mx >= l.x
+                            && mx < l.x.saturating_add(text_w)
+                            && my >= l.y
+                            && my < l.y.saturating_add(char_h)
+                        {
+                            let col_idx = (mx - l.x) / char_w;
+                            return (
+                                l.x + col_idx * char_w,
+                                l.y,
+                                l.text.chars().nth(col_idx as usize),
+                            );
                         }
                     }
                     Element::Rect(r)
                         if r.filled
-                            && cell_center_x >= r.x
-                            && cell_center_x < r.x.saturating_add(r.width)
-                            && cell_center_y >= r.y
-                            && cell_center_y < r.y.saturating_add(r.height) =>
+                            && mx >= r.x
+                            && mx < r.x.saturating_add(r.width)
+                            && my >= r.y
+                            && my < r.y.saturating_add(r.height) =>
                     {
                         break;
                     }
                     Element::Sprite(s)
-                        if cell_center_x >= s.x
-                            && cell_center_x < s.x.saturating_add(s.width)
-                            && cell_center_y >= s.y
-                            && cell_center_y < s.y.saturating_add(s.height) =>
+                        if mx >= s.x
+                            && mx < s.x.saturating_add(s.width)
+                            && my >= s.y
+                            && my < s.y.saturating_add(s.height) =>
                     {
                         break;
                     }
@@ -696,26 +699,49 @@ impl Framebuffer {
             }
         }
 
-        (cx, cy, found_char)
+        (cx, cy, None)
     }
 
     /// Draws the system-specific retro software mouse cursor at `(mx, my)` taking into account active view elements.
     pub fn draw_mouse_cursor_for_view(&mut self, view: &View, mx: u16, my: u16) {
-        self.draw_mouse_cursor_internal(view.font_mode, mx, my, Some(view));
+        let (cx, cy, _) =
+            Self::find_char_cell_and_glyph(self.width, self.height, mx, my, Some(view));
+        let char_h = view.resolution.line_height();
+        let cursor_bg = match view.color_palette {
+            pixel_ssh_view::ColorPalette::Amber | pixel_ssh_view::ColorPalette::GreenCrt => 6,
+            _ => 10,
+        };
+        let mut counts = [0u16; 256];
+        for row in cy..cy.saturating_add(char_h).min(self.height) {
+            for col in cx..cx.saturating_add(8).min(self.width) {
+                counts[self.pixels[row as usize * self.width as usize + col as usize] as usize] +=
+                    1;
+            }
+        }
+        let background = counts
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, count)| *count)
+            .map(|(index, _)| index as u8)
+            .unwrap_or(0);
+        for row in cy..cy.saturating_add(char_h).min(self.height) {
+            for col in cx..cx.saturating_add(8).min(self.width) {
+                let index = row as usize * self.width as usize + col as usize;
+                self.pixels[index] = if self.pixels[index] == background {
+                    cursor_bg
+                } else {
+                    0
+                };
+            }
+        }
     }
 
     /// Draws the system-specific retro software mouse cursor at `(mx, my)`.
     pub fn draw_mouse_cursor(&mut self, mode: PaletteMode, mx: u16, my: u16) {
-        self.draw_mouse_cursor_internal(mode, mx, my, None);
+        self.draw_mouse_cursor_internal(mode, mx, my);
     }
 
-    fn draw_mouse_cursor_internal(
-        &mut self,
-        mode: PaletteMode,
-        mx: u16,
-        my: u16,
-        view: Option<&View>,
-    ) {
+    fn draw_mouse_cursor_internal(&mut self, mode: PaletteMode, mx: u16, my: u16) {
         match mode {
             PaletteMode::Svga
             | PaletteMode::Sga
@@ -735,52 +761,25 @@ impl Framebuffer {
                     _ => 10,                    // Bright Red
                 };
 
-                let (cx, cy, maybe_ch) =
-                    Self::find_char_cell_and_glyph(self.width, self.height, mx, my, view);
-
-                if maybe_ch.is_some() {
-                    let glyph_height = view
-                        .map(|active_view| active_view.resolution.line_height())
-                        .unwrap_or_else(|| mode.line_height());
-                    let background = self.pixels[(cy as usize) * self.width as usize + cx as usize];
-                    for r in 0..glyph_height {
-                        let py = cy + r;
-                        if py >= self.height {
-                            break;
-                        }
-                        let row_start = (py as usize) * (self.width as usize);
-                        for c in 0..8 {
-                            let px = cx + c;
-                            if px >= self.width {
-                                break;
-                            }
-                            let idx = row_start + (px as usize);
-                            self.pixels[idx] = if self.pixels[idx] == background {
-                                cursor_bg
-                            } else {
-                                0
-                            };
-                        }
+                let (cx, cy, _) =
+                    Self::find_char_cell_and_glyph(self.width, self.height, mx, my, None);
+                for r in 0..mode.line_height() {
+                    let py = cy + r;
+                    if py >= self.height {
+                        break;
                     }
-                } else {
-                    for r in 0..mode.line_height() {
-                        let py = cy + r;
-                        if py >= self.height {
+                    let row_start = (py as usize) * (self.width as usize);
+                    for c in 0..8 {
+                        let px = cx + c;
+                        if px >= self.width {
                             break;
                         }
-                        let row_start = (py as usize) * (self.width as usize);
-                        for c in 0..8 {
-                            let px = cx + c;
-                            if px >= self.width {
-                                break;
-                            }
-                            let idx = row_start + (px as usize);
-                            let val = self.pixels[idx];
-                            if val <= 3 {
-                                self.pixels[idx] = cursor_bg; // Added cursor background
-                            } else {
-                                self.pixels[idx] = 0; // Inverted text glyph (black)
-                            }
+                        let idx = row_start + (px as usize);
+                        let val = self.pixels[idx];
+                        if val <= 3 {
+                            self.pixels[idx] = cursor_bg; // Added cursor background
+                        } else {
+                            self.pixels[idx] = 0; // Inverted text glyph (black)
                         }
                     }
                 }
@@ -1086,7 +1085,63 @@ mod tests {
     }
 
     #[test]
-    fn test_char_grid_mouse_cursor_snapping() {
+    fn zx_cursor_inverts_only_the_visible_modal_character_cell() {
+        use pixel_ssh_view::ResolutionMode;
+
+        let mut view = View::new(256, 192);
+        view.resolution = ResolutionMode::ZxSpectrum;
+        // The modal's off-grid text covers the underlying screen text.
+        view.add(Element::Text(TextElement {
+            x: 8,
+            y: 9,
+            text: "A".to_string(),
+            style: TextStyle::new(Color::from_palette(5)),
+        }));
+        view.add(Element::Rect(RectElement {
+            x: 8,
+            y: 8,
+            width: 24,
+            height: 16,
+            color: Color::from_palette(0),
+            filled: true,
+        }));
+        view.add(Element::Text(TextElement {
+            x: 8,
+            y: 9,
+            text: "S".to_string(),
+            style: TextStyle::new(Color::from_palette(6)),
+        }));
+
+        let mut without_cursor = Framebuffer::new(256, 192);
+        without_cursor.draw_view(&view);
+        view.mouse_pos = Some((10, 10));
+        let mut with_cursor = Framebuffer::new(256, 192);
+        with_cursor.draw_view(&view);
+
+        let (cx, cy, glyph) = Framebuffer::find_char_cell_and_glyph(256, 192, 10, 10, Some(&view));
+        assert_eq!((cx, cy, glyph), (8, 9, Some('S')));
+        for y in 0..192 {
+            for x in 0..256 {
+                let index = y * 256 + x;
+                if (8..16).contains(&x) && (9..17).contains(&y) {
+                    let expected = if without_cursor.pixels[index] == 0 {
+                        10
+                    } else {
+                        0
+                    };
+                    assert_eq!(with_cursor.pixels[index], expected, "pixel ({x}, {y})");
+                } else {
+                    assert_eq!(
+                        with_cursor.pixels[index], without_cursor.pixels[index],
+                        "outside cursor ({x}, {y})"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn cursor_uses_rendered_text_origin_and_grid_for_empty_cells() {
         use pixel_ssh_view::{Color, Element, TextElement, TextStyle};
 
         // Create a mock view with off-grid elements at y = 4 (top bar) and y = 54 (projects header)
@@ -1105,27 +1160,20 @@ mod tests {
             style: TextStyle::new(Color::from_palette(12)),
         }));
 
-        // Hover over top bar text at (19, 7) -> must snap to cx=16, cy=0 (Row 0: 0..16)
+        // The top bar begins four pixels below the grid row.
         let (cx1, cy1, ch1) = Framebuffer::find_char_cell_and_glyph(640, 400, 19, 7, Some(&view));
-        assert_eq!(cx1, 16, "cx must snap to column 2 (16)");
-        assert_eq!(cy1, 0, "cy must snap to row 0 (0), NOT jump to element y=4");
-        assert_eq!(ch1, Some('M')); // "D" at 12..20, "M" at 20..28, center is 16+4=20 -> 'M'
+        assert_eq!(cx1, 12);
+        assert_eq!(cy1, 4);
+        assert_eq!(ch1, Some('D'));
 
-        // Hover over project text at (25, 60) -> must snap to cx=24, cy=48 (Row 3: 48..64)
+        // The project heading begins six pixels below its grid row.
         let (cx2, cy2, ch2) = Framebuffer::find_char_cell_and_glyph(640, 400, 25, 60, Some(&view));
         assert_eq!(cx2, 24, "cx must snap to column 3 (24)");
-        assert_eq!(
-            cy2, 48,
-            "cy must snap to row 3 (48), NOT jump to element y=54"
-        );
-        assert_eq!(ch2, Some('R')); // "P" at 16..24, "R" at 24..32, center is 24+4=28 -> 'R'
+        assert_eq!(cy2, 54);
+        assert_eq!(ch2, Some('R'));
 
-        // Sweep mouse vertically across screen: every single cy must be an exact multiple of 16
-        for my in 0..400 {
-            let (cx, cy, _) = Framebuffer::find_char_cell_and_glyph(640, 400, 153, my, Some(&view));
-            assert_eq!(cx % 8, 0, "cx must be multiple of 8 at my={my}");
-            assert_eq!(cy % 16, 0, "cy must be multiple of 16 at my={my}");
-        }
+        let (cx3, cy3, ch3) = Framebuffer::find_char_cell_and_glyph(640, 400, 153, 95, Some(&view));
+        assert_eq!((cx3, cy3, ch3), (152, 80, None));
     }
 
     #[test]

@@ -4,13 +4,13 @@ An interactive portfolio with a shared Rust application core and two front ends:
 
 ## Display and controls
 
-The web client supports SVGA 800×600, SGA 640×480, VGA 640×400, EGA 640×350, CGA/C64 320×200, Atari 320×192, and ZX Spectrum 256×192 layouts. Resolution, RGB color palette, interface theme, and visual effects are independent choices. Modern is the default interface theme and VGA Modern Dark is the default palette. The controls for every grid size are specified in [the UI control matrix](docs/ui-controls.md).
+The web client supports SVGA 800×600, SGA 640×480, VGA 640×400, EGA 640×350, CGA/C64 320×200, Atari 320×192, and ZX Spectrum 256×192 layouts. Each system selects its native resolution, font, and color palette. Visual effects can be adjusted separately. The controls for every grid size are specified in [the UI control matrix](docs/ui-controls.md).
 
 The framebuffer uses 8-bit color indices. WebGL2 looks up the active 256-color palette from a 256×1 RGBA texture, then applies optional CRT effects. VGA-sized layouts use an 8×16 CP437-ordered bitmap and compact layouts use 8×8 bitmaps. EGA uses a separately sourced 8×14 CP437 bitmap, licensed under CC BY-SA 4.0; see [its attribution](crates/framebuffer/assets/README.md). The provenance status for every bundled font and named palette is documented in [the asset audit](docs/font-palette-provenance.md).
 
-The Projects screen starts with CV, Contacts, and About, then the numbered portfolio entries. The bottom menu is `Prj Hlp Sys Col Thm Qut`: its first letters open Projects, Help, resolution, color palette, interface theme, and Quit. Numbers have no global assignment; `1`–`8` select choices only inside the open selector. `v` opens Visuals. Arrow keys and `j`/`k` navigate lists, Enter activates the selected item, and Escape closes a dialog or returns to Projects. Portrait touch controls provide the same menu and preset actions.
+The Projects screen starts with CV, Contacts, and About, then the numbered portfolio entries. The bottom menu is `Prj Hlp Sys Vis Qut`: its first letters open Projects, Help, cycle display systems, Visuals, and Quit. Numbers have no global assignment; `1`–`6` select presets only inside Visuals. `v` opens Visuals. Arrow keys and `j`/`k` navigate lists, Enter activates the selected item, and Escape closes a dialog or returns to Projects. Portrait touch controls provide the same menu and preset actions.
 
-The terminal uses the same content and ANSI rendering. `S`, `C`, and `T` select resolution, color palette, and interface theme independently.
+The terminal uses the same content and ANSI rendering. `S` cycles display systems, each with its own font and colors.
 
 ## Run locally
 

@@ -113,8 +113,7 @@ impl ResolutionMode {
     }
 }
 
-/// RGB role palette.  This controls only the colors used for palette indices;
-/// it never changes resolution, layout, or glyph design.
+/// RGB role palette selected internally by the active display system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ColorPalette {
     Commander,
@@ -185,8 +184,7 @@ impl ColorPalette {
 pub type ColorTheme = ColorPalette;
 pub type PaletteTheme = ColorPalette;
 
-/// Interface glyph treatment. This controls the bitmap font and cursor style;
-/// it does not select an RGB palette or a screen geometry.
+/// Bitmap glyph treatment selected internally by the active display system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum InterfaceTheme {
     #[default]
@@ -340,7 +338,7 @@ impl SystemMode {
             SystemMode::C64 => ColorTheme::C64,
             SystemMode::Atari => ColorTheme::Atari,
             SystemMode::ZxSpectrum => ColorTheme::ZxSpectrum,
-            SystemMode::Svga | SystemMode::Sga | SystemMode::Vga => ColorTheme::Commander,
+            SystemMode::Svga | SystemMode::Sga | SystemMode::Vga => ColorTheme::VgaModern,
         }
     }
 
@@ -403,9 +401,6 @@ pub enum ActiveModal {
     None,
     Visuals,
     Help,
-    System,
-    Color,
-    Theme,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
