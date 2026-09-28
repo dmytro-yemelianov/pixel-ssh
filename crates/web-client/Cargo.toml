@@ -19,13 +19,22 @@ wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = [
     "Window",
     "Document",
+    "Element",
     "Location",
     "HtmlCanvasElement",
     "KeyboardEvent",
     "MouseEvent",
     "WheelEvent",
+    "TouchEvent",
+    "TouchList",
+    "Touch",
+    "CustomEvent",
     "DomRect",
     "CssStyleDeclaration",
+    "UiEvent",
     "console",
 ] }
 js-sys = "0.3"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

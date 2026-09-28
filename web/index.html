@@ -2,41 +2,496 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Pixel-First Rust Web & SSH Interface</title>
   <style>
+    :root {
+      --deck-bg: #090c10;
+      --deck-chassis: #13181f;
+      --deck-border: #242c38;
+      --deck-btn-bg: #1c232d;
+      --deck-btn-border: #323d4d;
+      --deck-btn-text: #b0bac8;
+      --deck-accent-cyan: #00ffcc;
+      --deck-accent-amber: #ffaa00;
+      --deck-accent-green: #00ee55;
+      --deck-accent-red: #ff4455;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
-    body, html {
+
+    html, body {
       background: #000;
+      color: #eee;
+      font-family: ui-monospace, "SF Mono", "Cascadia Code", "Courier New", monospace;
       width: 100vw;
-      height: 100vh;
+      height: 100dvh;
+      min-height: 100vh;
       overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    #deck-wrapper {
+      width: 100vw;
+      height: 100dvh;
+      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
+      background: radial-gradient(circle at center, #0f141c 0%, #05070a 100%);
     }
-    canvas#screen {
-      aspect-ratio: 4 / 3;
-      width: min(100vw, calc(100vh * 4 / 3));
-      height: min(100vh, calc(100vw * 3 / 4));
-      max-width: 100vw;
-      max-height: 100vh;
-      object-fit: fill;
-      image-rendering: -webkit-optimize-contrast;
-      image-rendering: crisp-edges;
-      image-rendering: pixelated;
+
+    /* Landscape / Desktop mode: Centered full-screen CRT, cyberdeck hidden */
+    @media (orientation: landscape) {
+      #cyberdeck {
+        display: none !important;
+      }
+      #crt-frame {
+        width: 100vw;
+        height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      canvas#screen {
+        aspect-ratio: 4 / 3;
+        width: min(100vw, calc(100dvh * 4 / 3));
+        height: min(100dvh, calc(100vw * 3 / 4));
+        max-width: 100vw;
+        max-height: 100dvh;
+        object-fit: fill;
+        image-rendering: auto;
+        cursor: none;
+      }
+    }
+
+    /* Portrait / Vertical Screen mode: Top CRT monitor with cyberdeck touch keypad below */
+    @media (orientation: portrait) {
+      #deck-wrapper {
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      #crt-frame {
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: 520px;
+        padding: 4px 6px 4px 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #080a0d;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+        border-bottom: 2px solid #1a222d;
+      }
+      canvas#screen {
+        aspect-ratio: 4 / 3;
+        width: 100%;
+        max-height: 45dvh;
+        object-fit: contain;
+        border-radius: 4px;
+        box-shadow: 0 0 16px rgba(0, 0, 0, 0.9);
+        cursor: default;
+      }
+      #cyberdeck {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: 520px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
+        background: linear-gradient(180deg, #131922 0%, #0a0d12 100%);
+        border-top: 1px solid #222c3a;
+        box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.05);
+        overflow: hidden;
+      }
+    }
+
+    /* Cyberdeck Controls Styling */
+    .deck-row {
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+    .deck-status-row {
+      justify-content: space-between;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #1a222d;
+    }
+    .deck-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #00ffcc;
+      text-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+      letter-spacing: 1px;
+    }
+    .deck-led {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00ffcc;
+      box-shadow: 0 0 8px #00ffcc;
+      display: inline-block;
+      animation: led-pulse 2s infinite ease-in-out;
+    }
+    @keyframes led-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.9); }
+    }
+    .deck-presets {
+      display: flex;
+      gap: 4px;
+    }
+    .preset-btn {
+      padding: 3px 6px;
+      font-size: 9px;
+      letter-spacing: 0.5px;
+      border-radius: 3px;
+      background: #18202a;
+      color: #8a99ad;
+      border: 1px solid #273445;
+      min-height: 28px;
+    }
+    .preset-btn:active {
+      background: #00ffcc;
+      color: #000;
+    }
+
+    .deck-tabs-row {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 3px;
+      margin: 4px 0;
+      width: 100%;
+    }
+    .deck-btn {
+      background: #19202a;
+      color: #a0b0c4;
+      border: 1px solid #2c384a;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: 600;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 4px rgba(0,0,0,0.5);
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      transition: all 0.08s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      min-width: 0;
+    }
+    .deck-btn:active {
+      transform: translateY(2px);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7);
+    }
+    .tab-btn {
+      min-height: 40px;
+      padding: 2px 0;
+      position: relative;
+      width: 100%;
+    }
+    .key-sub {
+      font-size: 8px;
+      opacity: 0.55;
+      margin-bottom: 1px;
+    }
+
+    /* Active Tab & Modal highlighted via data-tab and data-modal on #cyberdeck */
+    #cyberdeck[data-tab="1"] .tab-btn[data-key="1"],
+    #cyberdeck[data-tab="2"] .tab-btn[data-key="2"],
+    #cyberdeck[data-tab="3"] .tab-btn[data-key="3"],
+    #cyberdeck[data-tab="4"] .tab-btn[data-key="4"],
+    #cyberdeck[data-modal="visuals"] .tab-btn[data-key="v"],
+    #cyberdeck[data-modal="help"] .tab-btn[data-key="?"] {
+      background: #00ffcc !important;
+      color: #06090e !important;
+      border-color: #00ffcc !important;
+      box-shadow: 0 0 12px rgba(0, 255, 204, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      font-weight: bold;
+    }
+    #cyberdeck[data-tab="1"] .tab-btn[data-key="1"] .key-sub,
+    #cyberdeck[data-tab="2"] .tab-btn[data-key="2"] .key-sub,
+    #cyberdeck[data-tab="3"] .tab-btn[data-key="3"] .key-sub,
+    #cyberdeck[data-tab="4"] .tab-btn[data-key="4"] .key-sub,
+    #cyberdeck[data-modal="visuals"] .tab-btn[data-key="v"] .key-sub,
+    #cyberdeck[data-modal="help"] .tab-btn[data-key="?"] .key-sub {
+      color: #06090e;
+      opacity: 0.85;
+    }
+    #cyberdeck[data-modal="system"] .mode-btn {
+      background: #ffb347 !important;
+      color: #1a1208 !important;
+      border-color: #ffb347 !important;
+      box-shadow: 0 0 12px rgba(255, 179, 71, 0.8) !important;
+    }
+
+    .deck-controls-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+      width: 100%;
+    }
+    /* D-Pad */
+    .deck-dpad {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 96px;
+      flex-shrink: 0;
+    }
+    .dpad-mid-row {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      margin: 2px 0;
+    }
+    .dpad-btn {
+      width: 32px;
+      height: 32px;
+      min-height: 32px;
+      font-size: 13px;
+      background: #171d27;
+      border-color: #2b3646;
+      color: #a0aec0;
+    }
+    .dpad-btn:active {
+      background: #00ffcc;
+      color: #000;
+      border-color: #00ffcc;
+    }
+    .dpad-core {
+      width: 22px;
+      height: 22px;
+      background: #0d1117;
+      border: 1px solid #1a222d;
+      border-radius: 50%;
+    }
+
+    /* Tactical Actions */
+    .deck-actions {
+      display: flex;
+      flex: 1 1 auto;
+      gap: 6px;
+      justify-content: flex-end;
+      min-width: 0;
+    }
+    .action-col {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1 1 50%;
+      min-width: 0;
+    }
+    .action-btn {
+      min-height: 36px;
+      width: 100%;
+      min-width: 0;
+      padding: 2px 2px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .btn-tag {
+      font-size: 7px;
+      opacity: 0.6;
+      letter-spacing: 0.4px;
+      margin-bottom: 1px;
+      display: block;
+    }
+    .btn-label {
+      font-size: 9px;
+      font-weight: bold;
+      display: block;
+    }
+    .mode-btn {
+      background: #241c14;
+      border-color: #4a3824;
+      color: #ffb347;
+    }
+    .mode-btn:active {
+      background: #ffb347;
+      color: #1a1208;
+      box-shadow: 0 0 10px rgba(255, 179, 71, 0.6);
+    }
+    .tab-cycle-btn {
+      background: #17202a;
+      border-color: #2b3a4a;
+      color: #70b0ff;
+    }
+    .tab-cycle-btn:active {
+      background: #70b0ff;
+      color: #0a1018;
+      box-shadow: 0 0 10px rgba(112, 176, 255, 0.6);
+    }
+    .enter-btn {
+      background: #12241a;
+      border-color: #214a31;
+      color: #48bb78;
+    }
+    .enter-btn:active {
+      background: #48bb78;
+      color: #06140b;
+      box-shadow: 0 0 10px rgba(72, 187, 120, 0.6);
+    }
+    .esc-btn {
+      background: #241618;
+      border-color: #4a272c;
+      color: #f56565;
+    }
+    .esc-btn:active {
+      background: #f56565;
+      color: #1a080a;
+      box-shadow: 0 0 10px rgba(245, 101, 101, 0.6);
     }
   </style>
 </head>
 <body>
-  <canvas id="screen" width="640" height="400"></canvas>
+  <div id="deck-wrapper">
+    <div id="crt-frame">
+      <canvas id="screen" width="1280" height="800"></canvas>
+    </div>
+
+    <div id="cyberdeck">
+      <!-- Status row: LED, system indicator, presets -->
+      <div class="deck-row deck-status-row">
+        <div class="deck-indicator">
+          <span class="deck-led"></span>
+          <span id="deck-mode-indicator">SYS: C64</span>
+        </div>
+        <div class="deck-presets">
+          <button type="button" class="deck-btn preset-btn" data-preset="clean">CLEAN</button>
+          <button type="button" class="deck-btn preset-btn" data-preset="crt">CRT</button>
+          <button type="button" class="deck-btn preset-btn" data-preset="glitch">GLITCH</button>
+        </div>
+      </div>
+
+      <!-- Navigation & Modal Buttons -->
+      <div class="deck-row deck-tabs-row">
+        <button type="button" class="deck-btn tab-btn" data-key="1"><span class="key-sub">1</span>PRJ</button>
+        <button type="button" class="deck-btn tab-btn" data-key="2"><span class="key-sub">2</span>CV</button>
+        <button type="button" class="deck-btn tab-btn" data-key="3"><span class="key-sub">3</span>ABT</button>
+        <button type="button" class="deck-btn tab-btn" data-key="4"><span class="key-sub">4</span>CNT</button>
+        <button type="button" class="deck-btn tab-btn" data-key="v"><span class="key-sub">V</span>VIS</button>
+        <button type="button" class="deck-btn tab-btn" data-key="?"><span class="key-sub">?</span>HLP</button>
+      </div>
+
+      <!-- D-Pad and Tactical Action Buttons -->
+      <div class="deck-row deck-controls-row">
+        <div class="deck-dpad">
+          <button type="button" class="deck-btn dpad-btn dpad-up" data-key="ArrowUp" aria-label="Up">▲</button>
+          <div class="dpad-mid-row">
+            <button type="button" class="deck-btn dpad-btn dpad-left" data-key="ArrowLeft" aria-label="Left">◄</button>
+            <div class="dpad-core"></div>
+            <button type="button" class="deck-btn dpad-btn dpad-right" data-key="ArrowRight" aria-label="Right">►</button>
+          </div>
+          <button type="button" class="deck-btn dpad-btn dpad-down" data-key="ArrowDown" aria-label="Down">▼</button>
+        </div>
+
+        <div class="deck-actions">
+          <div class="action-col">
+            <button type="button" class="deck-btn action-btn mode-btn" data-key="s">
+              <span class="btn-tag">SYSTEM</span>
+              <span class="btn-label">MODE</span>
+            </button>
+            <button type="button" class="deck-btn action-btn tab-cycle-btn" data-key="Tab">
+              <span class="btn-tag">CYCLE</span>
+              <span class="btn-label">TAB ⇥</span>
+            </button>
+          </div>
+          <div class="action-col">
+            <button type="button" class="deck-btn action-btn enter-btn" data-key="Enter">
+              <span class="btn-tag">EXEC</span>
+              <span class="btn-label">ENTER ↵</span>
+            </button>
+            <button type="button" class="deck-btn action-btn esc-btn" data-key="Escape">
+              <span class="btn-tag">CANCEL</span>
+              <span class="btn-label">ESC / BACK</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import init from './pkg/pixel_ssh_web_client.js';
-    init().catch(err => {
+
+    function triggerKey(keyName) {
+      if (navigator.vibrate) {
+        try { navigator.vibrate(10); } catch (_) {}
+      }
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: keyName, bubbles: true }));
+    }
+
+    // Touch & pointer listener for cyberdeck buttons
+    document.addEventListener('pointerdown', (e) => {
+      const btn = e.target.closest('.deck-btn');
+      if (!btn) return;
+      e.preventDefault();
+      const key = btn.getAttribute('data-key');
+      if (key) {
+        triggerKey(key);
+        return;
+      }
+      const preset = btn.getAttribute('data-preset');
+      if (preset) {
+        if (navigator.vibrate) {
+          try { navigator.vibrate(10); } catch (_) {}
+        }
+        window.dispatchEvent(new CustomEvent('deck-preset', { detail: preset }));
+      }
+    });
+
+    init().then(() => {
+      const params = new URLSearchParams(window.location.search);
+      const keys = params.get('keys');
+      if (keys) {
+        let delay = 150;
+        for (const k of keys.split(',')) {
+          setTimeout(() => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: k }));
+          }, delay);
+          delay += 150;
+        }
+      }
+      const mouse = params.get('mouse');
+      if (mouse) {
+        const [mx, my] = mouse.split(',').map(Number);
+        setTimeout(() => {
+          const canvas = document.getElementById('screen');
+          const rect = canvas.getBoundingClientRect();
+          const clientX = rect.left + (mx / 100) * rect.width;
+          const clientY = rect.top + (my / 100) * rect.height;
+          canvas.dispatchEvent(new PointerEvent('pointermove', {
+            clientX,
+            clientY,
+            bubbles: true
+          }));
+        }, 300);
+      }
+    }).catch(err => {
       console.error('WASM startup failure:', err);
       document.body.innerHTML = '<pre style="color:#f85149;padding:20px;">WebGL2/WASM initialization failed: ' + err + '</pre>';
     });

@@ -1,5 +1,5 @@
 use pixel_ssh_framebuffer::Framebuffer;
-use pixel_ssh_view::{Element, View};
+use pixel_ssh_view::{is_table_border_char, Element, Platform, View};
 
 #[derive(Debug, Clone)]
 pub struct AnsiCell {
@@ -78,17 +78,7 @@ impl AnsiRenderer {
         let row = offset_row
             + if mode.line_height() == 16 {
                 // 80x25 system (VGA Modern, Amber, Green CRT)
-                if y < 24 {
-                    0 // Header bar
-                } else if y < 46 {
-                    1 // Tab bar
-                } else if y < 54 {
-                    2 // Tab separator line
-                } else if y >= 374 {
-                    24 // Status footer bar
-                } else {
-                    3 + ((y.saturating_sub(54)) / 16).min(20)
-                }
+                (y / 16).min(target_rows.saturating_sub(1))
             } else {
                 // 40x25 / 32x24 system (C64, Atari, ZX Spectrum)
                 if y < 10 {
@@ -113,8 +103,12 @@ impl AnsiRenderer {
         let default_bg = [palette[0][0], palette[0][1], palette[0][2]];
         self.clear(default_bg);
 
+        let is_terminal = view.platform == Platform::Terminal;
         let (target_cols, _target_rows) = view.palette_mode.char_grid();
-        let offset_col = self.cols.saturating_sub(target_cols) / 2;
+        let offset_col = if is_terminal { 0 } else { self.cols.saturating_sub(target_cols) / 2 };
+
+        let border_entry = palette[7];
+        let border_rgb = [border_entry[0], border_entry[1], border_entry[2]];
 
         for elem in &view.elements {
             match elem {
@@ -124,22 +118,52 @@ impl AnsiRenderer {
 
                     // Check if it's a thin horizontal separator rule
                     if r.height <= 2 {
-                        let (rx_start, ry) = self.pixel_to_grid(r.x, r.y, view.palette_mode);
-                        let rx_end = offset_col + ((r.x + r.width + 7) / 8);
+                        let (rx_start, ry) = if is_terminal {
+                            ((r.x / 8).min(self.cols.saturating_sub(1)), (r.y / 16).min(self.rows.saturating_sub(1)))
+                        } else {
+                            self.pixel_to_grid(r.x, r.y, view.palette_mode)
+                        };
+                        let rx_end = if is_terminal {
+                            if r.width >= view.width || r.width >= 600 {
+                                self.cols
+                            } else {
+                                ((r.x + r.width + 7) / 8).min(self.cols)
+                            }
+                        } else {
+                            offset_col + ((r.x + r.width + 7) / 8).min(self.cols.saturating_sub(offset_col))
+                        };
+                        let line_rgb = if is_terminal { border_rgb } else { rgb };
                         if ry < self.rows {
                             for x in rx_start..rx_end.min(self.cols) {
                                 let idx = (ry as usize) * (self.cols as usize) + (x as usize);
                                 if idx < self.grid.len() && self.grid[idx].ch == ' ' {
                                     self.grid[idx].ch = '─';
-                                    self.grid[idx].fg_rgb = rgb;
+                                    self.grid[idx].fg_rgb = line_rgb;
                                 }
                             }
                         }
                     } else {
                         // Background rect (header, tabs, active card, or status bar)
-                        let (rx_start, ry_start) = self.pixel_to_grid(r.x, r.y, view.palette_mode);
-                        let (rx_end, ry_end) =
-                            self.pixel_to_grid(r.x + r.width, r.y + r.height, view.palette_mode);
+                        let (rx_start, ry_start) = if is_terminal {
+                            ((r.x / 8).min(self.cols.saturating_sub(1)), (r.y / 16).min(self.rows.saturating_sub(1)))
+                        } else {
+                            self.pixel_to_grid(r.x, r.y, view.palette_mode)
+                        };
+                        let (rx_end, ry_end) = if is_terminal {
+                            let end_col = if r.width >= view.width || r.width >= 600 {
+                                self.cols
+                            } else {
+                                ((r.x + r.width + 7) / 8).min(self.cols)
+                            };
+                            let end_row = if r.y + r.height >= view.height {
+                                self.rows.saturating_sub(1)
+                            } else {
+                                ((r.y + r.height + 15) / 16).saturating_sub(1).min(self.rows.saturating_sub(1))
+                            };
+                            (end_col, end_row)
+                        } else {
+                            self.pixel_to_grid(r.x + r.width, r.y + r.height, view.palette_mode)
+                        };
 
                         for y in ry_start..=ry_end.min(self.rows.saturating_sub(1)) {
                             for x in rx_start..rx_end.min(self.cols) {
@@ -153,7 +177,11 @@ impl AnsiRenderer {
                 }
                 Element::Text(t) => {
                     let sanitized = Self::sanitize_text(&t.text);
-                    let (mut start_col, row) = self.pixel_to_grid(t.x, t.y, view.palette_mode);
+                    let (mut start_col, row) = if is_terminal {
+                        ((t.x / 8).min(self.cols.saturating_sub(1)), (t.y / 16).min(self.rows.saturating_sub(1)))
+                    } else {
+                        self.pixel_to_grid(t.x, t.y, view.palette_mode)
+                    };
 
                     let fg_entry = palette[t.style.fg.palette_index as usize];
                     let fg_rgb = [fg_entry[0], fg_entry[1], fg_entry[2]];
@@ -171,7 +199,11 @@ impl AnsiRenderer {
                             let idx = (row as usize) * (self.cols as usize) + (start_col as usize);
                             if idx < self.grid.len() {
                                 self.grid[idx].ch = ch;
-                                self.grid[idx].fg_rgb = fg_rgb;
+                                if is_table_border_char(ch) {
+                                    self.grid[idx].fg_rgb = border_rgb;
+                                } else {
+                                    self.grid[idx].fg_rgb = fg_rgb;
+                                }
                                 if let Some(bg) = bg_rgb {
                                     self.grid[idx].bg_rgb = bg;
                                 }
@@ -183,7 +215,11 @@ impl AnsiRenderer {
                 }
                 Element::Link(l) => {
                     let sanitized = Self::sanitize_text(&l.text);
-                    let (mut start_col, row) = self.pixel_to_grid(l.x, l.y, view.palette_mode);
+                    let (mut start_col, row) = if is_terminal {
+                        ((l.x / 8).min(self.cols.saturating_sub(1)), (l.y / 16).min(self.rows.saturating_sub(1)))
+                    } else {
+                        self.pixel_to_grid(l.x, l.y, view.palette_mode)
+                    };
 
                     let fg_entry = palette[l.style.fg.palette_index as usize];
                     let fg_rgb = [fg_entry[0], fg_entry[1], fg_entry[2]];
@@ -201,7 +237,11 @@ impl AnsiRenderer {
                             let idx = (row as usize) * (self.cols as usize) + (start_col as usize);
                             if idx < self.grid.len() {
                                 self.grid[idx].ch = ch;
-                                self.grid[idx].fg_rgb = fg_rgb;
+                                if is_table_border_char(ch) {
+                                    self.grid[idx].fg_rgb = border_rgb;
+                                } else {
+                                    self.grid[idx].fg_rgb = fg_rgb;
+                                }
                                 if let Some(bg) = bg_rgb {
                                     self.grid[idx].bg_rgb = bg;
                                 }
@@ -290,7 +330,11 @@ impl AnsiRenderer {
         // Position cursor if requested
         if let Some(cursor) = &view.cursor {
             if cursor.visible {
-                let (cx, cy) = self.pixel_to_grid(cursor.x, cursor.y, view.palette_mode);
+                let (cx, cy) = if is_terminal {
+                    ((cursor.x / 8).min(self.cols.saturating_sub(1)), (cursor.y / 16).min(self.rows.saturating_sub(1)))
+                } else {
+                    self.pixel_to_grid(cursor.x, cursor.y, view.palette_mode)
+                };
                 out.push_str(&format!(
                     "\x1b[{};{}H\x1b[?25h",
                     (cy + 1).min(self.rows),
@@ -311,12 +355,12 @@ mod tests {
     #[test]
     fn test_pixel_to_grid_mapping_vga() {
         let renderer = AnsiRenderer::new(80, 25);
-        assert_eq!(renderer.pixel_to_grid(16, 4, PaletteMode::Vga), (2, 0)); // Header
-        assert_eq!(renderer.pixel_to_grid(16, 28, PaletteMode::Vga), (2, 1)); // Tab bar
-        assert_eq!(renderer.pixel_to_grid(16, 49, PaletteMode::Vga), (2, 2)); // Separator line
-        assert_eq!(renderer.pixel_to_grid(16, 58, PaletteMode::Vga), (2, 3)); // First content row
-        assert_eq!(renderer.pixel_to_grid(16, 74, PaletteMode::Vga), (2, 4)); // Second content row
-        assert_eq!(renderer.pixel_to_grid(16, 382, PaletteMode::Vga), (2, 24)); // Status bar
+        assert_eq!(renderer.pixel_to_grid(16, 0, PaletteMode::Vga), (2, 0)); // Header
+        assert_eq!(renderer.pixel_to_grid(16, 16, PaletteMode::Vga), (2, 1)); // Tab bar
+        assert_eq!(renderer.pixel_to_grid(16, 32, PaletteMode::Vga), (2, 2)); // Separator line
+        assert_eq!(renderer.pixel_to_grid(16, 48, PaletteMode::Vga), (2, 3)); // First content row
+        assert_eq!(renderer.pixel_to_grid(16, 64, PaletteMode::Vga), (2, 4)); // Second content row
+        assert_eq!(renderer.pixel_to_grid(16, 384, PaletteMode::Vga), (2, 24)); // Status bar
     }
 
     #[test]
@@ -339,9 +383,9 @@ mod tests {
     #[test]
     fn test_centering_in_larger_terminal() {
         let renderer = AnsiRenderer::new(120, 35);
-        assert_eq!(renderer.pixel_to_grid(16, 4, PaletteMode::Vga), (22, 5));
-        assert_eq!(renderer.pixel_to_grid(16, 28, PaletteMode::Vga), (22, 6));
-        assert_eq!(renderer.pixel_to_grid(16, 382, PaletteMode::Vga), (22, 29));
+        assert_eq!(renderer.pixel_to_grid(16, 0, PaletteMode::Vga), (22, 5));
+        assert_eq!(renderer.pixel_to_grid(16, 16, PaletteMode::Vga), (22, 6));
+        assert_eq!(renderer.pixel_to_grid(16, 384, PaletteMode::Vga), (22, 29));
     }
 
     #[test]
@@ -359,6 +403,69 @@ mod tests {
         let out = renderer.render_view(&view);
         assert!(out.contains("TEST TITLE"));
         assert!(out.contains("\x1b[?25l"));
+    }
+
+    #[test]
+    fn test_terminal_mode_fullscreen_expansion() {
+        let cols = 120;
+        let rows = 40;
+        let mut renderer = AnsiRenderer::new(cols, rows);
+        let mut view = View::new(cols * 8, rows * 16);
+        view.platform = Platform::Terminal;
+        view.palette_mode = PaletteMode::Vga;
+
+        // Add a horizontal rule spanning the entire view
+        view.add(Element::Rect(pixel_ssh_view::RectElement {
+            x: 0,
+            y: 32, // row 2
+            width: cols * 8,
+            height: 1,
+            color: Color::from_palette(7),
+            filled: true,
+        }));
+
+        renderer.render_view(&view);
+
+        // Row 2 should be filled with '─' from col 0 to cols - 1
+        for col in 0..cols {
+            let idx = (2 * cols + col) as usize;
+            assert_eq!(renderer.grid[idx].ch, '─', "Expected '─' at col {}", col);
+        }
+    }
+
+    #[test]
+    fn test_table_border_chars_have_uniform_color() {
+        let mut renderer = AnsiRenderer::new(80, 25);
+        let mut view = View::new(640, 400);
+        view.platform = Platform::Terminal;
+        view.palette_mode = PaletteMode::Vga;
+
+        // Even if text element has bold white color (palette 6), table border chars MUST use border_rgb (palette 7)
+        view.add(Element::Text(pixel_ssh_view::TextElement {
+            x: 0,
+            y: 48, // row 3
+            text: "│ Cell text │".to_string(),
+            style: TextStyle::new(Color::from_palette(6)),
+        }));
+
+        renderer.render_view(&view);
+
+        let pal = Framebuffer::palette_for_mode(PaletteMode::Vga);
+        let border_rgb = [pal[7][0], pal[7][1], pal[7][2]];
+        let text_rgb = [pal[6][0], pal[6][1], pal[6][2]];
+
+        let idx_pipe_0 = 3 * 80 + 0;
+        let idx_pipe_1 = 3 * 80 + 12;
+        let idx_char = 3 * 80 + 2; // 'C'
+
+        assert_eq!(renderer.grid[idx_pipe_0].ch, '│');
+        assert_eq!(renderer.grid[idx_pipe_0].fg_rgb, border_rgb);
+
+        assert_eq!(renderer.grid[idx_pipe_1].ch, '│');
+        assert_eq!(renderer.grid[idx_pipe_1].fg_rgb, border_rgb);
+
+        assert_eq!(renderer.grid[idx_char].ch, 'C');
+        assert_eq!(renderer.grid[idx_char].fg_rgb, text_rgb);
     }
 }
 

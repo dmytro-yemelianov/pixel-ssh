@@ -1,7 +1,11 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum PaletteMode {
+pub enum SystemMode {
     #[default]
     Vga,
+    Svga,
+    Sga,
+    Ega,
+    Cga,
     ZxSpectrum,
     C64,
     Atari,
@@ -9,54 +13,72 @@ pub enum PaletteMode {
     GreenCrt,
 }
 
-impl PaletteMode {
-    pub const ALL: [PaletteMode; 6] = [
-        PaletteMode::Vga,
-        PaletteMode::ZxSpectrum,
-        PaletteMode::C64,
-        PaletteMode::Atari,
-        PaletteMode::Amber,
-        PaletteMode::GreenCrt,
+impl SystemMode {
+    pub const ALL: [SystemMode; 10] = [
+        SystemMode::Svga,
+        SystemMode::Sga,
+        SystemMode::Vga,
+        SystemMode::Ega,
+        SystemMode::Cga,
+        SystemMode::C64,
+        SystemMode::Atari,
+        SystemMode::ZxSpectrum,
+        SystemMode::Amber,
+        SystemMode::GreenCrt,
     ];
 
     pub fn name(&self) -> &'static str {
         match self {
-            PaletteMode::Vga => "VGA Modern",
-            PaletteMode::ZxSpectrum => "ZX Spectrum",
-            PaletteMode::C64 => "Commodore 64",
-            PaletteMode::Atari => "Atari 2600",
-            PaletteMode::Amber => "Amber CRT",
-            PaletteMode::GreenCrt => "Green CRT",
+            SystemMode::Svga => "SVGA 800x600",
+            SystemMode::Sga => "SGA 640x480",
+            SystemMode::Vga => "VGA 640x400",
+            SystemMode::Ega => "EGA 640x350",
+            SystemMode::Cga => "CGA 320x200",
+            SystemMode::ZxSpectrum => "ZX Spectrum",
+            SystemMode::C64 => "Commodore 64",
+            SystemMode::Atari => "Atari 800",
+            SystemMode::Amber => "Amber CRT",
+            SystemMode::GreenCrt => "Green CRT",
         }
     }
 
     pub fn short_name(&self) -> &'static str {
         match self {
-            PaletteMode::Vga => "VGA",
-            PaletteMode::ZxSpectrum => "ZX",
-            PaletteMode::C64 => "C64",
-            PaletteMode::Atari => "Atari",
-            PaletteMode::Amber => "Amber",
-            PaletteMode::GreenCrt => "Green",
+            SystemMode::Svga => "SVGA",
+            SystemMode::Sga => "SGA",
+            SystemMode::Vga => "VGA",
+            SystemMode::Ega => "EGA",
+            SystemMode::Cga => "CGA",
+            SystemMode::ZxSpectrum => "ZX",
+            SystemMode::C64 => "C64",
+            SystemMode::Atari => "Atari",
+            SystemMode::Amber => "Amber",
+            SystemMode::GreenCrt => "Green",
         }
     }
 
     /// Native pixel resolution (width, height)
     pub fn resolution(&self) -> (u16, u16) {
         match self {
-            PaletteMode::Vga | PaletteMode::Amber | PaletteMode::GreenCrt => (640, 400),
-            PaletteMode::C64 | PaletteMode::Atari => (320, 200),
-            PaletteMode::ZxSpectrum => (256, 192),
+            SystemMode::Svga => (800, 600),
+            SystemMode::Sga => (640, 480),
+            SystemMode::Vga | SystemMode::Amber | SystemMode::GreenCrt => (640, 400),
+            SystemMode::Ega => (640, 350),
+            SystemMode::Cga | SystemMode::C64 | SystemMode::Atari => (320, 200),
+            SystemMode::ZxSpectrum => (256, 192),
         }
     }
 
     /// Character grid dimensions (cols, rows)
     pub fn char_grid(&self) -> (u16, u16) {
         match self {
-            PaletteMode::Vga | PaletteMode::Amber | PaletteMode::GreenCrt => (80, 25),
-            PaletteMode::C64 => (40, 25),
-            PaletteMode::Atari => (40, 25),
-            PaletteMode::ZxSpectrum => (32, 24),
+            SystemMode::Svga => (100, 37),
+            SystemMode::Sga => (80, 30),
+            SystemMode::Vga | SystemMode::Amber | SystemMode::GreenCrt => (80, 25),
+            SystemMode::Ega => (80, 25),
+            SystemMode::Cga | SystemMode::C64 => (40, 25),
+            SystemMode::Atari => (40, 24),
+            SystemMode::ZxSpectrum => (32, 24),
         }
     }
 
@@ -68,43 +90,173 @@ impl PaletteMode {
     /// Pixel line height in the framebuffer (pixels per text row)
     pub fn line_height(&self) -> u16 {
         match self {
-            PaletteMode::Vga | PaletteMode::Amber | PaletteMode::GreenCrt => 16,
-            PaletteMode::C64 | PaletteMode::Atari | PaletteMode::ZxSpectrum => 8,
+            SystemMode::Svga | SystemMode::Sga | SystemMode::Vga | SystemMode::Amber | SystemMode::GreenCrt => 16,
+            SystemMode::Ega => 14,
+            SystemMode::Cga | SystemMode::C64 | SystemMode::Atari | SystemMode::ZxSpectrum => 8,
         }
     }
 
     pub fn next(&self) -> Self {
         match self {
-            PaletteMode::Vga => PaletteMode::ZxSpectrum,
-            PaletteMode::ZxSpectrum => PaletteMode::C64,
-            PaletteMode::C64 => PaletteMode::Atari,
-            PaletteMode::Atari => PaletteMode::Amber,
-            PaletteMode::Amber => PaletteMode::GreenCrt,
-            PaletteMode::GreenCrt => PaletteMode::Vga,
+            SystemMode::Svga => SystemMode::Sga,
+            SystemMode::Sga => SystemMode::Vga,
+            SystemMode::Vga => SystemMode::Ega,
+            SystemMode::Ega => SystemMode::Cga,
+            SystemMode::Cga => SystemMode::C64,
+            SystemMode::C64 => SystemMode::Atari,
+            SystemMode::Atari => SystemMode::ZxSpectrum,
+            SystemMode::ZxSpectrum => SystemMode::Amber,
+            SystemMode::Amber => SystemMode::GreenCrt,
+            SystemMode::GreenCrt => SystemMode::Svga,
         }
     }
 
     pub fn from_str_name(s: &str) -> Self {
         match s.to_ascii_lowercase().as_str() {
-            "zx" | "zxspectrum" | "spectrum" => PaletteMode::ZxSpectrum,
-            "c64" | "commodore" | "commodore64" => PaletteMode::C64,
-            "atari" | "atari2600" | "atari800" => PaletteMode::Atari,
-            "amber" | "ambercrt" => PaletteMode::Amber,
-            "green" | "greencrt" | "crt" => PaletteMode::GreenCrt,
-            _ => PaletteMode::Vga,
+            "svga" | "supervga" => SystemMode::Svga,
+            "sga" => SystemMode::Sga,
+            "ega" => SystemMode::Ega,
+            "cga" => SystemMode::Cga,
+            "zx" | "zxspectrum" | "spectrum" => SystemMode::ZxSpectrum,
+            "c64" | "commodore" | "commodore64" => SystemMode::C64,
+            "atari" | "atari2600" | "atari800" => SystemMode::Atari,
+            "amber" | "ambercrt" => SystemMode::Amber,
+            "green" | "greencrt" | "crt" => SystemMode::GreenCrt,
+            _ => SystemMode::Vga,
         }
     }
 }
 
-pub type SystemMode = PaletteMode;
+pub type PaletteMode = SystemMode;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ActiveModal {
+    #[default]
+    None,
+    Visuals,
+    Help,
+    System,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VisualEffects {
+    pub scanlines: f32,
+    pub pixel_grid: f32,
+    pub chromatic: f32,
+    pub afterglow: f32,
+    pub curvature: f32,
+    pub jitter: f32,
+    pub magnet: f32,
+    pub noise: f32,
+    pub antenna_hum: f32,
+}
+
+impl Default for VisualEffects {
+    fn default() -> Self {
+        Self {
+            scanlines: 0.25,
+            pixel_grid: 0.16,
+            chromatic: 0.0,
+            afterglow: 0.15,
+            curvature: 0.0,
+            jitter: 0.0,
+            magnet: 0.0,
+            noise: 0.0,
+            antenna_hum: 0.0,
+        }
+    }
+}
+
+impl VisualEffects {
+    pub fn clean() -> Self {
+        Self {
+            scanlines: 0.0,
+            pixel_grid: 0.0,
+            chromatic: 0.0,
+            afterglow: 0.0,
+            curvature: 0.0,
+            jitter: 0.0,
+            magnet: 0.0,
+            noise: 0.0,
+            antenna_hum: 0.0,
+        }
+    }
+
+    pub fn crt_trinitron() -> Self {
+        Self {
+            scanlines: 0.35,
+            pixel_grid: 0.20,
+            chromatic: 0.15,
+            afterglow: 0.25,
+            curvature: 0.20,
+            jitter: 0.0,
+            magnet: 0.0,
+            noise: 0.0,
+            antenna_hum: 0.0,
+        }
+    }
+
+    pub fn crt_arcade() -> Self {
+        Self {
+            scanlines: 0.55,
+            pixel_grid: 0.35,
+            chromatic: 0.45,
+            afterglow: 0.30,
+            curvature: 0.35,
+            jitter: 0.15,
+            magnet: 0.0,
+            noise: 0.0,
+            antenna_hum: 0.0,
+        }
+    }
+
+    pub fn phosphor_bloom() -> Self {
+        Self {
+            scanlines: 0.65,
+            pixel_grid: 0.40,
+            chromatic: 0.0,
+            afterglow: 0.75,
+            curvature: 0.20,
+            jitter: 0.05,
+            magnet: 0.0,
+            noise: 0.0,
+            antenna_hum: 0.0,
+        }
+    }
+
+    pub fn retro_glitch() -> Self {
+        Self {
+            scanlines: 0.75,
+            pixel_grid: 0.50,
+            chromatic: 0.90,
+            afterglow: 0.40,
+            curvature: 0.40,
+            jitter: 0.50,
+            magnet: 0.0,
+            noise: 0.0,
+            antenna_hum: 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Platform {
+    #[default]
+    Web,
+    Terminal,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct View {
     pub width: u16,
     pub height: u16,
     pub elements: Vec<Element>,
     pub cursor: Option<Cursor>,
-    pub palette_mode: PaletteMode,
+    pub mouse_pos: Option<(u16, u16)>,
+    pub palette_mode: SystemMode,
+    pub system_mode: SystemMode,
+    pub visual_effects: VisualEffects,
+    pub platform: Platform,
 }
 
 impl View {
@@ -114,7 +266,11 @@ impl View {
             height,
             elements: Vec::new(),
             cursor: None,
-            palette_mode: PaletteMode::default(),
+            mouse_pos: None,
+            palette_mode: SystemMode::default(),
+            system_mode: SystemMode::default(),
+            visual_effects: VisualEffects::default(),
+            platform: Platform::default(),
         }
     }
 
@@ -298,6 +454,7 @@ pub enum InputEvent {
     PointerMove { x: u16, y: u16 },
     PointerDown { x: u16, y: u16, button: Button },
     PointerUp { x: u16, y: u16, button: Button },
+    PointerLeave,
     Wheel { dx: i16, dy: i16 },
     Resize { width: u16, height: u16 },
 }
@@ -347,4 +504,16 @@ pub fn horizontal_scroll(text: &str, max_chars: usize, tick: usize) -> String {
         out.push(ticker_chars[(offset + i) % cycle]);
     }
     out
+}
+
+/// Returns true if the character is a Unicode box-drawing or table-border character.
+pub fn is_table_border_char(ch: char) -> bool {
+    matches!(
+        ch,
+        '─' | '│' | '┌' | '┐' | '└' | '┘' | '├' | '┤' | '┬' | '┴' | '┼'
+            | '━' | '┃' | '┏' | '┓' | '┗' | '┛' | '┣' | '┫' | '┳' | '┻' | '╋'
+            | '═' | '║' | '╒' | '╓' | '╔' | '╕' | '╖' | '╗' | '╘' | '╙' | '╚'
+            | '╛' | '╜' | '╝' | '╞' | '╟' | '╠' | '╡' | '╢' | '╣' | '╤' | '╥'
+            | '╦' | '╧' | '╨' | '╩' | '╪' | '╫' | '╬' | '╭' | '╮' | '╯' | '╰'
+    )
 }
