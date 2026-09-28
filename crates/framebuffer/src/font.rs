@@ -5,6 +5,10 @@ use pixel_ssh_view::PaletteMode;
 pub const FONT_WIDTH: u16 = 8;
 pub const FONT_HEIGHT: u16 = 8;
 
+/// CP437 glyphs in code-page order, 14 scanlines per glyph. License and source
+/// are documented in `assets/README.md`.
+pub static EGA_FONT_8X14: &[u8; 256 * 14] = include_bytes!("../assets/ega-8x14.cp437.bin");
+
 pub static CP437_FONT_8X8: [[u8; 8]; 256] = [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // CP437 0x00
     [0x7E, 0x81, 0xA5, 0x81, 0xBD, 0x99, 0x81, 0x7E], // CP437 0x01

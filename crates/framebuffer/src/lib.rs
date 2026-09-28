@@ -1,6 +1,8 @@
 pub mod font;
 
-use font::{font_8x16_for_mode, font_for_mode, unicode_to_cp437, FONT_HEIGHT, FONT_WIDTH};
+use font::{
+    font_8x16_for_mode, font_for_mode, unicode_to_cp437, EGA_FONT_8X14, FONT_HEIGHT, FONT_WIDTH,
+};
 use pixel_ssh_view::{is_table_border_char, ColorTheme, Element, PaletteMode, View};
 
 pub const DEFAULT_WIDTH: u16 = 640;
@@ -446,13 +448,13 @@ impl Framebuffer {
     pub fn draw_char(&mut self, x: u16, y: u16, ch: char, fg: u8, bg: Option<u8>) {
         let fg = if is_table_border_char(ch) { 7 } else { fg };
         let code = unicode_to_cp437(ch);
-        if let Some(font16) = font_8x16_for_mode(self.font_mode) {
-            let glyph = &font16[code as usize];
-            let glyph_height = if self.font_mode == PaletteMode::Ega {
-                14
-            } else {
-                16
-            };
+        let tall_glyph: Option<(&[u8], u16)> = if self.font_mode == PaletteMode::Ega {
+            let start = (code as usize) * 14;
+            Some((&EGA_FONT_8X14[start..start + 14], 14))
+        } else {
+            font_8x16_for_mode(self.font_mode).map(|font16| (font16[code as usize].as_slice(), 16))
+        };
+        if let Some((glyph, glyph_height)) = tall_glyph {
             for row in 0..glyph_height {
                 let py = y + row;
                 if py >= self.height {
@@ -860,6 +862,19 @@ mod tests {
         assert!(fb.pixels[14 * 8..].iter().all(|pixel| *pixel == 0));
         let (_, row, _) = Framebuffer::find_char_cell_and_glyph(640, 350, 3, 15, None);
         assert_eq!(row, 14);
+    }
+
+    #[test]
+    fn ega_uses_its_own_fourteen_scanline_glyph() {
+        let mut ega = Framebuffer::new(8, 16);
+        ega.font_mode = PaletteMode::Ega;
+        ega.draw_char(0, 0, 'A', 5, None);
+        let mut vga = Framebuffer::new(8, 16);
+        vga.font_mode = PaletteMode::Vga;
+        vga.draw_char(0, 0, 'A', 5, None);
+
+        assert!(ega.pixels[11 * 8..12 * 8].iter().all(|pixel| *pixel == 0));
+        assert!(vga.pixels[11 * 8..12 * 8].contains(&5));
     }
 
     #[test]
