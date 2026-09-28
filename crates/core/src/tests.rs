@@ -664,4 +664,42 @@ use pixel_ssh_view::*;
         }
     }
 
+    #[test]
+    fn test_about_tab_includes_profile_portrait_and_sprite() {
+        // 1. Verify text lines in all column modes contain architect profile
+        assert!(ABOUT_LINES_80.iter().any(|(t, _, _)| t.contains("DMYTRO YEMELIANOV")));
+        assert!(ABOUT_LINES_80.iter().any(|(t, _, _)| t.contains("ARCHITECT")));
+        assert!(ABOUT_LINES_80.iter().any(|(t, _, _)| t.contains("┌────────────┐")));
+
+        assert!(ABOUT_LINES_40.iter().any(|(t, _, _)| t.contains("DMYTRO YEMELIANOV")));
+        assert!(ABOUT_LINES_40.iter().any(|(t, _, _)| t.contains("┌────────┐")));
+
+        assert!(ABOUT_LINES_32.iter().any(|(t, _, _)| t.contains("DMYTRO YEMELIANOV")));
+        assert!(ABOUT_LINES_32.iter().any(|(t, _, _)| t.contains("┌────────┐")));
+
+        // 2. Verify Web mode About tab renders high-resolution dithered sprite
+        let mut app = App::new_web();
+        app.current_tab = Tab::About;
+        let view = app.render();
+
+        let mut found_sprite = false;
+        for elem in &view.elements {
+            if let Element::Sprite(s) = elem {
+                assert!(s.width == 96 || s.width == 64);
+                assert!(s.height == 96 || s.height == 64);
+                assert_eq!(s.data.len(), (s.width as usize) * (s.height as usize));
+                found_sprite = true;
+            }
+        }
+        assert!(found_sprite, "About article on Web must render dithered profile sprite");
+
+        // 3. Verify get_profile_sprite returns valid data for all 10 system modes
+        for mode in SystemMode::ALL {
+            let s96 = crate::data::profile::get_profile_sprite(mode, 96);
+            assert_eq!(s96.len(), 96 * 96);
+            let s64 = crate::data::profile::get_profile_sprite(mode, 64);
+            assert_eq!(s64.len(), 64 * 64);
+        }
+    }
+
 

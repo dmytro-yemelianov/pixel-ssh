@@ -217,6 +217,22 @@ impl App {
             }
         }
 
+        // On Web, render high-resolution dithered portrait sprite inside the framed architect card
+        if !is_resume && self.platform == pixel_ssh_view::Platform::Web && scroll_offset == 0 {
+            let sprite_size = if cols >= 80 { 96 } else { 64 };
+            let sprite_x = box_x + 16;
+            let sprite_y = content_y_start + char_h;
+            if sprite_y + sprite_size < (box_y + box_h).saturating_sub(char_h) {
+                view.add(Element::Sprite(pixel_ssh_view::SpriteElement {
+                    x: sprite_x,
+                    y: sprite_y,
+                    width: sprite_size,
+                    height: sprite_size,
+                    data: crate::data::profile::get_profile_sprite(self.palette_mode, sprite_size).to_vec(),
+                }));
+            }
+        }
+
         // Scrollbar on the right border
         let scroll_x = (box_x + box_w).saturating_sub(12);
         let track_h = box_h.saturating_sub(char_h * 2);

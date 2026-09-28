@@ -40,6 +40,17 @@ impl App {
             }
         }
 
+        // On Web, render high-resolution dithered portrait sprite inside the framed architect card
+        if self.about_scroll == 0 && self.platform == Platform::Web {
+            view.add(Element::Sprite(pixel_ssh_view::SpriteElement {
+                x: 24,
+                y: 64,
+                width: 96,
+                height: 96,
+                data: crate::data::profile::get_profile_sprite(self.palette_mode, 96).to_vec(),
+            }));
+        }
+
         // Scrollbar at x = 624
         view.add(Element::Text(TextElement {
             x: 624,
@@ -103,6 +114,16 @@ impl App {
             }
         }
 
+        if self.about_scroll == 0 && self.platform == Platform::Web {
+            view.add(Element::Sprite(pixel_ssh_view::SpriteElement {
+                x: 12,
+                y: 32,
+                width: 64,
+                height: 64,
+                data: crate::data::profile::get_profile_sprite(self.palette_mode, 64).to_vec(),
+            }));
+        }
+
         // Scrollbar at x = 310
         view.add(Element::Text(TextElement {
             x: 310,
@@ -164,6 +185,16 @@ impl App {
                     style,
                 }));
             }
+        }
+
+        if self.about_scroll == 0 && self.platform == Platform::Web {
+            view.add(Element::Sprite(pixel_ssh_view::SpriteElement {
+                x: 10,
+                y: 32,
+                width: 64,
+                height: 64,
+                data: crate::data::profile::get_profile_sprite(self.palette_mode, 64).to_vec(),
+            }));
         }
 
         // Scrollbar at x = 246

@@ -376,6 +376,18 @@ pub static RESUME_LINES_32: &[(&str, u8, bool)] = &[
 ];
 
 pub static ABOUT_LINES_80: &[(&str, u8, bool)] = &[
+    ("┌────────────┐   DMYTRO YEMELIANOV - LEAD SOFTWARE ARCHITECT", 6, true),
+    ("│░▒▒▓▒▒░░░░░░│   Systems Engineering • AI Infrastructure • CAD/PLM", 5, false),
+    ("│▒▓███░░░░░░░│   ───────────────────────────────────────────────────", 7, false),
+    ("│▒▓▓▓▓▒▒░░░░░│   • 14+ years: C#/.NET, Rust, TypeScript, Python", 5, false),
+    ("│▒▓▓▓▓░░▒░▒░░│   • Spec: High-throughput agentic platforms,", 5, false),
+    ("│░░░░ ░░░▒▒░░│     multi-region AI/RAG systems, CAD/PLM motion IR", 5, false),
+    ("│░░░ ░░░▓▒▓▓▒│   • Author of RAPS: Rust APS platform & 51 MCP tools", 5, false),
+    ("└────────────┘   • Autodesk Expert Elite (Top ~100 globally)", 5, false),
+    ("• Autodesk Developer Network (ADN) since 2012 • M.S. Computer Science", 5, false),
+    ("• Location: Vinnytsia, Ukraine · Remote Worldwide (no relocation)", 5, false),
+    ("• Direct contact: dyemelianov@icloud.com · https://yemelianov.dev", 7, true),
+    ("", 5, false),
     ("SYSTEM ARCHITECTURE & TECHNICAL SPECIFICATION", 6, true),
     ("Dual-protocol pixel-first platform: Web (WASM/WebGL2) + SSH ANSI Daemon", 4, false),
     ("", 5, false),
@@ -427,6 +439,18 @@ pub static ABOUT_LINES_80: &[(&str, u8, bool)] = &[
 ];
 
 pub static ABOUT_LINES_40: &[(&str, u8, bool)] = &[
+    ("┌────────┐  DMYTRO YEMELIANOV", 6, true),
+    ("│░▒▒▒░░░░│  Software Architect", 5, false),
+    ("│▒▓█▒░░░░│  AI Infra & CAD/PLM", 5, false),
+    ("│▓██▒░░░░│  • 14y: C#/.NET, Rust", 5, false),
+    ("│▒▓▓▒▒░░░│  • RAPS: 51 MCP tools", 5, false),
+    ("│▒▓▓▒▒░░░│  • Autodesk Elite", 5, false),
+    ("│░░░░░▒░░│  • ADN member '12", 5, false),
+    ("│░░░░░▒▒▒│  • Vinnytsia, Ukraine", 5, false),
+    ("│░░░ ▒▓▓▒│  • Remote Worldwide", 5, false),
+    ("└────────┘  • yemelianov.dev", 7, true),
+    ("• Contact: dyemelianov@icloud.com", 7, true),
+    ("", 5, false),
     ("SYSTEM ARCHITECTURE & TECHNICAL SPECS:", 6, true),
     ("Dual-protocol: WebGL2 WASM + SSH ANSI", 4, false),
     ("", 5, false),
@@ -481,6 +505,17 @@ pub static ABOUT_LINES_40: &[(&str, u8, bool)] = &[
 ];
 
 pub static ABOUT_LINES_32: &[(&str, u8, bool)] = &[
+    ("┌────────┐ DMYTRO YEMELIANOV", 6, true),
+    ("│░▒▒▒░░░░│ Systems & AI Arch", 5, false),
+    ("│▒▓█▒░░░░│ • 14y: .NET, Rust", 5, false),
+    ("│▓██▒░░░░│ • RAPS (51 tools)", 5, false),
+    ("│▒▓▓▒▒░░░│ • Autodesk Elite", 5, false),
+    ("│▒▓▓▒▒░░░│ • ADN writer '13", 5, false),
+    ("│░░░░░▒░░│ • Vinnytsia, UA", 5, false),
+    ("│░░░░░▒▒▒│ • Remote Global", 5, false),
+    ("│░░░ ▒▓▓▒│ • yemelianov.dev", 7, true),
+    ("└────────┘ dyemelianov@icloud", 7, true),
+    ("", 5, false),
     ("SYSTEM ARCHITECTURE:", 6, true),
     ("WebGL2 WASM + SSH ANSI", 4, false),
     ("", 5, false),
@@ -534,6 +569,8 @@ pub static ABOUT_LINES_32: &[(&str, u8, bool)] = &[
 ];
 
 pub mod details;
+pub mod profile;
 pub use details::{get_project_detail, project_detail_lines, ProjectDetail};
+pub use profile::{get_profile_sprite, PROFILE_SPRITE_64_VGA, PROFILE_SPRITE_96_VGA};
 
 

@@ -184,7 +184,7 @@ impl App {
         }
         let (cols, _) = self.palette_mode.char_grid();
         match cols {
-            80 => ABOUT_LINES_80.len().saturating_sub(18),
+            100 | 80 => ABOUT_LINES_80.len().saturating_sub(18),
             40 => ABOUT_LINES_40.len().saturating_sub(19),
             _ => ABOUT_LINES_32.len().saturating_sub(18),
         }

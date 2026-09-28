@@ -253,7 +253,45 @@ impl AnsiRenderer {
                         }
                     }
                 }
-                Element::Sprite(_) => {}
+                Element::Sprite(s) => {
+                    let (start_col, start_row) = if is_terminal {
+                        ((s.x / 8).min(self.cols.saturating_sub(1)), (s.y / 16).min(self.rows.saturating_sub(1)))
+                    } else {
+                        self.pixel_to_grid(s.x, s.y, view.palette_mode)
+                    };
+
+                    let sprite_cols = (s.width / 8).max(1);
+                    let sprite_rows = (s.height / 16).max(1);
+
+                    for r in 0..sprite_rows {
+                        let cell_row = start_row + r;
+                        if cell_row >= self.rows { break; }
+                        for c in 0..sprite_cols {
+                            let cell_col = start_col + c;
+                            if cell_col >= self.cols { break; }
+
+                            let top_py = (r * 16) + 4;
+                            let bot_py = (r * 16) + 12;
+                            let px = (c * 8) + 4;
+
+                            if (top_py as usize) < (s.height as usize) && (bot_py as usize) < (s.height as usize) && (px as usize) < (s.width as usize) {
+                                let top_idx = s.data[(top_py as usize) * (s.width as usize) + (px as usize)];
+                                let bot_idx = s.data[(bot_py as usize) * (s.width as usize) + (px as usize)];
+
+                                let top_entry = palette[top_idx as usize];
+                                let bot_entry = palette[bot_idx as usize];
+
+                                let grid_idx = (cell_row as usize) * (self.cols as usize) + (cell_col as usize);
+                                if grid_idx < self.grid.len() {
+                                    self.grid[grid_idx].ch = '▀';
+                                    self.grid[grid_idx].fg_rgb = [top_entry[0], top_entry[1], top_entry[2]];
+                                    self.grid[grid_idx].bg_rgb = [bot_entry[0], bot_entry[1], bot_entry[2]];
+                                    self.grid[grid_idx].bold = false;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -431,6 +469,34 @@ mod tests {
             let idx = (2 * cols + col) as usize;
             assert_eq!(renderer.grid[idx].ch, '─', "Expected '─' at col {}", col);
         }
+    }
+
+    #[test]
+    fn test_render_sprite_to_ansi_grid() {
+        let cols = 80;
+        let rows = 25;
+        let mut renderer = AnsiRenderer::new(cols, rows);
+        let mut view = View::new(cols * 8, rows * 16);
+        view.platform = Platform::Terminal;
+        view.palette_mode = PaletteMode::Vga;
+
+        // Add a 16x16 sprite at x=0, y=0
+        let data = vec![6u8; 16 * 16]; // white
+        view.add(Element::Sprite(pixel_ssh_view::SpriteElement {
+            x: 0,
+            y: 0,
+            width: 16,
+            height: 16,
+            data,
+        }));
+
+        renderer.render_view(&view);
+
+        // Terminal cell (0, 0) should have '▀' half block
+        assert_eq!(renderer.grid[0].ch, '▀');
+        let white_rgb = [240, 246, 252]; // palette 6 in VGA
+        assert_eq!(renderer.grid[0].fg_rgb, white_rgb);
+        assert_eq!(renderer.grid[0].bg_rgb, white_rgb);
     }
 
     #[test]
