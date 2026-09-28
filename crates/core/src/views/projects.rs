@@ -187,8 +187,7 @@ impl App {
             style: TextStyle::new(Color::from_palette(3)).bold(),
         }));
 
-        let tag_col_w = cols.saturating_sub(49);
-        let header_str = format!("║  #   Project Title            │ {:<tag_col_w$}│ Action       ║", "Tags / Domain Subsystems ");
+        let header_str = format!("║  #   Project Title           │ {:<31}│ Action       ║", "Tags / Domain Subsystems");
         view.add(Element::Text(TextElement {
             x: 0,
             y: 3 * lh,
@@ -196,7 +195,7 @@ impl App {
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
 
-        let sep_str = format!("╟──────────────────────────────┼─{}┼──────────────╢", "─".repeat(tag_col_w.saturating_sub(1)));
+        let sep_str = format!("╟{}┼{}┼{}╢", "─".repeat(30), "─".repeat(32), "─".repeat(14));
         view.add(Element::Text(TextElement {
             x: 0,
             y: 4 * lh,
@@ -252,7 +251,7 @@ impl App {
                 style: TextStyle::new(fg).bold(),
             }));
 
-            // Mid separator
+            // Mid separator (col 31, x=248)
             view.add(Element::Text(TextElement {
                 x: 248,
                 y,
@@ -260,9 +259,9 @@ impl App {
                 style: TextStyle::new(Color::from_palette(3)),
             }));
 
-            // Tags formatted with horizontal auto-scroll when selected or long
+            // Tags formatted with horizontal auto-scroll when selected or long (col 32..63, 32 chars)
             let tag_str = p.tags.iter().map(|t| format!("<{}>", t)).collect::<Vec<_>>().join(" ");
-            let tag_w = tag_col_w.saturating_sub(2);
+            let tag_w = 32;
             let tag_display = if is_sel || tag_str.chars().count() > tag_w {
                 horizontal_scroll(&tag_str, tag_w, self.tick)
             } else {
@@ -270,31 +269,29 @@ impl App {
             };
 
             view.add(Element::Text(TextElement {
-                x: 264,
+                x: 256,
                 y,
                 text: tag_display,
                 style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(4) }),
             }));
 
-            // Action separator
-            let act_sep_x = (cols.saturating_sub(16) * 8) as u16;
+            // Action separator (col 64, x=512)
             view.add(Element::Text(TextElement {
-                x: act_sep_x,
+                x: 512,
                 y,
                 text: "│".to_string(),
                 style: TextStyle::new(Color::from_palette(3)),
             }));
 
-            // Action text
-            let action_x = act_sep_x + 16;
+            // Action text (col 66, x=528)
             view.add(Element::Text(TextElement {
-                x: action_x,
+                x: 528,
                 y,
                 text: if is_sel { "[Enter] ->" } else { "  Details " }.to_string(),
                 style: TextStyle::new(if is_sel { Color::from_palette(7) } else { Color::from_palette(3) }).bold(),
             }));
 
-            // Right panel border
+            // Right panel border (col 79, x=632)
             view.add(Element::Text(TextElement {
                 x: view.width.saturating_sub(8),
                 y,
@@ -303,11 +300,9 @@ impl App {
             }));
         }
 
-        // Panel Bottom Border
+        // Panel Bottom Border with column connectors ╧ at col 31 and col 64
         let bot_label = " 16 Projects • 160 KB Free ";
-        let left_bot = cols.saturating_sub(2 + bot_label.len()) / 2;
-        let right_bot = cols.saturating_sub(2 + bot_label.len() + left_bot);
-        let bot_border = format!("╚{}{}{}╝", "═".repeat(left_bot), bot_label, "═".repeat(right_bot));
+        let bot_border = format!("╚═{}══╧{}╧{}╝", bot_label, "═".repeat(32), "═".repeat(14));
         let bot_y = (5 + max_visible as u16) * lh;
         if bot_y + lh <= view.height {
             view.add(Element::Text(TextElement {
@@ -325,7 +320,7 @@ impl App {
             let prompt_path = format!("C:\\DMYTRO\\PROJECTS\\{}>", selected_slug.to_uppercase());
             let cursor_char = if (self.tick / 4) % 2 == 0 { "█" } else { " " };
             view.add(Element::Text(TextElement {
-                x: 8,
+                x: 16,
                 y: prompt_y,
                 text: format!("{}{}", prompt_path, cursor_char),
                 style: TextStyle::new(Color::from_palette(14)).bold(),
@@ -336,7 +331,7 @@ impl App {
         let hint_y = prompt_y + lh;
         if hint_y + lh <= view.height {
             view.add(Element::Text(TextElement {
-                x: 8,
+                x: 16,
                 y: hint_y,
                 text: "Use [↑/↓] or [k/j] to select • [Enter] Details • [1-8] or Click buttons below".to_string(),
                 style: TextStyle::new(Color::from_palette(4)),

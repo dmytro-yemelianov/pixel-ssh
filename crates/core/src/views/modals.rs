@@ -53,13 +53,26 @@ impl App {
             }
         }
 
-        // Live Center Clock Display with glowing retro border
+        // Live Center Clock Display with authentic CP437 double border and drop shadow
+        let char_h: u16 = if height <= 200 { 8 } else { 16 };
         let clock_str = self.clock_formatted();
-        let box_w = 200u16.min(width.saturating_sub(16));
-        let box_h = 44u16.min(height.saturating_sub(16));
-        let box_x = (width.saturating_sub(box_w)) / 2;
-        let box_y = (height.saturating_sub(box_h)) / 2;
+        let box_cols = 28u16.min(width / 8);
+        let box_w = box_cols * 8;
+        let box_rows = 4u16;
+        let box_h = box_rows * char_h;
+        let box_x = ((width.saturating_sub(box_w)) / 16) * 8;
+        let box_y = ((height.saturating_sub(box_h)) / (char_h * 2)) * char_h;
 
+        // Shadow
+        view.add(Element::Rect(RectElement {
+            x: box_x + 8,
+            y: box_y + char_h,
+            width: box_w,
+            height: box_h,
+            color: Color::from_palette(13),
+            filled: true,
+        }));
+        // Box background
         view.add(Element::Rect(RectElement {
             x: box_x,
             y: box_y,
@@ -68,43 +81,78 @@ impl App {
             color: Color::from_palette(1),
             filled: true,
         }));
-        view.add(Element::Rect(RectElement {
-            x: box_x,
-            y: box_y,
-            width: box_w,
-            height: box_h,
-            color: Color::from_palette(7),
-            filled: false,
-        }));
+
+        let inner_w = (box_cols.saturating_sub(2)) as usize;
+        let top_border = format!("╔{}╗", "═".repeat(inner_w));
+        let bot_border = format!("╚{}╝", "═".repeat(inner_w));
 
         let clock_pulse = match (self.screensaver_tick / 4) % 3 {
             0 => 6,
             1 => 14,
             _ => 7,
         };
+
+        view.add(Element::Text(TextElement {
+            x: box_x,
+            y: box_y,
+            text: top_border,
+            style: TextStyle::new(Color::from_palette(7)).bold(),
+        }));
+
         let clock_w = (clock_str.len() as u16) * 8;
         let clock_center_x = box_x + (box_w.saturating_sub(clock_w)) / 2;
         view.add(Element::Text(TextElement {
+            x: box_x,
+            y: box_y + char_h,
+            text: "║".to_string(),
+            style: TextStyle::new(Color::from_palette(7)),
+        }));
+        view.add(Element::Text(TextElement {
             x: clock_center_x,
-            y: box_y + 6,
+            y: box_y + char_h,
             text: clock_str,
             style: TextStyle::new(Color::from_palette(clock_pulse)).bold(),
+        }));
+        view.add(Element::Text(TextElement {
+            x: box_x + box_w.saturating_sub(8),
+            y: box_y + char_h,
+            text: "║".to_string(),
+            style: TextStyle::new(Color::from_palette(7)),
         }));
 
         let label = "CRT PHOSPHOR SAVER";
         let label_w = (label.len() as u16) * 8;
         let label_x = box_x + (box_w.saturating_sub(label_w)) / 2;
         view.add(Element::Text(TextElement {
+            x: box_x,
+            y: box_y + 2 * char_h,
+            text: "║".to_string(),
+            style: TextStyle::new(Color::from_palette(7)),
+        }));
+        view.add(Element::Text(TextElement {
             x: label_x,
-            y: box_y + 24,
+            y: box_y + 2 * char_h,
             text: label.to_string(),
             style: TextStyle::new(Color::from_palette(4)),
+        }));
+        view.add(Element::Text(TextElement {
+            x: box_x + box_w.saturating_sub(8),
+            y: box_y + 2 * char_h,
+            text: "║".to_string(),
+            style: TextStyle::new(Color::from_palette(7)),
+        }));
+
+        view.add(Element::Text(TextElement {
+            x: box_x,
+            y: box_y + 3 * char_h,
+            text: bot_border,
+            style: TextStyle::new(Color::from_palette(7)).bold(),
         }));
 
         let wake_text = "MOVE MOUSE OR PRESS ANY KEY TO WAKE";
         let wake_w = (wake_text.len() as u16) * 8;
         let wake_x = (width.saturating_sub(wake_w)) / 2;
-        let wake_y = height.saturating_sub(20);
+        let wake_y = (height.saturating_sub(char_h * 2) / char_h) * char_h;
         view.add(Element::Text(TextElement {
             x: wake_x,
             y: wake_y,
@@ -114,7 +162,7 @@ impl App {
     }
 
     /// Renders About or CV (Resume) as a reader article window overlaying on top of Projects.
-    pub(crate) fn render_article_overlay(&self, view: &mut View, width: u16, height: u16, cols: u16) {
+    pub(crate) fn render_article_overlay(&self, view: &mut View, _width: u16, height: u16, cols: u16) {
         let is_resume = self.current_tab == Tab::Resume;
         let article_title = if cols >= 80 {
             if is_resume { "ARTICLE: CURRICULUM VITAE" } else { "ARTICLE: ABOUT ARCHITECT" }
@@ -125,16 +173,25 @@ impl App {
         };
         let char_h: u16 = self.palette_mode.line_height();
 
-        let pad_x = if cols >= 80 { 16u16 } else { 4u16 };
-        let pad_top = char_h * 2;
-        let pad_bot = char_h * 2;
+        let pad_cols = if cols >= 80 { 2u16 } else { 1u16 };
+        let box_x = pad_cols * 8;
+        let box_cols = cols.saturating_sub(pad_cols * 2);
+        let box_w = box_cols * 8;
+        let box_y = char_h * 2;
+        let box_rows = ((height.saturating_sub(char_h * 4)) / char_h).max(4);
+        let box_h = box_rows * char_h;
 
-        let box_x = pad_x;
-        let box_y = pad_top;
-        let box_w = width.saturating_sub(pad_x * 2);
-        let box_h = ((height.saturating_sub(pad_top + pad_bot)) / char_h) * char_h;
+        // Authentic Volkov Commander drop shadow (pure black index 13)
+        view.add(Element::Rect(RectElement {
+            x: box_x + 8,
+            y: box_y + char_h,
+            width: box_w,
+            height: box_h,
+            color: Color::from_palette(13),
+            filled: true,
+        }));
 
-        // Dark card background & double border
+        // Dark card background
         view.add(Element::Rect(RectElement {
             x: box_x,
             y: box_y,
@@ -142,14 +199,6 @@ impl App {
             height: box_h,
             color: Color::from_palette(0),
             filled: true,
-        }));
-        view.add(Element::Rect(RectElement {
-            x: box_x,
-            y: box_y,
-            width: box_w,
-            height: box_h,
-            color: Color::from_palette(7),
-            filled: false,
         }));
 
         // Header bar inside article box
@@ -162,17 +211,22 @@ impl App {
             filled: true,
         }));
 
+        // Top Border with embedded Title and Close indicator slot
+        let title_part = format!("╔═ [ {} ] ", article_title);
+        let close_btn_text = if cols >= 80 { "[ESC: X]" } else { "[X]" };
+        let close_spaces = " ".repeat(close_btn_text.chars().count() + 2);
+        let close_slot = format!("{}═╗", close_spaces);
+        let filler_len = (box_cols as usize).saturating_sub(title_part.chars().count() + close_slot.chars().count());
+        let top_str = format!("{}{}{}", title_part, "═".repeat(filler_len), close_slot);
         view.add(Element::Text(TextElement {
-            x: box_x + 4,
+            x: box_x,
             y: box_y,
-            text: format!("╔═ [ {} ]", article_title),
+            text: top_str,
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
 
-        // Close button at top right of article
-        let close_btn_text = if cols >= 80 { "[ESC: X]" } else { "[X]" };
-        let close_btn_w = (close_btn_text.len() as u16) * 8;
-        let close_x = (box_x + box_w).saturating_sub(close_btn_w + 4);
+        // Clickable close button overlay aligned exactly in the slot
+        let close_x = (box_x + box_w).saturating_sub(((close_btn_text.chars().count() + 2) as u16) * 8);
         view.add(Element::Link(LinkElement::new(
             close_x,
             box_y,
@@ -197,7 +251,7 @@ impl App {
             (l, self.about_scroll, self.about_max_scroll())
         };
 
-        let visible_lines = ((box_h.saturating_sub(char_h * 2)) / char_h) as usize;
+        let visible_lines = (box_rows.saturating_sub(2)) as usize;
         let content_y_start = box_y + char_h;
 
         for (i, (text, pal_idx, bold)) in lines.iter().enumerate() {
@@ -209,7 +263,7 @@ impl App {
                     style = style.bold();
                 }
                 view.add(Element::Text(TextElement {
-                    x: box_x + 8,
+                    x: box_x + 16,
                     y,
                     text: text.to_string(),
                     style,
@@ -233,25 +287,44 @@ impl App {
             }
         }
 
-        // Scrollbar on the right border
-        let scroll_x = (box_x + box_w).saturating_sub(12);
-        let track_h = box_h.saturating_sub(char_h * 2);
-        if max_scroll > 0 && track_h > char_h {
-            let thumb_ratio = (scroll_offset as f32) / (max_scroll as f32);
-            let thumb_pos = (thumb_ratio * (track_h.saturating_sub(char_h) as f32)) as u16;
-            let thumb_y = content_y_start + ((thumb_pos / char_h) * char_h);
-            view.add(Element::Rect(RectElement {
-                x: scroll_x,
-                y: thumb_y,
-                width: 6,
-                height: char_h,
-                color: Color::from_palette(7),
-                filled: true,
+        // Side borders and Authentic CP437 Text-Mode Scrollbar on the right border
+        for r in 1..(box_rows - 1) {
+            let ry = box_y + r * char_h;
+            view.add(Element::Text(TextElement {
+                x: box_x,
+                y: ry,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+
+            let (scroll_char, scroll_fg) = if max_scroll > 0 && box_rows > 3 {
+                if r == 1 {
+                    ("▲", 6)
+                } else if r == box_rows - 2 {
+                    ("▼", 6)
+                } else {
+                    let track_len = (box_rows - 4).max(1) as usize;
+                    let thumb_idx = ((scroll_offset as f32 / max_scroll as f32) * ((track_len.saturating_sub(1)) as f32)).round() as usize;
+                    if (r - 2) as usize == thumb_idx {
+                        ("█", 14)
+                    } else {
+                        ("░", 3)
+                    }
+                }
+            } else {
+                ("║", 3)
+            };
+
+            view.add(Element::Text(TextElement {
+                x: box_x + box_w.saturating_sub(8),
+                y: ry,
+                text: scroll_char.to_string(),
+                style: TextStyle::new(Color::from_palette(scroll_fg)),
             }));
         }
 
         // Bottom status / close prompt
-        let bot_y = (box_y + box_h).saturating_sub(char_h);
+        let bot_y = box_y + (box_rows - 1) * char_h;
         view.add(Element::Rect(RectElement {
             x: box_x,
             y: bot_y,
@@ -261,38 +334,43 @@ impl App {
             filled: true,
         }));
         let prompt_text = if cols >= 80 {
-            "[j/k/Wheel] Scroll  •  Press [ESC] to return to Projects"
+            "╚══ [j/k/Wheel] Scroll • [ESC] Return "
         } else if cols >= 40 {
-            "[j/k] Scroll • [ESC] Return"
+            "╚═ [j/k] Scroll • [ESC] "
         } else {
-            "[j/k] • [ESC]"
+            "╚═ [j/k] • [ESC] "
         };
+        let filler_len = (box_cols as usize).saturating_sub(prompt_text.chars().count() + 1);
+        let bot_border = format!("{}{}{}", prompt_text, "═".repeat(filler_len), "╝");
         view.add(Element::Text(TextElement {
-            x: box_x + 4,
+            x: box_x,
             y: bot_y,
-            text: prompt_text.to_string(),
+            text: bot_border,
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }
 
     /// Renders the System mode / Resolution & Color Theme picker modal dialog.
-    pub(crate) fn render_system_modal(&self, view: &mut View, width: u16, height: u16, cols: u16) {
+    pub(crate) fn render_system_modal(&self, view: &mut View, _width: u16, height: u16, cols: u16) {
         let char_h: u16 = if height <= 200 { 8 } else { 16 };
-        let box_w = if cols >= 80 { 580u16.min(width.saturating_sub(24)) } else { width.saturating_sub(16) };
-        let box_h = (13 * char_h + 16).min(height.saturating_sub(24));
-        let box_x = (width.saturating_sub(box_w)) / 2;
-        let box_y = (height.saturating_sub(box_h)) / 2;
+        let box_cols = if cols >= 80 { 76u16 } else { cols.saturating_sub(2) };
+        let box_w = box_cols * 8;
+        let box_rows = 15u16.min((height / char_h).saturating_sub(2));
+        let box_h = box_rows * char_h;
+        let box_x = ((cols.saturating_sub(box_cols)) / 2) * 8;
+        let box_y = ((height / char_h).saturating_sub(box_rows) / 2) * char_h;
 
         // Authentic Volkov Commander drop shadow (pure black index 13)
         view.add(Element::Rect(RectElement {
             x: box_x + 8,
-            y: box_y + 8,
+            y: box_y + char_h,
             width: box_w,
             height: box_h,
             color: Color::from_palette(13),
             filled: true,
         }));
 
+        // Dialog background
         view.add(Element::Rect(RectElement {
             x: box_x,
             y: box_y,
@@ -301,42 +379,61 @@ impl App {
             color: Color::from_palette(0),
             filled: true,
         }));
+
+        // Header bar
         view.add(Element::Rect(RectElement {
             x: box_x,
             y: box_y,
             width: box_w,
-            height: box_h,
-            color: Color::from_palette(3),
-            filled: false,
-        }));
-
-        view.add(Element::Rect(RectElement {
-            x: box_x + 1,
-            y: box_y + 1,
-            width: box_w.saturating_sub(2),
             height: char_h,
             color: Color::from_palette(1),
             filled: true,
         }));
+
+        // Top Border with embedded Title and Close indicator slot
+        let title = "SELECT RESOLUTION & COLOR THEME";
+        let title_part = format!("╔═ [ {} ] ", title);
+        let close_slot = "      ═╗";
+        let filler_len = (box_cols as usize).saturating_sub(title_part.chars().count() + close_slot.chars().count());
+        let top_str = format!("{}{}{}", title_part, "═".repeat(filler_len), close_slot);
         view.add(Element::Text(TextElement {
-            x: box_x + 8,
-            y: box_y + 1,
-            text: "SELECT DISPLAY RESOLUTION & COLOR THEME".to_string(),
+            x: box_x,
+            y: box_y,
+            text: top_str,
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
-        let close_x = (box_x + box_w).saturating_sub(40);
+
+        // Clickable close button overlay
+        let close_x = (box_x + box_w).saturating_sub(48);
         view.add(Element::Link(LinkElement::new(
             close_x,
-            box_y + 1,
+            box_y,
             "[X]",
             "#close-modal",
             TextStyle::new(Color::from_palette(10)).bold(),
         )));
 
-        let row_start_y = box_y + char_h + 4;
+        // Side borders
+        for r in 1..(box_rows - 1) {
+            let ry = box_y + r * char_h;
+            view.add(Element::Text(TextElement {
+                x: box_x,
+                y: ry,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+            view.add(Element::Text(TextElement {
+                x: box_x + box_w.saturating_sub(8),
+                y: ry,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+        }
+
+        let row_start_y = box_y + char_h;
         if cols >= 80 {
-            let col1_x = box_x + 12;
-            let col2_x = box_x + 300;
+            let col1_x = box_x + 24;
+            let col2_x = box_x + 320;
 
             // Section Headers
             view.add(Element::Text(TextElement {
@@ -355,16 +452,16 @@ impl App {
             // Resolution List (Left Column)
             for (i, res) in pixel_ssh_view::ResolutionMode::ALL.iter().enumerate() {
                 let y = row_start_y + ((i + 1) as u16) * char_h;
-                if y + char_h > box_y + box_h - char_h { break; }
+                if y + char_h >= box_y + box_h { break; }
 
                 let is_cur = self.resolution == *res;
                 let (w, h) = res.resolution();
 
                 if is_cur {
                     view.add(Element::Rect(RectElement {
-                        x: col1_x.saturating_sub(4),
+                        x: col1_x,
                         y,
-                        width: 270,
+                        width: 272,
                         height: char_h,
                         color: Color::from_palette(2),
                         filled: true,
@@ -390,7 +487,7 @@ impl App {
             // Color Theme List (Right Column)
             for (i, theme) in pixel_ssh_view::ColorTheme::ALL.iter().enumerate() {
                 let y = row_start_y + ((i + 1) as u16) * char_h;
-                if y + char_h > box_y + box_h - char_h { break; }
+                if y + char_h >= box_y + box_h { break; }
 
                 let is_cur = self.color_theme == *theme;
                 let key_char = match i {
@@ -400,9 +497,9 @@ impl App {
 
                 if is_cur {
                     view.add(Element::Rect(RectElement {
-                        x: col2_x.saturating_sub(4),
+                        x: col2_x,
                         y,
-                        width: 260,
+                        width: 256,
                         height: char_h,
                         color: Color::from_palette(2),
                         filled: true,
@@ -433,7 +530,7 @@ impl App {
                 let marker = if is_cur { "►" } else { " " };
                 let line_text = format!("{} [{}] {:<4} {:>3}x{:<3}", marker, i + 1, res.short_name(), w, h);
                 view.add(Element::Text(TextElement {
-                    x: box_x + 8,
+                    x: box_x + 16,
                     y,
                     text: line_text,
                     style: TextStyle::new(if is_cur { Color::from_palette(6) } else { Color::from_palette(5) }).bold(),
@@ -446,7 +543,7 @@ impl App {
                 let marker = if is_cur { "►" } else { " " };
                 let line_text = format!("{} [{}] {:<14}", marker, key_char, theme.short_name());
                 view.add(Element::Text(TextElement {
-                    x: box_x + 8,
+                    x: box_x + 16,
                     y,
                     text: line_text,
                     style: TextStyle::new(if is_cur { Color::from_palette(6) } else { Color::from_palette(5) }).bold(),
@@ -454,23 +551,52 @@ impl App {
             }
         }
 
-        let foot_y = (box_y + box_h).saturating_sub(char_h + 2);
+        // Bottom border
+        let bot_y = box_y + (box_rows - 1) * char_h;
+        view.add(Element::Rect(RectElement {
+            x: box_x,
+            y: bot_y,
+            width: box_w,
+            height: char_h,
+            color: Color::from_palette(1),
+            filled: true,
+        }));
+        let prompt = if cols >= 80 {
+            "╚══ Click [1-8] Resolution • [A-H] Theme • [ESC] Close "
+        } else {
+            "╚═ [1-4] Res • [A-D] Theme • [ESC] "
+        };
+        let filler_len = (box_cols as usize).saturating_sub(prompt.chars().count() + 1);
+        let bot_border = format!("{}{}{}", prompt, "═".repeat(filler_len), "╝");
         view.add(Element::Text(TextElement {
-            x: box_x + 8,
-            y: foot_y,
-            text: "Click or press [1-8] Resolution • [A-H] Theme • [ESC] Close".to_string(),
+            x: box_x,
+            y: bot_y,
+            text: bot_border,
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }
 
     /// Renders the Visuals effects modal dialog.
-    pub(crate) fn render_visuals_modal(&self, view: &mut View, width: u16, height: u16, cols: u16) {
+    pub(crate) fn render_visuals_modal(&self, view: &mut View, _width: u16, height: u16, cols: u16) {
         let char_h: u16 = if height <= 200 { 8 } else { 16 };
-        let box_w = if cols >= 80 { 540u16.min(width.saturating_sub(32)) } else { width.saturating_sub(16) };
-        let box_h = (13 * char_h + 16).min(height.saturating_sub(24));
-        let box_x = (width.saturating_sub(box_w)) / 2;
-        let box_y = (height.saturating_sub(box_h)) / 2;
+        let box_cols = if cols >= 80 { 76u16 } else { cols.saturating_sub(2) };
+        let box_w = box_cols * 8;
+        let box_rows = 15u16.min((height / char_h).saturating_sub(2));
+        let box_h = box_rows * char_h;
+        let box_x = ((cols.saturating_sub(box_cols)) / 2) * 8;
+        let box_y = ((height / char_h).saturating_sub(box_rows) / 2) * char_h;
 
+        // Authentic Volkov Commander drop shadow (pure black index 13)
+        view.add(Element::Rect(RectElement {
+            x: box_x + 8,
+            y: box_y + char_h,
+            width: box_w,
+            height: box_h,
+            color: Color::from_palette(13),
+            filled: true,
+        }));
+
+        // Dialog background
         view.add(Element::Rect(RectElement {
             x: box_x,
             y: box_y,
@@ -479,63 +605,92 @@ impl App {
             color: Color::from_palette(0),
             filled: true,
         }));
+
+        // Header bar
         view.add(Element::Rect(RectElement {
             x: box_x,
             y: box_y,
             width: box_w,
-            height: box_h,
-            color: Color::from_palette(7),
-            filled: false,
-        }));
-
-        view.add(Element::Rect(RectElement {
-            x: box_x + 1,
-            y: box_y + 1,
-            width: box_w.saturating_sub(2),
             height: char_h,
             color: Color::from_palette(1),
             filled: true,
         }));
+
+        // Top Border with embedded Title and Close indicator slot
+        let title = "CRT DISPLAY & VISUAL EFFECTS";
+        let title_part = format!("╔═ [ {} ] ", title);
+        let close_slot = "      ═╗";
+        let filler_len = (box_cols as usize).saturating_sub(title_part.chars().count() + close_slot.chars().count());
+        let top_str = format!("{}{}{}", title_part, "═".repeat(filler_len), close_slot);
         view.add(Element::Text(TextElement {
-            x: box_x + 8,
-            y: box_y + 1,
-            text: "CRT DISPLAY & VISUAL EFFECTS".to_string(),
+            x: box_x,
+            y: box_y,
+            text: top_str,
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
-        let close_x = (box_x + box_w).saturating_sub(40);
+
+        // Clickable close button overlay
+        let close_x = (box_x + box_w).saturating_sub(48);
         view.add(Element::Link(LinkElement::new(
             close_x,
-            box_y + 1,
+            box_y,
             "[X]",
             "#close-modal",
             TextStyle::new(Color::from_palette(10)).bold(),
         )));
 
-        let preset_y = box_y + char_h + 4;
+        // Side borders
+        for r in 1..(box_rows - 1) {
+            let ry = box_y + r * char_h;
+            view.add(Element::Text(TextElement {
+                x: box_x,
+                y: ry,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+            view.add(Element::Text(TextElement {
+                x: box_x + box_w.saturating_sub(8),
+                y: ry,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+        }
+
+        // Presets row at row 1
+        let preset_y = box_y + char_h;
         view.add(Element::Text(TextElement {
-            x: box_x + 8,
+            x: box_x + 24,
             y: preset_y,
             text: "PRESETS:".to_string(),
-            style: TextStyle::new(Color::from_palette(4)),
+            style: TextStyle::new(Color::from_palette(4)).bold(),
         }));
         let presets = [
-            ("Clean", "#clean", 80),
-            ("Trinitron", "#trinitron", 140),
-            ("Arcade", "#arcade", 230),
-            ("Bloom", "#bloom", 305),
-            ("Glitch", "#glitch", 365),
+            ("Clean", "#clean", 104),
+            ("Trinitron", "#trinitron", 176),
+            ("Arcade", "#arcade", 280),
+            ("Bloom", "#bloom", 368),
+            ("Glitch", "#glitch", 440),
         ];
         for (name, link, offset) in presets {
-            if box_x + offset + 50 < box_x + box_w {
+            if box_x + offset + 48 < box_x + box_w {
                 view.add(Element::Link(LinkElement::new(
                     box_x + offset,
                     preset_y,
                     format!("[{}]", name),
                     link,
-                    TextStyle::new(Color::from_palette(12)),
+                    TextStyle::new(Color::from_palette(12)).bold(),
                 )));
             }
         }
+
+        // Horizontal divider between presets and sliders
+        let sep_str = format!("╟{}╢", "─".repeat((box_cols.saturating_sub(2)) as usize));
+        view.add(Element::Text(TextElement {
+            x: box_x,
+            y: box_y + 2 * char_h,
+            text: sep_str,
+            style: TextStyle::new(Color::from_palette(3)),
+        }));
 
         let sliders = [
             ("Scanlines", self.visual_effects.scanlines),
@@ -548,15 +703,15 @@ impl App {
             ("White Noise", self.visual_effects.noise),
         ];
 
-        let slider_start_y = preset_y + char_h + 4;
+        let slider_start_y = box_y + 3 * char_h;
         for (i, (name, val)) in sliders.iter().enumerate() {
             let y = slider_start_y + (i as u16) * char_h;
-            if y + char_h > box_y + box_h - char_h { break; }
+            if y + char_h >= box_y + box_h { break; }
 
             let pct = (*val * 100.0).round() as u8;
-            let num_blocks = (pct as usize * 12) / 100;
+            let num_blocks = (pct as usize * 14) / 100;
             let mut bar = String::with_capacity(16);
-            for b in 0..12 {
+            for b in 0..14 {
                 if b < num_blocks {
                     bar.push('█');
                 } else {
@@ -564,32 +719,61 @@ impl App {
                 }
             }
 
-            let text = format!("{:<11} [ {} ] {:>3}%", name, bar, pct);
+            let text = format!("{:<12} [ {} ] {:>3}%", name, bar, pct);
             view.add(Element::Text(TextElement {
-                x: box_x + 8,
+                x: box_x + 24,
                 y,
                 text,
                 style: TextStyle::new(Color::from_palette(5)),
             }));
         }
 
-        let foot_y = (box_y + box_h).saturating_sub(char_h + 2);
+        // Bottom border
+        let bot_y = box_y + (box_rows - 1) * char_h;
+        view.add(Element::Rect(RectElement {
+            x: box_x,
+            y: bot_y,
+            width: box_w,
+            height: char_h,
+            color: Color::from_palette(1),
+            filled: true,
+        }));
+        let prompt = if cols >= 80 {
+            "╚══ Click presets or sliders to adjust • [ESC] Close "
+        } else {
+            "╚═ Click presets/sliders • [ESC] "
+        };
+        let filler_len = (box_cols as usize).saturating_sub(prompt.chars().count() + 1);
+        let bot_border = format!("{}{}{}", prompt, "═".repeat(filler_len), "╝");
         view.add(Element::Text(TextElement {
-            x: box_x + 8,
-            y: foot_y,
-            text: "Click presets or sliders to adjust • [ESC] Close".to_string(),
+            x: box_x,
+            y: bot_y,
+            text: bot_border,
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }
 
     /// Renders the Help & keyboard navigation modal dialog.
-    pub(crate) fn render_help_modal(&self, view: &mut View, width: u16, height: u16, cols: u16) {
+    pub(crate) fn render_help_modal(&self, view: &mut View, _width: u16, height: u16, cols: u16) {
         let char_h: u16 = if height <= 200 { 8 } else { 16 };
-        let box_w = if cols >= 80 { 540u16.min(width.saturating_sub(32)) } else { width.saturating_sub(16) };
-        let box_h = (13 * char_h + 16).min(height.saturating_sub(24));
-        let box_x = (width.saturating_sub(box_w)) / 2;
-        let box_y = (height.saturating_sub(box_h)) / 2;
+        let box_cols = if cols >= 80 { 76u16 } else { cols.saturating_sub(2) };
+        let box_w = box_cols * 8;
+        let box_rows = 15u16.min((height / char_h).saturating_sub(2));
+        let box_h = box_rows * char_h;
+        let box_x = ((cols.saturating_sub(box_cols)) / 2) * 8;
+        let box_y = ((height / char_h).saturating_sub(box_rows) / 2) * char_h;
 
+        // Authentic Volkov Commander drop shadow (pure black index 13)
+        view.add(Element::Rect(RectElement {
+            x: box_x + 8,
+            y: box_y + char_h,
+            width: box_w,
+            height: box_h,
+            color: Color::from_palette(13),
+            filled: true,
+        }));
+
+        // Dialog background
         view.add(Element::Rect(RectElement {
             x: box_x,
             y: box_y,
@@ -598,37 +782,56 @@ impl App {
             color: Color::from_palette(0),
             filled: true,
         }));
+
+        // Header bar
         view.add(Element::Rect(RectElement {
             x: box_x,
             y: box_y,
             width: box_w,
-            height: box_h,
-            color: Color::from_palette(8),
-            filled: false,
-        }));
-
-        view.add(Element::Rect(RectElement {
-            x: box_x + 1,
-            y: box_y + 1,
-            width: box_w.saturating_sub(2),
             height: char_h,
             color: Color::from_palette(1),
             filled: true,
         }));
+
+        // Top Border with embedded Title and Close indicator slot
+        let title = "SYSTEM HELP & KEYBOARD SHORTCUTS";
+        let title_part = format!("╔═ [ {} ] ", title);
+        let close_slot = "      ═╗";
+        let filler_len = (box_cols as usize).saturating_sub(title_part.chars().count() + close_slot.chars().count());
+        let top_str = format!("{}{}{}", title_part, "═".repeat(filler_len), close_slot);
         view.add(Element::Text(TextElement {
-            x: box_x + 8,
-            y: box_y + 1,
-            text: "SYSTEM HELP & KEYBOARD SHORTCUTS".to_string(),
+            x: box_x,
+            y: box_y,
+            text: top_str,
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
-        let close_x = (box_x + box_w).saturating_sub(40);
+
+        // Clickable close button overlay
+        let close_x = (box_x + box_w).saturating_sub(48);
         view.add(Element::Link(LinkElement::new(
             close_x,
-            box_y + 1,
+            box_y,
             "[X]",
             "#close-modal",
             TextStyle::new(Color::from_palette(10)).bold(),
         )));
+
+        // Side borders
+        for r in 1..(box_rows - 1) {
+            let ry = box_y + r * char_h;
+            view.add(Element::Text(TextElement {
+                x: box_x,
+                y: ry,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+            view.add(Element::Text(TextElement {
+                x: box_x + box_w.saturating_sub(8),
+                y: ry,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+        }
 
         let shortcuts = [
             ("1-10/Fk", "Bottom navigation: Prj, CV, About, Contact, Help, Visual..."),
@@ -643,25 +846,41 @@ impl App {
             ("ESC  ", "Close active modal dialog / Return to Projects view"),
         ];
 
-        let row_start_y = box_y + char_h + 4;
+        let row_start_y = box_y + char_h;
         for (i, (keys, desc)) in shortcuts.iter().enumerate() {
-            let y = row_start_y + (i as u16) * char_h;
-            if y + char_h > box_y + box_h - char_h { break; }
+            let y = row_start_y + ((i + 1) as u16) * char_h;
+            if y + char_h >= box_y + box_h { break; }
 
             let text = format!("{:<7} : {}", keys, desc);
             view.add(Element::Text(TextElement {
-                x: box_x + 8,
+                x: box_x + 24,
                 y,
                 text,
                 style: TextStyle::new(Color::from_palette(5)),
             }));
         }
 
-        let foot_y = (box_y + box_h).saturating_sub(char_h + 2);
+        // Bottom border
+        let bot_y = box_y + (box_rows - 1) * char_h;
+        view.add(Element::Rect(RectElement {
+            x: box_x,
+            y: bot_y,
+            width: box_w,
+            height: char_h,
+            color: Color::from_palette(1),
+            filled: true,
+        }));
+        let prompt = if cols >= 80 {
+            "╚══ Press [ESC] or click [X] to return "
+        } else {
+            "╚═ [ESC] Return "
+        };
+        let filler_len = (box_cols as usize).saturating_sub(prompt.chars().count() + 1);
+        let bot_border = format!("{}{}{}", prompt, "═".repeat(filler_len), "╝");
         view.add(Element::Text(TextElement {
-            x: box_x + 8,
-            y: foot_y,
-            text: "Press [ESC] or click [X] to return".to_string(),
+            x: box_x,
+            y: bot_y,
+            text: bot_border,
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }

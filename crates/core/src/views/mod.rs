@@ -85,14 +85,6 @@ impl App {
                 color: Color::from_palette(13),
                 filled: true,
             }));
-            view.add(Element::Rect(RectElement {
-                x: clock_x,
-                y: 0,
-                width: 60,
-                height: 16,
-                color: Color::from_palette(3),
-                filled: false,
-            }));
             view.add(Element::Text(TextElement {
                 x: clock_x + 2,
                 y: 0,
@@ -139,14 +131,6 @@ impl App {
                 color: Color::from_palette(13),
                 filled: true,
             }));
-            view.add(Element::Rect(RectElement {
-                x: clock_x.saturating_sub(2),
-                y: 0,
-                width: 48,
-                height: 10,
-                color: Color::from_palette(3),
-                filled: false,
-            }));
             view.add(Element::Text(TextElement {
                 x: clock_x + 1,
                 y: 1,
@@ -192,14 +176,6 @@ impl App {
                 height: 10,
                 color: Color::from_palette(13),
                 filled: true,
-            }));
-            view.add(Element::Rect(RectElement {
-                x: clock_x.saturating_sub(2),
-                y: 0,
-                width: 48,
-                height: 10,
-                color: Color::from_palette(3),
-                filled: false,
             }));
             view.add(Element::Text(TextElement {
                 x: clock_x + 1,
