@@ -13,6 +13,7 @@ pub struct Framebuffer {
     pub pixels: Vec<u8>,
     pub palette: [[u8; 4]; 256],
     pub font_mode: PaletteMode,
+    pub theme: ColorTheme,
 }
 
 impl Default for Framebuffer {
@@ -30,6 +31,7 @@ impl Framebuffer {
             pixels: vec![0; size],
             palette: Self::default_palette(),
             font_mode: PaletteMode::default(),
+            theme: ColorTheme::default(),
         }
     }
 
@@ -299,6 +301,7 @@ impl Framebuffer {
     }
 
     pub fn set_palette_theme(&mut self, theme: ColorTheme) {
+        self.theme = theme;
         self.palette = Self::palette_for_theme(theme);
     }
 
@@ -322,8 +325,14 @@ impl Framebuffer {
         let x_end = (x + w).min(self.width);
         let y_end = (y + h).min(self.height);
 
-        match (self.font_mode, color_index) {
-            (PaletteMode::GreenCrt, 1) => {
+        let effective_theme = if self.theme != ColorTheme::Commander {
+            self.theme
+        } else {
+            self.font_mode.to_theme()
+        };
+
+        match (effective_theme, color_index) {
+            (ColorTheme::GreenCrt, 1) => {
                 // 25% stipple dither for cards & tracks (pure monochrome green)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -333,7 +342,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (PaletteMode::GreenCrt, 2) => {
+            (ColorTheme::GreenCrt, 2) => {
                 // 50% checkerboard dither for selection
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -343,7 +352,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (PaletteMode::Amber, 1) => {
+            (ColorTheme::Amber, 1) => {
                 // 25% stipple dither for cards & tracks (pure monochrome amber)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -353,7 +362,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (PaletteMode::Amber, 2) => {
+            (ColorTheme::Amber, 2) => {
                 // 50% checkerboard dither for selection
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -363,7 +372,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (PaletteMode::C64, 1) => {
+            (ColorTheme::C64, 1) => {
                 // Authentic C64 GEOS-style 50% checkerboard dither: background blue (0) and dark grey (1)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -373,7 +382,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (PaletteMode::C64, 2) => {
+            (ColorTheme::C64, 2) => {
                 // 50% checkerboard dither: background blue (0) and light blue (2)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -383,7 +392,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (PaletteMode::Atari, 1) => {
+            (ColorTheme::Atari, 1) => {
                 // Authentic Atari GEM 50% dither: dark umber (0) and bronze (1)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -393,7 +402,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (PaletteMode::Atari, 2) => {
+            (ColorTheme::Atari, 2) => {
                 // Authentic Atari GEM 50% dither: dark umber (0) and gold (2)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -403,7 +412,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (PaletteMode::ZxSpectrum, 1) => {
+            (ColorTheme::ZxSpectrum, 1) => {
                 // ZX Spectrum 50% checkerboard dither: black (0) and blue (1)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);
@@ -413,7 +422,7 @@ impl Framebuffer {
                     }
                 }
             }
-            (PaletteMode::ZxSpectrum, 2) => {
+            (ColorTheme::ZxSpectrum, 2) => {
                 // ZX Spectrum 50% checkerboard dither: black (0) and bright blue (2)
                 for cy in y..y_end {
                     let row_start = (cy as usize) * (self.width as usize);

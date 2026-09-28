@@ -176,6 +176,7 @@ impl App {
 
         // Single Panel Volkov Commander layout
         let cols = (view.width / 8) as usize;
+        let tag_w = cols.saturating_sub(48);
         let title_panel = " D:\\PORTFOLIO\\PROJECTS ";
         let left_pad = cols.saturating_sub(2 + title_panel.len()) / 2;
         let right_pad = cols.saturating_sub(2 + title_panel.len() + left_pad);
@@ -187,7 +188,7 @@ impl App {
             style: TextStyle::new(Color::from_palette(3)).bold(),
         }));
 
-        let header_str = format!("║  #   Project Title           │ {:<31}│ Action       ║", "Tags / Domain Subsystems");
+        let header_str = format!("║  #   Project Title           │ {:<w$}│ Action       ║", "Tags / Domain Subsystems", w = tag_w.saturating_sub(1));
         view.add(Element::Text(TextElement {
             x: 0,
             y: 3 * lh,
@@ -195,7 +196,7 @@ impl App {
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
 
-        let sep_str = format!("╟{}┼{}┼{}╢", "─".repeat(30), "─".repeat(32), "─".repeat(14));
+        let sep_str = format!("╟{}┼{}┼{}╢", "─".repeat(30), "─".repeat(tag_w), "─".repeat(14));
         view.add(Element::Text(TextElement {
             x: 0,
             y: 4 * lh,
@@ -259,9 +260,8 @@ impl App {
                 style: TextStyle::new(Color::from_palette(3)),
             }));
 
-            // Tags formatted with horizontal auto-scroll when selected or long (col 32..63, 32 chars)
+            // Tags formatted with horizontal auto-scroll when selected or long
             let tag_str = p.tags.iter().map(|t| format!("<{}>", t)).collect::<Vec<_>>().join(" ");
-            let tag_w = 32;
             let tag_display = if is_sel || tag_str.chars().count() > tag_w {
                 horizontal_scroll(&tag_str, tag_w, self.tick)
             } else {
@@ -275,23 +275,25 @@ impl App {
                 style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(4) }),
             }));
 
-            // Action separator (col 64, x=512)
+            // Action separator (col 32 + tag_w)
+            let action_sep_x = ((31 + 1 + tag_w) as u16) * 8;
             view.add(Element::Text(TextElement {
-                x: 512,
+                x: action_sep_x,
                 y,
                 text: "│".to_string(),
                 style: TextStyle::new(Color::from_palette(3)),
             }));
 
-            // Action text (col 66, x=528)
+            // Action text
+            let action_text_x = action_sep_x + 16;
             view.add(Element::Text(TextElement {
-                x: 528,
+                x: action_text_x,
                 y,
                 text: if is_sel { "[Enter] ->" } else { "  Details " }.to_string(),
                 style: TextStyle::new(if is_sel { Color::from_palette(7) } else { Color::from_palette(3) }).bold(),
             }));
 
-            // Right panel border (col 79, x=632)
+            // Right panel border (col = cols - 1)
             view.add(Element::Text(TextElement {
                 x: view.width.saturating_sub(8),
                 y,
@@ -300,9 +302,9 @@ impl App {
             }));
         }
 
-        // Panel Bottom Border with column connectors ╧ at col 31 and col 64
+        // Panel Bottom Border with column connectors ╧ at col 31 and action separator col
         let bot_label = " 16 Projects • 160 KB Free ";
-        let bot_border = format!("╚═{}══╧{}╧{}╝", bot_label, "═".repeat(32), "═".repeat(14));
+        let bot_border = format!("╚═{}══╧{}╧{}╝", bot_label, "═".repeat(tag_w), "═".repeat(14));
         let bot_y = (5 + max_visible as u16) * lh;
         if bot_y + lh <= view.height {
             view.add(Element::Text(TextElement {

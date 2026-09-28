@@ -497,9 +497,9 @@ impl WebGlRenderer {
         let hum_loc = self.gl.get_uniform_location(&self.program, "u_antenna_hum");
         self.gl.uniform1f(hum_loc.as_ref(), fx.antenna_hum);
 
-        let mono_val = match fb.font_mode {
-            pixel_ssh_view::SystemMode::Amber => 1,
-            pixel_ssh_view::SystemMode::GreenCrt => 2,
+        let mono_val = match fb.theme {
+            pixel_ssh_view::ColorTheme::Amber => 1,
+            pixel_ssh_view::ColorTheme::GreenCrt => 2,
             _ => 0,
         };
         let mono_loc = self.gl.get_uniform_location(&self.program, "u_monochrome_mode");

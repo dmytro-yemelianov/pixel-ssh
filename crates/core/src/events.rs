@@ -321,18 +321,9 @@ impl App {
                             true
                         }
                     }
-                    Key::Char('8') | Key::F(8) => {
-                        if self.platform == Platform::Web {
-                            self.active_modal = if self.active_modal == ActiveModal::System {
-                                ActiveModal::None
-                            } else {
-                                ActiveModal::System
-                            };
-                            true
-                        } else {
-                            self.color_theme = self.color_theme.next();
-                            true
-                        }
+                    Key::Char('8') | Key::F(8) | Key::Char('t') | Key::Char('T') => {
+                        self.set_color_theme(self.color_theme.next());
+                        true
                     }
                     Key::Char('9') | Key::F(9) => {
                         if self.current_tab == Tab::Projects {
@@ -865,11 +856,7 @@ impl App {
                             return true;
                         }
                         7 => {
-                            self.active_modal = if self.active_modal == ActiveModal::System {
-                                ActiveModal::None
-                            } else {
-                                ActiveModal::System
-                            };
+                            self.set_color_theme(self.color_theme.next());
                             return true;
                         }
                         8 => {
