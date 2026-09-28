@@ -162,7 +162,7 @@ impl App {
 
     pub fn projects_max_visible(&self) -> usize {
         if self.platform == Platform::Terminal {
-            (self.terminal_rows as usize).saturating_sub(5).max(6)
+            (self.terminal_rows as usize).saturating_sub(6).max(6)
         } else {
             let (cols, _) = self.resolution.char_grid();
             match cols {

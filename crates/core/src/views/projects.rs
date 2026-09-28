@@ -338,19 +338,8 @@ impl App {
             view.add(Element::Text(TextElement {
                 x: 8,
                 y: hint_y,
-                text: "Use [↑/↓] or [k/j] to select • [Enter] View details • [1-4] Tabs • [?] Help".to_string(),
+                text: "Use [↑/↓] or [k/j] to select • [Enter] Details • [1-8] or Click buttons below".to_string(),
                 style: TextStyle::new(Color::from_palette(4)),
-            }));
-        }
-
-        // Function Key Bar
-        let fkey_y = hint_y + lh;
-        if fkey_y + lh <= view.height {
-            view.add(Element::Text(TextElement {
-                x: 0,
-                y: fkey_y,
-                text: " 1Help  2Visual 3About  4CV     5Contct 6Res    7Theme  8Full   9Menu   10Quit ".to_string(),
-                style: TextStyle::new(Color::from_palette(14)).bold(),
             }));
         }
     }
@@ -800,8 +789,8 @@ impl App {
             }));
         }
 
-        // Scroll guidance note at row rows - 2
-        let note_y = (rows.saturating_sub(2)) * 16;
+        // Scroll guidance note at row rows - 3
+        let note_y = (rows.saturating_sub(3)) * 16;
         view.add(Element::Text(TextElement {
             x: 8,
             y: note_y,

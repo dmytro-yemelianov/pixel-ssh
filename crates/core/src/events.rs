@@ -159,35 +159,35 @@ impl App {
                 // If on Web with an article overlay open (Tab::Resume or Tab::About):
                 if self.platform == Platform::Web && (self.current_tab == Tab::Resume || self.current_tab == Tab::About) {
                     match key {
-                        Key::Escape | Key::Char('q') | Key::Char('Q') => {
+                        Key::Escape | Key::Char('q') | Key::Char('Q') | Key::Char('0') | Key::F(10) => {
                             self.current_tab = Tab::Projects;
                             return true;
                         }
-                        Key::Char('1') => {
+                        Key::Char('1') | Key::F(1) => {
                             self.current_tab = Tab::Projects;
                             return true;
                         }
-                        Key::Char('2') => {
+                        Key::Char('2') | Key::F(2) => {
                             self.current_tab = Tab::Resume;
                             return true;
                         }
-                        Key::Char('3') => {
+                        Key::Char('3') | Key::F(3) => {
                             self.current_tab = Tab::About;
                             return true;
                         }
-                        Key::Char('4') => {
+                        Key::Char('4') | Key::F(4) => {
                             self.current_tab = Tab::Contact;
                             return true;
                         }
-                        Key::Char('5') | Key::Char('?') => {
+                        Key::Char('5') | Key::F(5) | Key::Char('?') => {
                             self.active_modal = ActiveModal::Help;
                             return true;
                         }
-                        Key::Char('6') | Key::Char('v') | Key::Char('V') => {
+                        Key::Char('6') | Key::F(6) | Key::Char('v') | Key::Char('V') => {
                             self.active_modal = ActiveModal::Visuals;
                             return true;
                         }
-                        Key::Char('7') | Key::Char('s') | Key::Char('S') => {
+                        Key::Char('7') | Key::Char('8') | Key::F(7) | Key::F(8) | Key::Char('s') | Key::Char('S') => {
                             self.active_modal = ActiveModal::System;
                             return true;
                         }
@@ -257,32 +257,32 @@ impl App {
                 }
 
                 match key {
-                    // Universal workstation switching (Keys 1..=4)
-                    Key::Char('1') => {
+                    // Universal workstation switching (Keys 1..=10 and F1..=F10 matching bottom navigation bar)
+                    Key::Char('1') | Key::F(1) => {
                         self.current_tab = Tab::Projects;
                         self.show_detail = false;
                         self.active_modal = ActiveModal::None;
                         true
                     }
-                    Key::Char('2') => {
+                    Key::Char('2') | Key::F(2) => {
                         self.current_tab = Tab::Resume;
                         self.show_detail = false;
                         self.active_modal = ActiveModal::None;
                         true
                     }
-                    Key::Char('3') => {
+                    Key::Char('3') | Key::F(3) => {
                         self.current_tab = Tab::About;
                         self.show_detail = false;
                         self.active_modal = ActiveModal::None;
                         true
                     }
-                    Key::Char('4') => {
+                    Key::Char('4') | Key::F(4) => {
                         self.current_tab = Tab::Contact;
                         self.show_detail = false;
                         self.active_modal = ActiveModal::None;
                         true
                     }
-                    Key::Char('5') => {
+                    Key::Char('5') | Key::F(5) => {
                         if self.platform == Platform::Web {
                             self.active_modal = if self.active_modal == ActiveModal::Help {
                                 ActiveModal::None
@@ -295,13 +295,60 @@ impl App {
                         }
                         true
                     }
-                    Key::Char('6') => {
+                    Key::Char('6') | Key::F(6) => {
                         if self.platform == Platform::Web {
                             self.active_modal = if self.active_modal == ActiveModal::Visuals {
                                 ActiveModal::None
                             } else {
                                 ActiveModal::Visuals
                             };
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    Key::Char('7') | Key::F(7) => {
+                        if self.platform == Platform::Web {
+                            self.active_modal = if self.active_modal == ActiveModal::System {
+                                ActiveModal::None
+                            } else {
+                                ActiveModal::System
+                            };
+                            true
+                        } else {
+                            self.system_mode = self.system_mode.next();
+                            self.palette_mode = self.system_mode;
+                            true
+                        }
+                    }
+                    Key::Char('8') | Key::F(8) => {
+                        if self.platform == Platform::Web {
+                            self.active_modal = if self.active_modal == ActiveModal::System {
+                                ActiveModal::None
+                            } else {
+                                ActiveModal::System
+                            };
+                            true
+                        } else {
+                            self.color_theme = self.color_theme.next();
+                            true
+                        }
+                    }
+                    Key::Char('9') | Key::F(9) => {
+                        if self.current_tab == Tab::Projects {
+                            self.show_detail = !self.show_detail;
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    Key::Char('0') | Key::F(10) => {
+                        if self.active_modal != ActiveModal::None {
+                            self.active_modal = ActiveModal::None;
+                            true
+                        } else if self.current_tab != Tab::Projects || self.show_detail {
+                            self.current_tab = Tab::Projects;
+                            self.show_detail = false;
                             true
                         } else {
                             false
@@ -749,6 +796,101 @@ impl App {
                     return true;
                 }
 
+                // 1.5. Single global bottom navigation bar clicks (interacts across all views and modals)
+                let fkey_y_range = if height <= 200 {
+                    height.saturating_sub(22)..=height.saturating_sub(10)
+                } else {
+                    height.saturating_sub(34)..=height.saturating_sub(16)
+                };
+
+                if fkey_y_range.contains(&y) {
+                    let slot_count = if cols >= 80 { 10 } else { 6 };
+                    let slot_w = width / slot_count;
+                    let slot = ((x / slot_w) as usize).min(slot_count as usize - 1);
+                    match slot {
+                        0 => {
+                            self.current_tab = Tab::Projects;
+                            self.show_detail = false;
+                            self.active_modal = ActiveModal::None;
+                            return true;
+                        }
+                        1 => {
+                            self.current_tab = Tab::Resume;
+                            self.show_detail = false;
+                            self.active_modal = ActiveModal::None;
+                            return true;
+                        }
+                        2 => {
+                            self.current_tab = Tab::About;
+                            self.show_detail = false;
+                            self.active_modal = ActiveModal::None;
+                            return true;
+                        }
+                        3 => {
+                            self.current_tab = Tab::Contact;
+                            self.show_detail = false;
+                            self.active_modal = ActiveModal::None;
+                            return true;
+                        }
+                        4 => {
+                            self.active_modal = if self.active_modal == ActiveModal::Help {
+                                ActiveModal::None
+                            } else {
+                                ActiveModal::Help
+                            };
+                            return true;
+                        }
+                        5 => {
+                            if cols < 80 || self.platform != Platform::Web {
+                                self.active_modal = if self.active_modal == ActiveModal::System {
+                                    ActiveModal::None
+                                } else {
+                                    ActiveModal::System
+                                };
+                            } else {
+                                self.active_modal = if self.active_modal == ActiveModal::Visuals {
+                                    ActiveModal::None
+                                } else {
+                                    ActiveModal::Visuals
+                                };
+                            }
+                            return true;
+                        }
+                        6 => {
+                            self.active_modal = if self.active_modal == ActiveModal::System {
+                                ActiveModal::None
+                            } else {
+                                ActiveModal::System
+                            };
+                            return true;
+                        }
+                        7 => {
+                            self.active_modal = if self.active_modal == ActiveModal::System {
+                                ActiveModal::None
+                            } else {
+                                ActiveModal::System
+                            };
+                            return true;
+                        }
+                        8 => {
+                            if self.current_tab == Tab::Projects {
+                                self.show_detail = !self.show_detail;
+                                return true;
+                            }
+                        }
+                        9 => {
+                            if self.active_modal != ActiveModal::None {
+                                self.active_modal = ActiveModal::None;
+                            } else if self.current_tab != Tab::Projects || self.show_detail {
+                                self.current_tab = Tab::Projects;
+                                self.show_detail = false;
+                            }
+                            return true;
+                        }
+                        _ => {}
+                    }
+                }
+
                 // 2. Active Modal Dialog click handling: strictly captures all mouse events
                 if self.active_modal != ActiveModal::None {
                     let char_h: u16 = if height <= 200 { 8 } else { 16 };
@@ -910,205 +1052,6 @@ impl App {
 
                     // STRICT CAPTURE: Consume all other clicks inside article overlay without leaking to background!
                     return true;
-                }
-
-                // 4. Tab bar clicks & Modal triggers
-                let tab_y_range = if cols >= 80 { 16..=32 } else { 10..=22 };
-                if tab_y_range.contains(&y) {
-                    if self.platform == Platform::Web {
-                        if cols >= 80 {
-                            if x >= 8 && x < 112 {
-                                self.current_tab = Tab::Projects;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x >= 112 && x < 168 {
-                                self.current_tab = Tab::Resume;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x >= 168 && x < 248 {
-                                self.current_tab = Tab::About;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x >= 248 && x < 340 {
-                                self.current_tab = Tab::Contact;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x >= 340 && x < 388 {
-                                self.active_modal = if self.active_modal == ActiveModal::Visuals { ActiveModal::None } else { ActiveModal::Visuals };
-                                return true;
-                            } else if x >= 388 && x < 570 {
-                                self.active_modal = if self.active_modal == ActiveModal::System { ActiveModal::None } else { ActiveModal::System };
-                                return true;
-                            } else if x >= 570 && x < 610 {
-                                self.active_modal = if self.active_modal == ActiveModal::Help { ActiveModal::None } else { ActiveModal::Help };
-                                return true;
-                            } else if x >= width.saturating_sub(80) {
-                                self.active_modal = if self.active_modal == ActiveModal::System { ActiveModal::None } else { ActiveModal::System };
-                                return true;
-                            }
-                        } else if cols == 40 {
-                            if x < 44 {
-                                self.current_tab = Tab::Projects;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x < 86 {
-                                self.current_tab = Tab::Resume;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x < 128 {
-                                self.current_tab = Tab::About;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x < 170 {
-                                self.current_tab = Tab::Contact;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x < 202 {
-                                self.active_modal = if self.active_modal == ActiveModal::Visuals { ActiveModal::None } else { ActiveModal::Visuals };
-                                return true;
-                            } else if x < 234 {
-                                self.active_modal = if self.active_modal == ActiveModal::System { ActiveModal::None } else { ActiveModal::System };
-                                return true;
-                            } else if x < 256 {
-                                self.active_modal = if self.active_modal == ActiveModal::Help { ActiveModal::None } else { ActiveModal::Help };
-                                return true;
-                            } else {
-                                self.active_modal = if self.active_modal == ActiveModal::System { ActiveModal::None } else { ActiveModal::System };
-                                return true;
-                            }
-                        } else {
-                            // 32 cols
-                            if x < 36 {
-                                self.current_tab = Tab::Projects;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x < 72 {
-                                self.current_tab = Tab::Resume;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x < 108 {
-                                self.current_tab = Tab::About;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x < 144 {
-                                self.current_tab = Tab::Contact;
-                                self.show_detail = false;
-                                self.active_modal = ActiveModal::None;
-                                return true;
-                            } else if x < 176 {
-                                self.active_modal = if self.active_modal == ActiveModal::Visuals { ActiveModal::None } else { ActiveModal::Visuals };
-                                return true;
-                            } else if x < 208 {
-                                self.active_modal = if self.active_modal == ActiveModal::System { ActiveModal::None } else { ActiveModal::System };
-                                return true;
-                            } else {
-                                self.active_modal = if self.active_modal == ActiveModal::Help { ActiveModal::None } else { ActiveModal::Help };
-                                return true;
-                            }
-                        }
-                    } else {
-                        // Platform::Terminal
-                        if cols == 80 {
-                            if x < 120 {
-                                self.current_tab = Tab::Projects;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 224 {
-                                self.current_tab = Tab::Resume;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 328 {
-                                self.current_tab = Tab::About;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 436 {
-                                self.current_tab = Tab::Contact;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 528 {
-                                self.current_tab = Tab::Help;
-                                self.show_detail = false;
-                                return true;
-                            } else if x >= 528 && x <= width {
-                                self.system_mode = self.system_mode.next();
-                                self.palette_mode = self.system_mode;
-                                let (w, h) = self.system_mode.resolution();
-                                let (c, r) = self.system_mode.char_grid();
-                                self.status = format!("{}: {}x{} ({}x{})", self.system_mode.name(), w, h, c, r);
-                                return true;
-                            }
-                        } else if cols == 40 {
-                            if x < 50 {
-                                self.current_tab = Tab::Projects;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 98 {
-                                self.current_tab = Tab::Resume;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 146 {
-                                self.current_tab = Tab::About;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 194 {
-                                self.current_tab = Tab::Contact;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 240 {
-                                self.current_tab = Tab::Help;
-                                self.show_detail = false;
-                                return true;
-                            } else {
-                                self.system_mode = self.system_mode.next();
-                                self.palette_mode = self.system_mode;
-                                let (w, h) = self.system_mode.resolution();
-                                let (c, r) = self.system_mode.char_grid();
-                                self.status = format!("{}: {}x{} ({}x{})", self.system_mode.name(), w, h, c, r);
-                                return true;
-                            }
-                        } else {
-                            // 32 cols (ZX Spectrum Terminal)
-                            if x < 44 {
-                                self.current_tab = Tab::Projects;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 88 {
-                                self.current_tab = Tab::Resume;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 132 {
-                                self.current_tab = Tab::About;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 176 {
-                                self.current_tab = Tab::Contact;
-                                self.show_detail = false;
-                                return true;
-                            } else if x < 224 {
-                                self.current_tab = Tab::Help;
-                                self.show_detail = false;
-                                return true;
-                            } else {
-                                self.system_mode = self.system_mode.next();
-                                self.palette_mode = self.system_mode;
-                                let (w, h) = self.system_mode.resolution();
-                                let (c, r) = self.system_mode.char_grid();
-                                self.status = format!("{}: {}x{} ({}x{})", self.system_mode.name(), w, h, c, r);
-                                return true;
-                            }
-                        }
-                    }
                 }
 
                 // 2. Resume, About & Project Detail scrollbar interaction

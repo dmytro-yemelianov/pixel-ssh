@@ -631,7 +631,7 @@ impl App {
         )));
 
         let shortcuts = [
-            ("1 - 4", "Switch workstation views: Projects, CV, About, Contact"),
+            ("1-10/Fk", "Bottom navigation: Prj, CV, About, Contact, Help, Visual..."),
             ("Enter", "Open project details / Return to catalog"),
             ("h / l", "Navigate previous / next project in detail view"),
             ("j / k", "Scroll catalog, article, or project details up/down"),

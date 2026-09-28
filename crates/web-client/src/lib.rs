@@ -246,6 +246,16 @@ pub fn start() -> Result<(), JsValue> {
                     Some(Key::Tab)
                 }
                 "Backspace" => Some(Key::Backspace),
+                "F1" => { event.prevent_default(); Some(Key::F(1)) },
+                "F2" => { event.prevent_default(); Some(Key::F(2)) },
+                "F3" => { event.prevent_default(); Some(Key::F(3)) },
+                "F4" => { event.prevent_default(); Some(Key::F(4)) },
+                "F5" => { event.prevent_default(); Some(Key::F(5)) },
+                "F6" => { event.prevent_default(); Some(Key::F(6)) },
+                "F7" => { event.prevent_default(); Some(Key::F(7)) },
+                "F8" => { event.prevent_default(); Some(Key::F(8)) },
+                "F9" => { event.prevent_default(); Some(Key::F(9)) },
+                "F10" => { event.prevent_default(); Some(Key::F(10)) },
                 s if s.len() == 1 => {
                     let ch = s.chars().next().unwrap();
                     Some(Key::Char(ch))

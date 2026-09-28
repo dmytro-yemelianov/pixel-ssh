@@ -211,6 +211,26 @@ impl Handler for AppSession {
                                         _ => None,
                                     }
                                 }
+                                b'1' if i + 4 < data.len() && data[i + 4] == b'~' => {
+                                    let second = data[i + 3];
+                                    i += 5;
+                                    match second {
+                                        b'5' => Some(Key::F(5)),
+                                        b'7' => Some(Key::F(6)),
+                                        b'8' => Some(Key::F(7)),
+                                        b'9' => Some(Key::F(8)),
+                                        _ => None,
+                                    }
+                                }
+                                b'2' if i + 4 < data.len() && data[i + 4] == b'~' => {
+                                    let second = data[i + 3];
+                                    i += 5;
+                                    match second {
+                                        b'0' => Some(Key::F(9)),
+                                        b'1' => Some(Key::F(10)),
+                                        _ => None,
+                                    }
+                                }
                                 _ => {
                                     i += 3;
                                     while i < data.len() && (data[i] < 0x40 || data[i] > 0x7E) {
@@ -234,6 +254,10 @@ impl Handler for AppSession {
                             b'B' => { i += 3; Some(Key::Down) }
                             b'C' => { i += 3; Some(Key::Right) }
                             b'D' => { i += 3; Some(Key::Left) }
+                            b'P' => { i += 3; Some(Key::F(1)) }
+                            b'Q' => { i += 3; Some(Key::F(2)) }
+                            b'R' => { i += 3; Some(Key::F(3)) }
+                            b'S' => { i += 3; Some(Key::F(4)) }
                             _ => { i += 3; None }
                         }
                     } else {

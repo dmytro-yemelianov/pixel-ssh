@@ -174,7 +174,7 @@ use pixel_ssh_view::*;
         assert_eq!(app.platform, Platform::Web);
         assert!(app.status.contains("[1-4] Nav"));
 
-        // Render in 80 cols and verify Web header contains [1] Projects, [2] CV, [3] About, [4] Contact, [VIS], [SYS], [?]
+        // Render in 80 cols and verify Web interface contains bottom navigation items: Prj, CV, Visual
         let view = app.render();
         let mut found_projects = false;
         let mut found_cv = false;
@@ -182,18 +182,19 @@ use pixel_ssh_view::*;
         for elem in &view.elements {
             match elem {
                 Element::Text(t) => {
-                    if t.text.contains("Projects") { found_projects = true; }
+                    if t.text.contains("Projects") || t.text.contains("Prj") { found_projects = true; }
                     if t.text.contains("CV") { found_cv = true; }
+                    if t.text.contains("Visual") { found_vis = true; }
                 }
                 Element::Link(l) => {
-                    if l.text.contains("[VIS]") { found_vis = true; }
+                    if l.text.contains("Visual") || l.text.contains("[VIS]") { found_vis = true; }
                 }
                 _ => {}
             }
         }
-        assert!(found_projects, "Web header should contain Projects");
-        assert!(found_cv, "Web header should contain CV");
-        assert!(found_vis, "Web header should contain [VIS]");
+        assert!(found_projects, "Web interface should contain Projects navigation");
+        assert!(found_cv, "Web interface should contain CV navigation");
+        assert!(found_vis, "Web interface should contain Visual navigation");
 
         // Key 'v' toggles Visuals modal
         assert!(app.update(InputEvent::KeyDown(Key::Char('v'))));
@@ -234,14 +235,12 @@ use pixel_ssh_view::*;
         let view = app.render();
         let mut nav_items: Vec<(u16, u16, String)> = Vec::new();
 
+        let nav_y = 192 - 20; // 172
         for elem in &view.elements {
             match elem {
-                Element::Text(t) if t.y == 11 => {
+                Element::Text(t) if t.y == nav_y => {
                     let width = t.text.chars().count() as u16 * 8;
                     nav_items.push((t.x, t.x + width, t.text.clone()));
-                }
-                Element::Link(l) if l.y == 11 => {
-                    nav_items.push((l.x, l.x + l.width, l.text.clone()));
                 }
                 _ => {}
             }
@@ -260,18 +259,16 @@ use pixel_ssh_view::*;
             );
         }
 
-        // Also verify terminal navigation bar tabs at y = 16 do not overlap
+        // Also verify terminal bottom navigation bar text items do not overlap
         let term_app = App::new_terminal();
         let term_view = term_app.render();
         let mut term_nav_items: Vec<(u16, u16, String)> = Vec::new();
+        let term_nav_y = (term_app.terminal_rows.saturating_sub(2)) * 16;
         for elem in &term_view.elements {
             match elem {
-                Element::Text(t) if t.y == 16 => {
+                Element::Text(t) if t.y == term_nav_y => {
                     let width = t.text.chars().count() as u16 * 8;
                     term_nav_items.push((t.x, t.x + width, t.text.clone()));
-                }
-                Element::Link(l) if l.y == 16 => {
-                    term_nav_items.push((l.x, l.x + l.width, l.text.clone()));
                 }
                 _ => {}
             }
@@ -283,7 +280,7 @@ use pixel_ssh_view::*;
             let (start_b, _, ref text_b) = term_nav_items[i + 1];
             assert!(
                 end_a <= start_b,
-                "Terminal navpanel items overlap: '{:?}' ends at {} but '{:?}' starts at {}",
+                "Navpanel items overlap in Terminal: '{:?}' ends at {} but '{:?}' starts at {}",
                 text_a, end_a, text_b, start_b
             );
         }
@@ -594,7 +591,7 @@ use pixel_ssh_view::*;
 
         // Projects max visible should scale with terminal height
         let max_vis = app.projects_max_visible();
-        assert_eq!(max_vis, 45 - 5); // 40 visible items
+        assert_eq!(max_vis, 45 - 6); // 39 visible items
     }
 
     #[test]
@@ -810,7 +807,7 @@ use pixel_ssh_view::*;
                 if t.y == 336 && t.text.contains("C:\\DMYTRO\\PROJECTS\\") {
                     found_dos_prompt = true;
                 }
-                if t.y == 368 && t.text.contains("1Help") && t.text.contains("10Quit") {
+                if t.y == 368 && (t.text == "Prj" || t.text == "1" || t.text == "Help") {
                     found_fkeys = true;
                 }
             }
@@ -821,7 +818,7 @@ use pixel_ssh_view::*;
         assert!(found_divider, "Panel header divider ╟───...───╢ missing at y=64");
         assert!(found_bot_border, "Panel bottom border ╚═══...═══╝ missing at y=320");
         assert!(found_dos_prompt, "Bottom DOS prompt path C:\\DMYTRO\\PROJECTS\\... missing at y=336");
-        assert!(found_fkeys, "Bottom function key bar 1Help...10Quit missing at y=368");
+        assert!(found_fkeys, "Bottom function key bar 1Prj...10Quit missing at y=368");
     }
 
 
