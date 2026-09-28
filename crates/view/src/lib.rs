@@ -1,9 +1,110 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PaletteMode {
+    #[default]
+    Vga,
+    ZxSpectrum,
+    C64,
+    Atari,
+    Amber,
+    GreenCrt,
+}
+
+impl PaletteMode {
+    pub const ALL: [PaletteMode; 6] = [
+        PaletteMode::Vga,
+        PaletteMode::ZxSpectrum,
+        PaletteMode::C64,
+        PaletteMode::Atari,
+        PaletteMode::Amber,
+        PaletteMode::GreenCrt,
+    ];
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            PaletteMode::Vga => "VGA Modern",
+            PaletteMode::ZxSpectrum => "ZX Spectrum",
+            PaletteMode::C64 => "Commodore 64",
+            PaletteMode::Atari => "Atari 2600",
+            PaletteMode::Amber => "Amber CRT",
+            PaletteMode::GreenCrt => "Green CRT",
+        }
+    }
+
+    pub fn short_name(&self) -> &'static str {
+        match self {
+            PaletteMode::Vga => "VGA",
+            PaletteMode::ZxSpectrum => "ZX",
+            PaletteMode::C64 => "C64",
+            PaletteMode::Atari => "Atari",
+            PaletteMode::Amber => "Amber",
+            PaletteMode::GreenCrt => "Green",
+        }
+    }
+
+    /// Native pixel resolution (width, height)
+    pub fn resolution(&self) -> (u16, u16) {
+        match self {
+            PaletteMode::Vga | PaletteMode::Amber | PaletteMode::GreenCrt => (640, 400),
+            PaletteMode::C64 | PaletteMode::Atari => (320, 200),
+            PaletteMode::ZxSpectrum => (256, 192),
+        }
+    }
+
+    /// Character grid dimensions (cols, rows)
+    pub fn char_grid(&self) -> (u16, u16) {
+        match self {
+            PaletteMode::Vga | PaletteMode::Amber | PaletteMode::GreenCrt => (80, 25),
+            PaletteMode::C64 => (40, 25),
+            PaletteMode::Atari => (40, 25),
+            PaletteMode::ZxSpectrum => (32, 24),
+        }
+    }
+
+    /// Physical CRT / display aspect ratio (width_ratio, height_ratio)
+    pub fn aspect_ratio(&self) -> (u32, u32) {
+        (4, 3)
+    }
+
+    /// Pixel line height in the framebuffer (pixels per text row)
+    pub fn line_height(&self) -> u16 {
+        match self {
+            PaletteMode::Vga | PaletteMode::Amber | PaletteMode::GreenCrt => 16,
+            PaletteMode::C64 | PaletteMode::Atari | PaletteMode::ZxSpectrum => 8,
+        }
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            PaletteMode::Vga => PaletteMode::ZxSpectrum,
+            PaletteMode::ZxSpectrum => PaletteMode::C64,
+            PaletteMode::C64 => PaletteMode::Atari,
+            PaletteMode::Atari => PaletteMode::Amber,
+            PaletteMode::Amber => PaletteMode::GreenCrt,
+            PaletteMode::GreenCrt => PaletteMode::Vga,
+        }
+    }
+
+    pub fn from_str_name(s: &str) -> Self {
+        match s.to_ascii_lowercase().as_str() {
+            "zx" | "zxspectrum" | "spectrum" => PaletteMode::ZxSpectrum,
+            "c64" | "commodore" | "commodore64" => PaletteMode::C64,
+            "atari" | "atari2600" | "atari800" => PaletteMode::Atari,
+            "amber" | "ambercrt" => PaletteMode::Amber,
+            "green" | "greencrt" | "crt" => PaletteMode::GreenCrt,
+            _ => PaletteMode::Vga,
+        }
+    }
+}
+
+pub type SystemMode = PaletteMode;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct View {
     pub width: u16,
     pub height: u16,
     pub elements: Vec<Element>,
     pub cursor: Option<Cursor>,
+    pub palette_mode: PaletteMode,
 }
 
 impl View {
@@ -13,6 +114,7 @@ impl View {
             height,
             elements: Vec::new(),
             cursor: None,
+            palette_mode: PaletteMode::default(),
         }
     }
 
@@ -227,4 +329,22 @@ pub fn word_wrap(text: &str, max_chars: usize) -> Vec<String> {
         }
     }
     lines
+}
+
+/// Marquee / horizontal ticker utility for text that exceeds `max_chars`.
+/// If text fits, returns it as-is. If longer, smoothly slides across `max_chars`.
+pub fn horizontal_scroll(text: &str, max_chars: usize, tick: usize) -> String {
+    let char_count = text.chars().count();
+    if char_count <= max_chars {
+        return text.to_string();
+    }
+    let ticker = format!("{}   •   ", text);
+    let ticker_chars: Vec<char> = ticker.chars().collect();
+    let cycle = ticker_chars.len();
+    let offset = (tick / 4) % cycle;
+    let mut out = String::with_capacity(max_chars);
+    for i in 0..max_chars {
+        out.push(ticker_chars[(offset + i) % cycle]);
+    }
+    out
 }

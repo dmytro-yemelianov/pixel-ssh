@@ -7,3 +7,4 @@ description = "Terminal ANSI renderer and control-character sanitizer"
 
 [dependencies]
 pixel-ssh-view = { path = "../view" }
+pixel-ssh-framebuffer = { path = "../framebuffer" }

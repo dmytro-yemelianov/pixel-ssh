@@ -37,12 +37,21 @@ precision mediump float;
 in vec2 v_uv;
 uniform sampler2D u_framebuffer;
 uniform vec4 u_palette[256];
+uniform vec2 u_resolution;
 out vec4 outColor;
 
 void main() {
     float r = texture(u_framebuffer, v_uv).r;
     int index = int(r * 255.0 + 0.5);
-    outColor = u_palette[index];
+    vec4 baseColor = u_palette[index];
+
+    // Subtle pixel grid separation (retro CRT / dot-matrix phosphor mask)
+    vec2 grid = fract(v_uv * u_resolution);
+    float edge_dist = min(min(grid.x, 1.0 - grid.x), min(grid.y, 1.0 - grid.y));
+    float border = smoothstep(0.0, 0.12, edge_dist);
+    float dim = 0.84 + 0.16 * border; // 16% dimming at pixel outer seam
+
+    outColor = vec4(baseColor.rgb * dim, baseColor.a);
 }
 "#;
 
@@ -127,6 +136,25 @@ impl WebGlRenderer {
     }
 
     #[cfg(target_arch = "wasm32")]
+    pub fn resize(&mut self, width: u16, height: u16) {
+        self.width = width;
+        self.height = height;
+        self.gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&self.texture));
+        let _ = self.gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+            WebGl2RenderingContext::TEXTURE_2D,
+            0,
+            WebGl2RenderingContext::R8 as i32,
+            width as i32,
+            height as i32,
+            0,
+            WebGl2RenderingContext::RED,
+            WebGl2RenderingContext::UNSIGNED_BYTE,
+            None,
+        );
+        self.gl.viewport(0, 0, width as i32, height as i32);
+    }
+
+    #[cfg(target_arch = "wasm32")]
     fn compile_shader(gl: &WebGl2RenderingContext, shader_type: u32, source: &str) -> Result<web_sys::WebGlShader, String> {
         let shader = gl.create_shader(shader_type).ok_or_else(|| "Failed to create shader".to_string())?;
         gl.shader_source(&shader, source);
@@ -142,6 +170,9 @@ impl WebGlRenderer {
 
     #[cfg(target_arch = "wasm32")]
     pub fn render_frame(&mut self, fb: &Framebuffer) {
+        if fb.width != self.width || fb.height != self.height {
+            self.resize(fb.width, fb.height);
+        }
         self.gl.use_program(Some(&self.program));
 
         // Upload palette uniform array
@@ -156,6 +187,9 @@ impl WebGlRenderer {
 
         let pal_loc = self.gl.get_uniform_location(&self.program, "u_palette");
         self.gl.uniform4fv_with_f32_array(pal_loc.as_ref(), &palette_flat);
+
+        let res_loc = self.gl.get_uniform_location(&self.program, "u_resolution");
+        self.gl.uniform2f(res_loc.as_ref(), fb.width as f32, fb.height as f32);
 
         // Upload 8-bit indexed pixel buffer to R8 texture
         self.gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&self.texture));

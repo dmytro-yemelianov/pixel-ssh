@@ -20,11 +20,12 @@
       justify-content: center;
     }
     canvas#screen {
-      width: 100vw;
-      height: 100vh;
+      aspect-ratio: 4 / 3;
+      width: min(100vw, calc(100vh * 4 / 3));
+      height: min(100vh, calc(100vw * 3 / 4));
       max-width: 100vw;
       max-height: 100vh;
-      object-fit: contain;
+      object-fit: fill;
       image-rendering: -webkit-optimize-contrast;
       image-rendering: crisp-edges;
       image-rendering: pixelated;

@@ -1178,6 +1178,7 @@ dependencies = [
 name = "pixel-ssh-render-ansi"
 version = "0.1.0"
 dependencies = [
+ "pixel-ssh-framebuffer",
  "pixel-ssh-view",
 ]
 

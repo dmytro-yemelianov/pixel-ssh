@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use pixel_ssh_core::App;
-use pixel_ssh_framebuffer::{Framebuffer, DEFAULT_HEIGHT, DEFAULT_WIDTH};
+use pixel_ssh_framebuffer::Framebuffer;
 use pixel_ssh_render_web::WebGlRenderer;
 use pixel_ssh_view::{Button, InputEvent, Key};
 
@@ -33,12 +33,6 @@ pub fn start() -> Result<(), JsValue> {
         .ok_or("Canvas element #screen not found")?
         .dyn_into::<web_sys::HtmlCanvasElement>()?;
 
-    canvas.set_width(DEFAULT_WIDTH as u32);
-    canvas.set_height(DEFAULT_HEIGHT as u32);
-
-    let renderer = WebGlRenderer::new(canvas.clone(), DEFAULT_WIDTH, DEFAULT_HEIGHT)
-        .map_err(|e| JsValue::from_str(&e))?;
-    let framebuffer = Framebuffer::new(DEFAULT_WIDTH, DEFAULT_HEIGHT);
     let mut app = App::new();
 
     if let Ok(search) = window.location().search() {
@@ -52,7 +46,30 @@ pub fn start() -> Result<(), JsValue> {
         if search.contains("detail=1") {
             app.show_detail = true;
         }
+        if search.contains("palette=zx") {
+            app.palette_mode = pixel_ssh_view::PaletteMode::ZxSpectrum;
+        } else if search.contains("palette=c64") {
+            app.palette_mode = pixel_ssh_view::PaletteMode::C64;
+        } else if search.contains("palette=atari") {
+            app.palette_mode = pixel_ssh_view::PaletteMode::Atari;
+        } else if search.contains("palette=amber") {
+            app.palette_mode = pixel_ssh_view::PaletteMode::Amber;
+        } else if search.contains("palette=green") {
+            app.palette_mode = pixel_ssh_view::PaletteMode::GreenCrt;
+        }
     }
+
+    let (init_w, init_h) = app.palette_mode.resolution();
+    let (ar_w, ar_h) = app.palette_mode.aspect_ratio();
+    canvas.set_width(init_w as u32);
+    canvas.set_height(init_h as u32);
+    let _ = canvas.style().set_property("aspect-ratio", &format!("{}/{}", ar_w, ar_h));
+    let _ = canvas.style().set_property("width", &format!("min(100vw, calc(100vh * {} / {}))", ar_w, ar_h));
+    let _ = canvas.style().set_property("height", &format!("min(100vh, calc(100vw * {} / {}))", ar_h, ar_w));
+
+    let renderer = WebGlRenderer::new(canvas.clone(), init_w, init_h)
+        .map_err(|e| JsValue::from_str(&e))?;
+    let framebuffer = Framebuffer::new(init_w, init_h);
 
     let state = Rc::new(RefCell::new(ClientState {
         app,
@@ -122,8 +139,10 @@ pub fn start() -> Result<(), JsValue> {
             let client_x = event.client_x() as f64 - rect.left();
             let client_y = event.client_y() as f64 - rect.top();
 
-            let fb_x = ((client_x / rect_width) * DEFAULT_WIDTH as f64).clamp(0.0, (DEFAULT_WIDTH - 1) as f64) as u16;
-            let fb_y = ((client_y / rect_height) * DEFAULT_HEIGHT as f64).clamp(0.0, (DEFAULT_HEIGHT - 1) as f64) as u16;
+            let canvas_w = canvas_clone.width() as f64;
+            let canvas_h = canvas_clone.height() as f64;
+            let fb_x = ((client_x / rect_width) * canvas_w).clamp(0.0, canvas_w - 1.0) as u16;
+            let fb_y = ((client_y / rect_height) * canvas_h).clamp(0.0, canvas_h - 1.0) as u16;
 
             let mut s = state.borrow_mut();
             let view = s.app.render();
@@ -166,15 +185,19 @@ pub fn start() -> Result<(), JsValue> {
             let client_x = event.client_x() as f64 - rect.left();
             let client_y = event.client_y() as f64 - rect.top();
 
-            let fb_x = ((client_x / rect_width) * DEFAULT_WIDTH as f64).clamp(0.0, (DEFAULT_WIDTH - 1) as f64) as u16;
-            let fb_y = ((client_y / rect_height) * DEFAULT_HEIGHT as f64).clamp(0.0, (DEFAULT_HEIGHT - 1) as f64) as u16;
+            let canvas_w = canvas_clone.width() as f64;
+            let canvas_h = canvas_clone.height() as f64;
+            let fb_x = ((client_x / rect_width) * canvas_w).clamp(0.0, canvas_w - 1.0) as u16;
+            let fb_y = ((client_y / rect_height) * canvas_h).clamp(0.0, canvas_h - 1.0) as u16;
 
             let s = state.borrow();
             let view = s.app.render();
 
+            let (cols, _rows) = s.app.palette_mode.char_grid();
+            let tab_y_range = if cols == 80 { 24..=48 } else { 10..=22 };
             let is_interactive = view.link_at(fb_x, fb_y).is_some()
-                || (fb_y >= 24 && fb_y <= 48 && fb_x < 500)
-                || (!s.app.show_detail && fb_y >= 56 && fb_y < 350);
+                || tab_y_range.contains(&fb_y)
+                || (!s.app.show_detail && fb_y >= (if cols == 80 { 56 } else { 24 }));
 
             let cursor_style = if is_interactive { "pointer" } else { "default" };
             let _ = canvas_clone.style().set_property("cursor", cursor_style);
@@ -184,18 +207,53 @@ pub fn start() -> Result<(), JsValue> {
         closure.forget();
     }
 
-    // Event-driven render loop: requestAnimationFrame checks dirty flag
+    // Mouse wheel event listener for vertical scrolling (Resume, Project list)
     {
         let state = Rc::clone(&state);
+        let closure = Closure::<dyn FnMut(web_sys::WheelEvent)>::new(move |event: web_sys::WheelEvent| {
+            event.prevent_default();
+            let dy = event.delta_y() as i16;
+            let mut s = state.borrow_mut();
+            if s.app.update(InputEvent::Wheel { dx: 0, dy }) {
+                s.dirty = true;
+            }
+        });
+
+        canvas.add_event_listener_with_callback("wheel", closure.as_ref().unchecked_ref())?;
+        closure.forget();
+    }
+
+    // Event-driven render loop: requestAnimationFrame checks dirty flag & advances marquee ticker
+    {
+        let state = Rc::clone(&state);
+        let canvas_render = canvas.clone();
+        let mut frame_count: u32 = 0;
         let f: Rc<RefCell<Option<Closure<dyn FnMut()>>>> = Rc::new(RefCell::new(None));
         let g = f.clone();
 
         *g.borrow_mut() = Some(Closure::<dyn FnMut()>::new(move || {
+            frame_count = (frame_count + 1) % 6;
             {
                 let mut state_guard = state.borrow_mut();
                 let s = &mut *state_guard;
+
+                // Periodic marquee ticker for horizontal auto-scrolling
+                if frame_count == 0 {
+                    s.app.tick = s.app.tick.wrapping_add(1);
+                    s.dirty = true;
+                }
+
                 if s.dirty {
                     let view = s.app.render();
+                    let (target_w, target_h) = view.palette_mode.resolution();
+                    if canvas_render.width() != target_w as u32 || canvas_render.height() != target_h as u32 {
+                        canvas_render.set_width(target_w as u32);
+                        canvas_render.set_height(target_h as u32);
+                        let (ar_w, ar_h) = view.palette_mode.aspect_ratio();
+                        let _ = canvas_render.style().set_property("aspect-ratio", &format!("{}/{}", ar_w, ar_h));
+                        let _ = canvas_render.style().set_property("width", &format!("min(100vw, calc(100vh * {} / {}))", ar_w, ar_h));
+                        let _ = canvas_render.style().set_property("height", &format!("min(100vh, calc(100vw * {} / {}))", ar_h, ar_w));
+                    }
                     s.framebuffer.draw_view(&view);
                     s.renderer.render_frame(&s.framebuffer);
                     s.dirty = false;
