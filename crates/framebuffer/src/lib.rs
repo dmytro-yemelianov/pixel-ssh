@@ -1,7 +1,7 @@
 pub mod font;
 
 use font::{font_for_mode, font_8x16_for_mode, FONT_HEIGHT, FONT_WIDTH, unicode_to_cp437};
-use pixel_ssh_view::{is_table_border_char, Element, PaletteMode, View};
+use pixel_ssh_view::{is_table_border_char, ColorTheme, Element, PaletteMode, View};
 
 pub const DEFAULT_WIDTH: u16 = 640;
 pub const DEFAULT_HEIGHT: u16 = 400;
@@ -34,14 +34,59 @@ impl Framebuffer {
     }
 
     pub fn default_palette() -> [[u8; 4]; 256] {
-        Self::palette_for_mode(PaletteMode::default())
+        Self::palette_for_theme(ColorTheme::default())
     }
 
     pub fn palette_for_mode(mode: PaletteMode) -> [[u8; 4]; 256] {
+        Self::palette_for_theme(mode.to_theme())
+    }
+
+    pub fn palette_for_theme(theme: ColorTheme) -> [[u8; 4]; 256] {
         let mut p = [[0, 0, 0, 255]; 256];
 
-        match mode {
-            PaletteMode::Vga | PaletteMode::Svga | PaletteMode::Sga => {
+        match theme {
+            ColorTheme::Commander => {
+                // Volkov Commander / Norton Commander classic DOS palette
+                p[0] = [0, 0, 168, 255];     // 0: #0000a8 (Iconic Commander navy blue background)
+                p[1] = [0, 168, 168, 255];   // 1: #00aaaa (Cyan header bar / accent)
+                p[2] = [0, 168, 168, 255];   // 2: #00aaaa (Selected item cyan background bar)
+                p[3] = [0, 168, 168, 255];   // 3: #00aaaa (Cyan table / panel border)
+                p[4] = [85, 255, 255, 255];  // 4: #55ffff (Bright cyan muted/secondary)
+                p[5] = [255, 255, 255, 255]; // 5: #ffffff (Bright white text body)
+                p[6] = [255, 255, 85, 255];  // 6: #ffff55 (Bright yellow titles and headers)
+                p[7] = [85, 255, 255, 255];  // 7: #55ffff (Bright cyan links/accents)
+                p[8] = [85, 255, 85, 255];   // 8: #55ff55 (Bright green)
+                p[9] = [255, 255, 85, 255];  // 9: #ffff55 (Bright yellow warning)
+                p[10] = [255, 85, 85, 255];  // 10: #ff5555 (Bright red danger)
+                p[11] = [255, 85, 255, 255]; // 11: #ff55ff (Bright magenta)
+                p[12] = [0, 168, 168, 255];  // 12: #00aaaa (Dark cyan)
+                p[13] = [0, 0, 0, 255];      // 13: #000000 (Pure black, shadows & clock background)
+                p[14] = [255, 255, 255, 255];// 14: #ffffff (Pure white)
+                p[15] = [168, 168, 168, 255];// 15: #aaaaaa (Dialog box light gray)
+
+                let mut idx = 16;
+                for r in 0..6 {
+                    for g in 0..6 {
+                        for b in 0..6 {
+                            if idx < 232 {
+                                let rv = if r == 0 { 0 } else { (r * 40 + 55) as u8 };
+                                let gv = if g == 0 { 0 } else { (g * 40 + 55) as u8 };
+                                let bv = if b == 0 { 0 } else { (b * 40 + 55) as u8 };
+                                p[idx] = [rv, gv, bv, 255];
+                                idx += 1;
+                            }
+                        }
+                    }
+                }
+                for gray in 0..24 {
+                    if idx < 256 {
+                        let v = (gray * 10 + 8) as u8;
+                        p[idx] = [v, v, v, 255];
+                        idx += 1;
+                    }
+                }
+            }
+            ColorTheme::VgaModern => {
                 p[0] = [13, 17, 23, 255];     // 0: #0d1117 (Dark background)
                 p[1] = [22, 27, 34, 255];     // 1: #161b22 (Card header)
                 p[2] = [33, 38, 45, 255];     // 2: #21262d (Selected item background)
@@ -82,7 +127,7 @@ impl Framebuffer {
                     }
                 }
             }
-            PaletteMode::Ega | PaletteMode::Cga => {
+            ColorTheme::Ega => {
                 // Classic IBM EGA / CGA 16-color RGBI hardware palette
                 p[0] = [0, 0, 0, 255];        // Black
                 p[1] = [0, 0, 170, 255];      // Blue
@@ -105,7 +150,7 @@ impl Framebuffer {
                     p[idx] = p[idx % 16];
                 }
             }
-            PaletteMode::ZxSpectrum => {
+            ColorTheme::ZxSpectrum => {
                 // Official Sinclair ZX Spectrum 16-color palette (8 normal + 8 bright)
                 p[0] = [0, 0, 0, 255];        // Black bg
                 p[1] = [0, 0, 192, 255];      // Blue header / dither base
@@ -128,7 +173,7 @@ impl Framebuffer {
                     p[idx] = p[idx % 16];
                 }
             }
-            PaletteMode::C64 => {
+            ColorTheme::C64 => {
                 // Strict Commodore 64 VIC-II hardware palette (Pepto / Colodore standard)
                 p[0] = [64, 49, 141, 255];    // VIC-II #6 Blue background (#40318D)
                 p[1] = [51, 51, 51, 255];     // VIC-II #11 Dark Grey (card dither base)
@@ -151,7 +196,7 @@ impl Framebuffer {
                     p[idx] = p[idx % 16];
                 }
             }
-            PaletteMode::Atari => {
+            ColorTheme::Atari => {
                 // Strict Atari 800 GTIA hardware color palette
                 p[0] = [0, 0, 0, 255];        // GTIA Deep dark umber / black
                 p[1] = [64, 40, 16, 255];     // GTIA Dark bronze (card dither base)
@@ -200,7 +245,7 @@ impl Framebuffer {
                     ];
                 }
             }
-            PaletteMode::Amber => {
+            ColorTheme::Amber => {
                 // Strictly monochromatic Amber CRT phosphor (P134/P20 - pure 588nm yellow-orange emission, blue = 0)
                 p[0] = [0, 0, 0, 255];        // Tube off
                 p[1] = [50, 32, 0, 255];      // Dim amber (card dither base)
@@ -224,7 +269,7 @@ impl Framebuffer {
                     p[idx] = [v, ((v as u16 * 165) / 255) as u8, 0, 255];
                 }
             }
-            PaletteMode::GreenCrt => {
+            ColorTheme::GreenCrt => {
                 // Strictly monochromatic P1 phosphor Green CRT (IBM 5151 / MDA - pure green emission, red = 0, blue = 0)
                 p[0] = [0, 0, 0, 255];        // Tube off
                 p[1] = [0, 45, 0, 255];       // Dim green (card dither base)
@@ -251,6 +296,10 @@ impl Framebuffer {
         }
 
         p
+    }
+
+    pub fn set_palette_theme(&mut self, theme: ColorTheme) {
+        self.palette = Self::palette_for_theme(theme);
     }
 
     pub fn set_palette_mode(&mut self, mode: PaletteMode) {
@@ -466,8 +515,8 @@ impl Framebuffer {
         if self.width != view.width || self.height != view.height {
             self.resize(view.width, view.height);
         }
-        self.set_palette_mode(view.palette_mode);
-        self.font_mode = view.palette_mode;
+        self.set_palette_theme(view.color_theme);
+        self.font_mode = view.resolution.to_system_mode();
         self.clear(0); // clear to background
 
         let is_vga_font = font_8x16_for_mode(self.font_mode).is_some();

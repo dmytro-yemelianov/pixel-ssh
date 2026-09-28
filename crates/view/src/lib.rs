@@ -1,4 +1,183 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ResolutionMode {
+    #[default]
+    Vga,
+    Svga,
+    Sga,
+    Ega,
+    Cga,
+    C64,
+    Atari,
+    ZxSpectrum,
+}
+
+impl ResolutionMode {
+    pub const ALL: [ResolutionMode; 8] = [
+        ResolutionMode::Svga,
+        ResolutionMode::Sga,
+        ResolutionMode::Vga,
+        ResolutionMode::Ega,
+        ResolutionMode::Cga,
+        ResolutionMode::C64,
+        ResolutionMode::Atari,
+        ResolutionMode::ZxSpectrum,
+    ];
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            ResolutionMode::Svga => "SVGA 800x600",
+            ResolutionMode::Sga => "SGA 640x480",
+            ResolutionMode::Vga => "VGA 640x400",
+            ResolutionMode::Ega => "EGA 640x350",
+            ResolutionMode::Cga => "CGA 320x200",
+            ResolutionMode::C64 => "C64 320x200",
+            ResolutionMode::Atari => "Atari 320x192",
+            ResolutionMode::ZxSpectrum => "ZX Spectrum 256x192",
+        }
+    }
+
+    pub fn short_name(&self) -> &'static str {
+        match self {
+            ResolutionMode::Svga => "SVGA",
+            ResolutionMode::Sga => "SGA",
+            ResolutionMode::Vga => "VGA",
+            ResolutionMode::Ega => "EGA",
+            ResolutionMode::Cga => "CGA",
+            ResolutionMode::C64 => "C64",
+            ResolutionMode::Atari => "Atari",
+            ResolutionMode::ZxSpectrum => "ZX",
+        }
+    }
+
+    /// Native pixel resolution (width, height)
+    pub fn resolution(&self) -> (u16, u16) {
+        match self {
+            ResolutionMode::Svga => (800, 600),
+            ResolutionMode::Sga => (640, 480),
+            ResolutionMode::Vga => (640, 400),
+            ResolutionMode::Ega => (640, 350),
+            ResolutionMode::Cga | ResolutionMode::C64 => (320, 200),
+            ResolutionMode::Atari => (320, 192),
+            ResolutionMode::ZxSpectrum => (256, 192),
+        }
+    }
+
+    /// Character grid dimensions (cols, rows)
+    pub fn char_grid(&self) -> (u16, u16) {
+        match self {
+            ResolutionMode::Svga => (100, 37),
+            ResolutionMode::Sga => (80, 30),
+            ResolutionMode::Vga | ResolutionMode::Ega => (80, 25),
+            ResolutionMode::Cga | ResolutionMode::C64 => (40, 25),
+            ResolutionMode::Atari => (40, 24),
+            ResolutionMode::ZxSpectrum => (32, 24),
+        }
+    }
+
+    /// Pixel line height in the framebuffer (pixels per text row)
+    pub fn line_height(&self) -> u16 {
+        match self {
+            ResolutionMode::Svga | ResolutionMode::Sga | ResolutionMode::Vga => 16,
+            ResolutionMode::Ega => 14,
+            ResolutionMode::Cga | ResolutionMode::C64 | ResolutionMode::Atari | ResolutionMode::ZxSpectrum => 8,
+        }
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            ResolutionMode::Svga => ResolutionMode::Sga,
+            ResolutionMode::Sga => ResolutionMode::Vga,
+            ResolutionMode::Vga => ResolutionMode::Ega,
+            ResolutionMode::Ega => ResolutionMode::Cga,
+            ResolutionMode::Cga => ResolutionMode::C64,
+            ResolutionMode::C64 => ResolutionMode::Atari,
+            ResolutionMode::Atari => ResolutionMode::ZxSpectrum,
+            ResolutionMode::ZxSpectrum => ResolutionMode::Svga,
+        }
+    }
+
+    pub fn to_system_mode(&self) -> SystemMode {
+        match self {
+            ResolutionMode::Svga => SystemMode::Svga,
+            ResolutionMode::Sga => SystemMode::Sga,
+            ResolutionMode::Vga => SystemMode::Vga,
+            ResolutionMode::Ega => SystemMode::Ega,
+            ResolutionMode::Cga => SystemMode::Cga,
+            ResolutionMode::C64 => SystemMode::C64,
+            ResolutionMode::Atari => SystemMode::Atari,
+            ResolutionMode::ZxSpectrum => SystemMode::ZxSpectrum,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ColorTheme {
+    #[default]
+    Commander,
+    VgaModern,
+    Ega,
+    C64,
+    Atari,
+    ZxSpectrum,
+    Amber,
+    GreenCrt,
+}
+
+impl ColorTheme {
+    pub const ALL: [ColorTheme; 8] = [
+        ColorTheme::Commander,
+        ColorTheme::VgaModern,
+        ColorTheme::Ega,
+        ColorTheme::C64,
+        ColorTheme::Atari,
+        ColorTheme::ZxSpectrum,
+        ColorTheme::Amber,
+        ColorTheme::GreenCrt,
+    ];
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            ColorTheme::Commander => "Volkov Commander",
+            ColorTheme::VgaModern => "VGA Modern Dark",
+            ColorTheme::Ega => "EGA / CGA RGBI",
+            ColorTheme::C64 => "Commodore 64",
+            ColorTheme::Atari => "Atari 800 GTIA",
+            ColorTheme::ZxSpectrum => "ZX Spectrum",
+            ColorTheme::Amber => "Amber CRT Phosphor",
+            ColorTheme::GreenCrt => "Green CRT Phosphor",
+        }
+    }
+
+    pub fn short_name(&self) -> &'static str {
+        match self {
+            ColorTheme::Commander => "Volkov",
+            ColorTheme::VgaModern => "Modern",
+            ColorTheme::Ega => "EGA",
+            ColorTheme::C64 => "C64",
+            ColorTheme::Atari => "Atari",
+            ColorTheme::ZxSpectrum => "ZX",
+            ColorTheme::Amber => "Amber",
+            ColorTheme::GreenCrt => "Green",
+        }
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            ColorTheme::Commander => ColorTheme::VgaModern,
+            ColorTheme::VgaModern => ColorTheme::Ega,
+            ColorTheme::Ega => ColorTheme::C64,
+            ColorTheme::C64 => ColorTheme::Atari,
+            ColorTheme::Atari => ColorTheme::ZxSpectrum,
+            ColorTheme::ZxSpectrum => ColorTheme::Amber,
+            ColorTheme::Amber => ColorTheme::GreenCrt,
+            ColorTheme::GreenCrt => ColorTheme::Commander,
+        }
+    }
+}
+
+pub type PaletteTheme = ColorTheme;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SystemMode {
     #[default]
     Vga,
@@ -57,29 +236,40 @@ impl SystemMode {
         }
     }
 
+    pub fn to_resolution(&self) -> ResolutionMode {
+        match self {
+            SystemMode::Svga => ResolutionMode::Svga,
+            SystemMode::Sga => ResolutionMode::Sga,
+            SystemMode::Vga | SystemMode::Amber | SystemMode::GreenCrt => ResolutionMode::Vga,
+            SystemMode::Ega => ResolutionMode::Ega,
+            SystemMode::Cga => ResolutionMode::Cga,
+            SystemMode::C64 => ResolutionMode::C64,
+            SystemMode::Atari => ResolutionMode::Atari,
+            SystemMode::ZxSpectrum => ResolutionMode::ZxSpectrum,
+        }
+    }
+
+    pub fn to_theme(&self) -> ColorTheme {
+        match self {
+            SystemMode::Amber => ColorTheme::Amber,
+            SystemMode::GreenCrt => ColorTheme::GreenCrt,
+            SystemMode::Ega => ColorTheme::Ega,
+            SystemMode::Cga => ColorTheme::Ega,
+            SystemMode::C64 => ColorTheme::C64,
+            SystemMode::Atari => ColorTheme::Atari,
+            SystemMode::ZxSpectrum => ColorTheme::ZxSpectrum,
+            SystemMode::Svga | SystemMode::Sga | SystemMode::Vga => ColorTheme::Commander,
+        }
+    }
+
     /// Native pixel resolution (width, height)
     pub fn resolution(&self) -> (u16, u16) {
-        match self {
-            SystemMode::Svga => (800, 600),
-            SystemMode::Sga => (640, 480),
-            SystemMode::Vga | SystemMode::Amber | SystemMode::GreenCrt => (640, 400),
-            SystemMode::Ega => (640, 350),
-            SystemMode::Cga | SystemMode::C64 | SystemMode::Atari => (320, 200),
-            SystemMode::ZxSpectrum => (256, 192),
-        }
+        self.to_resolution().resolution()
     }
 
     /// Character grid dimensions (cols, rows)
     pub fn char_grid(&self) -> (u16, u16) {
-        match self {
-            SystemMode::Svga => (100, 37),
-            SystemMode::Sga => (80, 30),
-            SystemMode::Vga | SystemMode::Amber | SystemMode::GreenCrt => (80, 25),
-            SystemMode::Ega => (80, 25),
-            SystemMode::Cga | SystemMode::C64 => (40, 25),
-            SystemMode::Atari => (40, 24),
-            SystemMode::ZxSpectrum => (32, 24),
-        }
+        self.to_resolution().char_grid()
     }
 
     /// Physical CRT / display aspect ratio (width_ratio, height_ratio)
@@ -89,11 +279,7 @@ impl SystemMode {
 
     /// Pixel line height in the framebuffer (pixels per text row)
     pub fn line_height(&self) -> u16 {
-        match self {
-            SystemMode::Svga | SystemMode::Sga | SystemMode::Vga | SystemMode::Amber | SystemMode::GreenCrt => 16,
-            SystemMode::Ega => 14,
-            SystemMode::Cga | SystemMode::C64 | SystemMode::Atari | SystemMode::ZxSpectrum => 8,
-        }
+        self.to_resolution().line_height()
     }
 
     pub fn next(&self) -> Self {
@@ -253,6 +439,8 @@ pub struct View {
     pub elements: Vec<Element>,
     pub cursor: Option<Cursor>,
     pub mouse_pos: Option<(u16, u16)>,
+    pub resolution: ResolutionMode,
+    pub color_theme: ColorTheme,
     pub palette_mode: SystemMode,
     pub system_mode: SystemMode,
     pub visual_effects: VisualEffects,
@@ -267,6 +455,8 @@ impl View {
             elements: Vec::new(),
             cursor: None,
             mouse_pos: None,
+            resolution: ResolutionMode::default(),
+            color_theme: ColorTheme::default(),
             palette_mode: SystemMode::default(),
             system_mode: SystemMode::default(),
             visual_effects: VisualEffects::default(),

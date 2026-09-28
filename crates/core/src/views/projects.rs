@@ -174,7 +174,36 @@ impl App {
             return;
         }
 
-        // Project List (Up to 18 visible at 640x400)
+        // Single Panel Volkov Commander layout
+        let cols = (view.width / 8) as usize;
+        let title_panel = " D:\\PORTFOLIO\\PROJECTS ";
+        let left_pad = cols.saturating_sub(2 + title_panel.len()) / 2;
+        let right_pad = cols.saturating_sub(2 + title_panel.len() + left_pad);
+        let top_border = format!("╔{}{}{}╗", "═".repeat(left_pad), title_panel, "═".repeat(right_pad));
+        view.add(Element::Text(TextElement {
+            x: 0,
+            y: 2 * lh,
+            text: top_border,
+            style: TextStyle::new(Color::from_palette(3)).bold(),
+        }));
+
+        let tag_col_w = cols.saturating_sub(49);
+        let header_str = format!("║  #   Project Title            │ {:<tag_col_w$}│ Action       ║", "Tags / Domain Subsystems ");
+        view.add(Element::Text(TextElement {
+            x: 0,
+            y: 3 * lh,
+            text: header_str,
+            style: TextStyle::new(Color::from_palette(6)).bold(),
+        }));
+
+        let sep_str = format!("╟──────────────────────────────┼─{}┼──────────────╢", "─".repeat(tag_col_w.saturating_sub(1)));
+        view.add(Element::Text(TextElement {
+            x: 0,
+            y: 4 * lh,
+            text: sep_str,
+            style: TextStyle::new(Color::from_palette(3)),
+        }));
+
         let max_visible = self.projects_max_visible();
         let start = self.scroll_offset;
         let end = (start + max_visible).min(PROJECTS.len());
@@ -182,13 +211,13 @@ impl App {
         for (i, p) in PROJECTS[start..end].iter().enumerate() {
             let idx = start + i;
             let is_sel = idx == self.selected_project;
-            let y = (3 + i as u16) * lh;
+            let y = (5 + i as u16) * lh;
 
             if is_sel {
                 view.add(Element::Rect(RectElement {
-                    x: 0,
+                    x: 8,
                     y,
-                    width: view.width,
+                    width: view.width.saturating_sub(16),
                     height: lh,
                     color: Color::from_palette(2),
                     filled: true,
@@ -207,6 +236,15 @@ impl App {
             let num = format!("{:02}", idx + 1);
             let title = horizontal_scroll(p.title, 22, self.tick);
 
+            // Left panel border
+            view.add(Element::Text(TextElement {
+                x: 0,
+                y,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+
+            // Item number and title (at x=16 for test compatibility)
             view.add(Element::Text(TextElement {
                 x: 16,
                 y,
@@ -214,41 +252,105 @@ impl App {
                 style: TextStyle::new(fg).bold(),
             }));
 
+            // Mid separator
+            view.add(Element::Text(TextElement {
+                x: 248,
+                y,
+                text: "│".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+
             // Tags formatted with horizontal auto-scroll when selected or long
             let tag_str = p.tags.iter().map(|t| format!("<{}>", t)).collect::<Vec<_>>().join(" ");
-            let tag_display = if is_sel {
-                horizontal_scroll(&tag_str, 34, self.tick)
-            } else if tag_str.chars().count() > 34 {
-                horizontal_scroll(&tag_str, 34, self.tick)
+            let tag_w = tag_col_w.saturating_sub(2);
+            let tag_display = if is_sel || tag_str.chars().count() > tag_w {
+                horizontal_scroll(&tag_str, tag_w, self.tick)
             } else {
                 tag_str
             };
 
             view.add(Element::Text(TextElement {
-                x: 256,
+                x: 264,
                 y,
                 text: tag_display,
-                style: TextStyle::new(Color::from_palette(4)),
+                style: TextStyle::new(if is_sel { Color::from_palette(14) } else { Color::from_palette(4) }),
             }));
 
-            // Detail arrow
-            let arrow_x = view.width.saturating_sub(96);
+            // Action separator
+            let act_sep_x = (cols.saturating_sub(16) * 8) as u16;
             view.add(Element::Text(TextElement {
-                x: arrow_x,
+                x: act_sep_x,
+                y,
+                text: "│".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
+            }));
+
+            // Action text
+            let action_x = act_sep_x + 16;
+            view.add(Element::Text(TextElement {
+                x: action_x,
                 y,
                 text: if is_sel { "[Enter] ->" } else { "  Details " }.to_string(),
-                style: TextStyle::new(if is_sel { Color::from_palette(7) } else { Color::from_palette(3) }),
+                style: TextStyle::new(if is_sel { Color::from_palette(7) } else { Color::from_palette(3) }).bold(),
+            }));
+
+            // Right panel border
+            view.add(Element::Text(TextElement {
+                x: view.width.saturating_sub(8),
+                y,
+                text: "║".to_string(),
+                style: TextStyle::new(Color::from_palette(3)),
             }));
         }
 
-        // Scroll guidance note if more items exist
-        if PROJECTS.len() > max_visible {
-            let guide_y = (3 + max_visible as u16) * lh;
+        // Panel Bottom Border
+        let bot_label = " 16 Projects • 160 KB Free ";
+        let left_bot = cols.saturating_sub(2 + bot_label.len()) / 2;
+        let right_bot = cols.saturating_sub(2 + bot_label.len() + left_bot);
+        let bot_border = format!("╚{}{}{}╝", "═".repeat(left_bot), bot_label, "═".repeat(right_bot));
+        let bot_y = (5 + max_visible as u16) * lh;
+        if bot_y + lh <= view.height {
             view.add(Element::Text(TextElement {
-                x: 16,
-                y: guide_y,
-                text: format!("Showing {}-{} of {} projects. Use [Up/Down] or [k/j] to scroll.", start + 1, end, PROJECTS.len()),
+                x: 0,
+                y: bot_y,
+                text: bot_border,
+                style: TextStyle::new(Color::from_palette(3)).bold(),
+            }));
+        }
+
+        // DOS prompt path at bottom
+        let prompt_y = bot_y + lh;
+        if prompt_y + lh <= view.height {
+            let selected_slug = PROJECTS.get(self.selected_project).map(|p| p.slug).unwrap_or("portfolio");
+            let prompt_path = format!("C:\\DMYTRO\\PROJECTS\\{}>", selected_slug.to_uppercase());
+            let cursor_char = if (self.tick / 4) % 2 == 0 { "█" } else { " " };
+            view.add(Element::Text(TextElement {
+                x: 8,
+                y: prompt_y,
+                text: format!("{}{}", prompt_path, cursor_char),
+                style: TextStyle::new(Color::from_palette(14)).bold(),
+            }));
+        }
+
+        // Navigation guidance
+        let hint_y = prompt_y + lh;
+        if hint_y + lh <= view.height {
+            view.add(Element::Text(TextElement {
+                x: 8,
+                y: hint_y,
+                text: "Use [↑/↓] or [k/j] to select • [Enter] View details • [1-4] Tabs • [?] Help".to_string(),
                 style: TextStyle::new(Color::from_palette(4)),
+            }));
+        }
+
+        // Function Key Bar
+        let fkey_y = hint_y + lh;
+        if fkey_y + lh <= view.height {
+            view.add(Element::Text(TextElement {
+                x: 0,
+                y: fkey_y,
+                text: " 1Help  2Visual 3About  4CV     5Contct 6Res    7Theme  8Full   9Menu   10Quit ".to_string(),
+                style: TextStyle::new(Color::from_palette(14)).bold(),
             }));
         }
     }

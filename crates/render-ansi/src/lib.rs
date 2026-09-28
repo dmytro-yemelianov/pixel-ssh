@@ -99,12 +99,12 @@ impl AnsiRenderer {
 
     /// Renders a platform-independent View into an ANSI string stream.
     pub fn render_view(&mut self, view: &View) -> String {
-        let palette = Framebuffer::palette_for_mode(view.palette_mode);
+        let palette = Framebuffer::palette_for_theme(view.color_theme);
         let default_bg = [palette[0][0], palette[0][1], palette[0][2]];
         self.clear(default_bg);
 
         let is_terminal = view.platform == Platform::Terminal;
-        let (target_cols, _target_rows) = view.palette_mode.char_grid();
+        let (target_cols, _target_rows) = view.resolution.char_grid();
         let offset_col = if is_terminal { 0 } else { self.cols.saturating_sub(target_cols) / 2 };
 
         let border_entry = palette[7];
@@ -388,7 +388,7 @@ impl AnsiRenderer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pixel_ssh_view::{Color, PaletteMode, TextStyle};
+    use pixel_ssh_view::{Color, ColorTheme, PaletteMode, TextStyle};
 
     #[test]
     fn test_pixel_to_grid_mapping_vga() {
@@ -479,6 +479,7 @@ mod tests {
         let mut view = View::new(cols * 8, rows * 16);
         view.platform = Platform::Terminal;
         view.palette_mode = PaletteMode::Vga;
+        view.color_theme = ColorTheme::VgaModern;
 
         // Add a 16x16 sprite at x=0, y=0
         let data = vec![6u8; 16 * 16]; // white

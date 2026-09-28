@@ -1,6 +1,8 @@
 //! Event handling and user input processing for the application.
 
-use pixel_ssh_view::{ActiveModal, InputEvent, Key, Platform, SystemMode, VisualEffects};
+use pixel_ssh_view::{
+    ActiveModal, ColorTheme, InputEvent, Key, Platform, ResolutionMode, VisualEffects,
+};
 use crate::data::PROJECTS;
 use crate::state::{App, Tab};
 
@@ -16,42 +18,241 @@ impl App {
                     return true;
                 }
 
-                // If active modal is open, handle modal-specific keys
+                // If active modal is open, modal captures all keys exclusively!
                 if self.active_modal != ActiveModal::None {
-                    match key {
-                        Key::Escape => {
-                            self.active_modal = ActiveModal::None;
-                            return true;
-                        }
-                        Key::Char('1'..='9') | Key::Char('0') if self.active_modal == ActiveModal::System => {
-                            let digit = match key {
-                                Key::Char('0') => 9,
-                                Key::Char(c) => (c as usize) - ('1' as usize),
-                                _ => 0,
-                            };
-                            if digit < SystemMode::ALL.len() {
-                                self.system_mode = SystemMode::ALL[digit];
-                                self.palette_mode = self.system_mode;
-                                self.active_modal = ActiveModal::None;
-                                let (w, h) = self.system_mode.resolution();
-                                let (c, r) = self.system_mode.char_grid();
-                                self.status = format!("{}: {}x{} ({}x{})", self.system_mode.name(), w, h, c, r);
-                                return true;
+                    match self.active_modal {
+                        ActiveModal::System => {
+                            match key {
+                                Key::Escape | Key::Char('s') | Key::Char('S') => {
+                                    self.active_modal = ActiveModal::None;
+                                    return true;
+                                }
+                                Key::Char(c @ '1'..='8') => {
+                                    let idx = (c as usize) - ('1' as usize);
+                                    if idx < ResolutionMode::ALL.len() {
+                                        self.set_resolution(ResolutionMode::ALL[idx]);
+                                        self.active_modal = ActiveModal::None;
+                                        return true;
+                                    }
+                                }
+                                Key::Char(c @ 'a'..='h') | Key::Char(c @ 'A'..='H') => {
+                                    let idx = match c.to_ascii_uppercase() {
+                                        'A' => 0, 'B' => 1, 'C' => 2, 'D' => 3,
+                                        'E' => 4, 'F' => 5, 'G' => 6, _ => 7,
+                                    };
+                                    if idx < ColorTheme::ALL.len() {
+                                        self.set_color_theme(ColorTheme::ALL[idx]);
+                                        self.active_modal = ActiveModal::None;
+                                        return true;
+                                    }
+                                }
+                                _ => {}
                             }
+                            return true; // Modal captures and swallows all other keys
                         }
-                        Key::Char('v') | Key::Char('V') if self.active_modal == ActiveModal::Visuals => {
-                            self.active_modal = ActiveModal::None;
+                        ActiveModal::Visuals => {
+                            match key {
+                                Key::Escape | Key::Char('v') | Key::Char('V') => {
+                                    self.active_modal = ActiveModal::None;
+                                    return true;
+                                }
+                                Key::Char('1') | Key::Char('a') | Key::Char('A') => {
+                                    self.visual_effects = VisualEffects::clean();
+                                    self.status = "Preset: Clean (Pixel-Perfect)".to_string();
+                                    return true;
+                                }
+                                Key::Char('2') | Key::Char('w') | Key::Char('W') => {
+                                    self.visual_effects = VisualEffects::crt_trinitron();
+                                    self.status = "Preset: 80s Trinitron CRT".to_string();
+                                    return true;
+                                }
+                                Key::Char('3') | Key::Char('c') | Key::Char('C') => {
+                                    self.visual_effects = VisualEffects::crt_arcade();
+                                    self.status = "Preset: Arcade Cabinet".to_string();
+                                    return true;
+                                }
+                                Key::Char('4') | Key::Char('d') | Key::Char('D') => {
+                                    self.visual_effects = VisualEffects::phosphor_bloom();
+                                    self.status = "Preset: Phosphor Bloom".to_string();
+                                    return true;
+                                }
+                                Key::Char('5') | Key::Char('e') | Key::Char('E') => {
+                                    self.visual_effects = VisualEffects::retro_glitch();
+                                    self.status = "Preset: Retro Glitch".to_string();
+                                    return true;
+                                }
+                                Key::Char('6') | Key::Char('r') | Key::Char('R') => {
+                                    self.visual_effects = VisualEffects::default();
+                                    self.status = "Preset: Default CRT".to_string();
+                                    return true;
+                                }
+                                Key::Up | Key::Char('k') => {
+                                    self.selected_fx_slider = (self.selected_fx_slider + 7) % 8;
+                                    return true;
+                                }
+                                Key::Down | Key::Char('j') => {
+                                    self.selected_fx_slider = (self.selected_fx_slider + 1) % 8;
+                                    return true;
+                                }
+                                Key::Left | Key::Char('h') => {
+                                    self.adjust_selected_slider(-0.05);
+                                    return true;
+                                }
+                                Key::Right | Key::Char('l') => {
+                                    self.adjust_selected_slider(0.05);
+                                    return true;
+                                }
+                                Key::Char('z') | Key::Char('Z') => {
+                                    self.selected_fx_slider = 0;
+                                    self.visual_effects.scanlines = if self.visual_effects.scanlines < 0.15 { 0.35 } else if self.visual_effects.scanlines < 0.50 { 0.70 } else { 0.0 };
+                                    self.status = format!("Scanlines: {:.0}%", self.visual_effects.scanlines * 100.0);
+                                    return true;
+                                }
+                                Key::Char('x') | Key::Char('X') => {
+                                    self.selected_fx_slider = 1;
+                                    self.visual_effects.pixel_grid = if self.visual_effects.pixel_grid < 0.10 { 0.20 } else if self.visual_effects.pixel_grid < 0.30 { 0.40 } else { 0.0 };
+                                    self.status = format!("Pixel Grid: {:.0}%", self.visual_effects.pixel_grid * 100.0);
+                                    return true;
+                                }
+                                Key::Char('m') | Key::Char('M') => {
+                                    self.selected_fx_slider = 2;
+                                    self.visual_effects.chromatic = if self.visual_effects.chromatic < 0.15 { 0.35 } else if self.visual_effects.chromatic < 0.55 { 0.85 } else { 0.0 };
+                                    self.status = format!("Chromatic: {:.0}%", self.visual_effects.chromatic * 100.0);
+                                    return true;
+                                }
+                                Key::Char('b') | Key::Char('B') => {
+                                    self.selected_fx_slider = 4;
+                                    self.visual_effects.curvature = if self.visual_effects.curvature < 0.10 { 0.25 } else if self.visual_effects.curvature < 0.35 { 0.45 } else { 0.0 };
+                                    self.status = format!("CRT Curvature: {:.0}%", self.visual_effects.curvature * 100.0);
+                                    return true;
+                                }
+                                Key::Char('n') | Key::Char('N') => {
+                                    self.selected_fx_slider = 5;
+                                    self.visual_effects.jitter = if self.visual_effects.jitter < 0.10 { 0.25 } else if self.visual_effects.jitter < 0.40 { 0.65 } else { 0.0 };
+                                    self.status = format!("Jitter: {:.0}%", self.visual_effects.jitter * 100.0);
+                                    return true;
+                                }
+                                Key::Char('g') | Key::Char('G') => {
+                                    self.selected_fx_slider = 6;
+                                    self.visual_effects.magnet = if self.visual_effects.magnet < 0.05 { 0.10 } else if self.visual_effects.magnet < 0.18 { 0.25 } else { 0.0 };
+                                    self.status = format!("Point CRT Magnet Deflection: {:.0}%", self.visual_effects.magnet * 100.0);
+                                    return true;
+                                }
+                                _ => {}
+                            }
+                            return true; // Modal captures and swallows all other keys
+                        }
+                        ActiveModal::Help => {
+                            match key {
+                                Key::Escape | Key::Enter | Key::Char('?') | Key::Char('h') | Key::Char('H') | Key::Char('q') | Key::Char('Q') => {
+                                    self.active_modal = ActiveModal::None;
+                                    return true;
+                                }
+                                _ => {}
+                            }
+                            return true; // Modal captures and swallows all other keys
+                        }
+                        ActiveModal::None => unreachable!(),
+                    }
+                }
+
+                // If on Web with an article overlay open (Tab::Resume or Tab::About):
+                if self.platform == Platform::Web && (self.current_tab == Tab::Resume || self.current_tab == Tab::About) {
+                    match key {
+                        Key::Escape | Key::Char('q') | Key::Char('Q') => {
+                            self.current_tab = Tab::Projects;
                             return true;
                         }
-                        Key::Char('s') | Key::Char('S') if self.active_modal == ActiveModal::System => {
-                            self.active_modal = ActiveModal::None;
+                        Key::Char('1') => {
+                            self.current_tab = Tab::Projects;
                             return true;
                         }
-                        Key::Char('?') | Key::Char('h') | Key::Char('H') if self.active_modal == ActiveModal::Help => {
-                            self.active_modal = ActiveModal::None;
+                        Key::Char('2') => {
+                            self.current_tab = Tab::Resume;
                             return true;
                         }
-                        _ => {}
+                        Key::Char('3') => {
+                            self.current_tab = Tab::About;
+                            return true;
+                        }
+                        Key::Char('4') => {
+                            self.current_tab = Tab::Contact;
+                            return true;
+                        }
+                        Key::Char('5') | Key::Char('?') => {
+                            self.active_modal = ActiveModal::Help;
+                            return true;
+                        }
+                        Key::Char('6') | Key::Char('v') | Key::Char('V') => {
+                            self.active_modal = ActiveModal::Visuals;
+                            return true;
+                        }
+                        Key::Char('7') | Key::Char('s') | Key::Char('S') => {
+                            self.active_modal = ActiveModal::System;
+                            return true;
+                        }
+                        Key::Tab => {
+                            self.current_tab = match self.current_tab {
+                                Tab::Resume => Tab::About,
+                                Tab::About => Tab::Contact,
+                                _ => Tab::Projects,
+                            };
+                            return true;
+                        }
+                        Key::Down | Key::Char('j') => {
+                            if self.current_tab == Tab::Resume {
+                                self.resume_scroll = (self.resume_scroll + 1).min(self.resume_max_scroll());
+                            } else {
+                                self.about_scroll = (self.about_scroll + 1).min(self.about_max_scroll());
+                            }
+                            return true;
+                        }
+                        Key::Up | Key::Char('k') => {
+                            if self.current_tab == Tab::Resume {
+                                self.resume_scroll = self.resume_scroll.saturating_sub(1);
+                            } else {
+                                self.about_scroll = self.about_scroll.saturating_sub(1);
+                            }
+                            return true;
+                        }
+                        Key::PageDown | Key::Char(' ') => {
+                            let step = 10;
+                            if self.current_tab == Tab::Resume {
+                                self.resume_scroll = (self.resume_scroll + step).min(self.resume_max_scroll());
+                            } else {
+                                self.about_scroll = (self.about_scroll + step).min(self.about_max_scroll());
+                            }
+                            return true;
+                        }
+                        Key::PageUp => {
+                            let step = 10;
+                            if self.current_tab == Tab::Resume {
+                                self.resume_scroll = self.resume_scroll.saturating_sub(step);
+                            } else {
+                                self.about_scroll = self.about_scroll.saturating_sub(step);
+                            }
+                            return true;
+                        }
+                        Key::Home => {
+                            if self.current_tab == Tab::Resume {
+                                self.resume_scroll = 0;
+                            } else {
+                                self.about_scroll = 0;
+                            }
+                            return true;
+                        }
+                        Key::End => {
+                            if self.current_tab == Tab::Resume {
+                                self.resume_scroll = self.resume_max_scroll();
+                            } else {
+                                self.about_scroll = self.about_max_scroll();
+                            }
+                            return true;
+                        }
+                        _ => {
+                            // Any other key while article is open is swallowed
+                            return true;
+                        }
                     }
                 }
 
@@ -487,6 +688,11 @@ impl App {
             }
         }
             InputEvent::Wheel { dy, .. } => {
+                // If modal is active, swallow wheel event so it never leaks into background
+                if self.active_modal != ActiveModal::None {
+                    return true;
+                }
+
                 let delta = (dy.abs() as usize).max(1);
                 if self.current_tab == Tab::Resume {
                     if dy > 0 {
@@ -543,7 +749,7 @@ impl App {
                     return true;
                 }
 
-                // 2. Active Modal Dialog click handling
+                // 2. Active Modal Dialog click handling: strictly captures all mouse events
                 if self.active_modal != ActiveModal::None {
                     let char_h: u16 = if height <= 200 { 8 } else { 16 };
                     let box_w = if cols >= 80 { 540u16.min(width.saturating_sub(32)) } else { width.saturating_sub(16) };
@@ -564,24 +770,46 @@ impl App {
                         return true;
                     }
 
-                    // System modal row selection
+                    // System modal dual-column selection
                     if self.active_modal == ActiveModal::System {
                         let row_start_y = box_y + char_h + 4;
-                        if y >= row_start_y {
-                            let row_idx = ((y - row_start_y) / char_h) as usize;
-                            if row_idx < SystemMode::ALL.len() {
-                                self.system_mode = SystemMode::ALL[row_idx];
-                                self.palette_mode = self.system_mode;
-                                self.active_modal = ActiveModal::None;
-                                let (w, h) = self.system_mode.resolution();
-                                let (c, r) = self.system_mode.char_grid();
-                                self.status = format!("{}: {}x{} ({}x{})", self.system_mode.name(), w, h, c, r);
-                                return true;
+                        if y >= row_start_y + char_h {
+                            let row_idx = ((y - (row_start_y + char_h)) / char_h) as usize;
+                            if cols >= 80 {
+                                let col1_x = box_x + 12;
+                                let col2_x = box_x + 300;
+                                if x >= col1_x.saturating_sub(4) && x < col1_x + 270 {
+                                    if row_idx < ResolutionMode::ALL.len() {
+                                        self.set_resolution(ResolutionMode::ALL[row_idx]);
+                                        self.active_modal = ActiveModal::None;
+                                        return true;
+                                    }
+                                } else if x >= col2_x.saturating_sub(4) && x < col2_x + 260 {
+                                    if row_idx < ColorTheme::ALL.len() {
+                                        self.set_color_theme(ColorTheme::ALL[row_idx]);
+                                        self.active_modal = ActiveModal::None;
+                                        return true;
+                                    }
+                                }
+                            } else {
+                                if row_idx < 4 && row_idx < ResolutionMode::ALL.len() {
+                                    self.set_resolution(ResolutionMode::ALL[row_idx]);
+                                    self.active_modal = ActiveModal::None;
+                                    return true;
+                                } else if row_idx >= 5 && row_idx < 9 {
+                                    let thm_idx = row_idx - 5;
+                                    if thm_idx < ColorTheme::ALL.len() {
+                                        self.set_color_theme(ColorTheme::ALL[thm_idx]);
+                                        self.active_modal = ActiveModal::None;
+                                        return true;
+                                    }
+                                }
                             }
                         }
+                        return true; // Any other click inside modal is swallowed
                     }
 
-                    // Visuals modal presets
+                    // Visuals modal presets & sliders
                     if self.active_modal == ActiveModal::Visuals {
                         let preset_y = box_y + char_h + 4;
                         if y >= preset_y && y < preset_y + char_h + 2 {
@@ -607,12 +835,43 @@ impl App {
                                 return true;
                             }
                         }
+
+                        let slider_start_y = preset_y + char_h + 4;
+                        if y >= slider_start_y && y < slider_start_y + 8 * char_h {
+                            let slider_idx = ((y - slider_start_y) / char_h) as usize;
+                            if slider_idx < 8 {
+                                self.selected_fx_slider = slider_idx;
+                                let track_start = box_x + 115;
+                                let track_w = 110;
+                                if x >= track_start && x <= track_start + track_w {
+                                    let ratio = ((x - track_start) as f32 / track_w as f32).clamp(0.0, 1.0);
+                                    match slider_idx {
+                                        0 => self.visual_effects.scanlines = ratio,
+                                        1 => self.visual_effects.pixel_grid = ratio,
+                                        2 => self.visual_effects.chromatic = ratio,
+                                        3 => self.visual_effects.afterglow = ratio,
+                                        4 => self.visual_effects.curvature = ratio,
+                                        5 => self.visual_effects.jitter = ratio,
+                                        6 => self.visual_effects.magnet = ratio,
+                                        7 => self.visual_effects.antenna_hum = ratio,
+                                        _ => {}
+                                    }
+                                }
+                                return true;
+                            }
+                        }
+                        return true; // Any other click inside visuals modal is swallowed
+                    }
+
+                    // Help modal: any click inside consumed
+                    if self.active_modal == ActiveModal::Help {
+                        return true;
                     }
 
                     return true;
                 }
 
-                // 3. Article view (CV or About) on Web:
+                // 3. Article view (CV or About) on Web: strictly captures mouse clicks
                 if self.platform == Platform::Web && (self.current_tab == Tab::Resume || self.current_tab == Tab::About) {
                     let char_h = self.palette_mode.line_height();
                     let pad_x = if cols >= 80 { 16u16 } else { 4u16 };
@@ -631,6 +890,26 @@ impl App {
                         self.current_tab = Tab::Projects;
                         return true;
                     }
+
+                    // Scrollbar click on the right edge
+                    if x >= (box_x + box_w).saturating_sub(24) {
+                        if y < box_y + box_h / 2 {
+                            if self.current_tab == Tab::Resume {
+                                self.resume_scroll = self.resume_scroll.saturating_sub(5);
+                            } else {
+                                self.about_scroll = self.about_scroll.saturating_sub(5);
+                            }
+                        } else {
+                            if self.current_tab == Tab::Resume {
+                                self.resume_scroll = (self.resume_scroll + 5).min(self.resume_max_scroll());
+                            } else {
+                                self.about_scroll = (self.about_scroll + 5).min(self.about_max_scroll());
+                            }
+                        }
+                    }
+
+                    // STRICT CAPTURE: Consume all other clicks inside article overlay without leaking to background!
+                    return true;
                 }
 
                 // 4. Tab bar clicks & Modal triggers
@@ -661,10 +940,10 @@ impl App {
                             } else if x >= 340 && x < 388 {
                                 self.active_modal = if self.active_modal == ActiveModal::Visuals { ActiveModal::None } else { ActiveModal::Visuals };
                                 return true;
-                            } else if x >= 388 && x < 476 {
+                            } else if x >= 388 && x < 570 {
                                 self.active_modal = if self.active_modal == ActiveModal::System { ActiveModal::None } else { ActiveModal::System };
                                 return true;
-                            } else if x >= 476 && x < 520 {
+                            } else if x >= 570 && x < 610 {
                                 self.active_modal = if self.active_modal == ActiveModal::Help { ActiveModal::None } else { ActiveModal::Help };
                                 return true;
                             } else if x >= width.saturating_sub(80) {
@@ -1114,9 +1393,10 @@ impl App {
                             return true;
                         }
                     } else {
-                        let list_top = if cols == 80 { 48 } else { 24 };
+                        let list_top = if cols == 80 { 80 } else { 24 };
                         let row_h = if cols == 80 { 16 } else if cols == 40 { 12 } else { 11 };
-                        if y >= list_top && y < height.saturating_sub(16) {
+                        let list_bot = if cols == 80 { 320 } else { height.saturating_sub(16) };
+                        if y >= list_top && y < list_bot {
                             let row_idx = ((y - list_top) / row_h) as usize;
                             let project_idx = self.scroll_offset + row_idx;
                             if project_idx < PROJECTS.len() {

@@ -571,6 +571,6 @@ pub static ABOUT_LINES_32: &[(&str, u8, bool)] = &[
 pub mod details;
 pub mod profile;
 pub use details::{get_project_detail, project_detail_lines, ProjectDetail};
-pub use profile::{get_profile_sprite, PROFILE_SPRITE_64_VGA, PROFILE_SPRITE_96_VGA};
+pub use profile::{get_profile_sprite, get_profile_sprite_for_theme, PROFILE_SPRITE_64_VGA, PROFILE_SPRITE_96_VGA};
 
 

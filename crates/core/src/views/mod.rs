@@ -27,6 +27,8 @@ impl App {
             self.system_mode.char_grid()
         };
         let mut view = View::new(width, height);
+        view.resolution = self.resolution;
+        view.color_theme = self.color_theme;
         view.palette_mode = self.palette_mode;
         view.system_mode = self.system_mode;
         view.visual_effects = self.visual_effects;
@@ -72,14 +74,30 @@ impl App {
                 TextStyle::new(Color::from_palette(12)),
             )));
 
-            // Top Bar Clock: at far top right, HH:MM, no seconds, no brackets
-            let clock_str = self.clock_formatted();
-            let clock_x = width.saturating_sub(48);
-            view.add(Element::Text(TextElement {
+            // Top Bar Clock: at far top right, Volkov Commander solid badge
+            let clock_str = format!(" {} ", self.clock_formatted());
+            let clock_x = width.saturating_sub(60);
+            view.add(Element::Rect(RectElement {
                 x: clock_x,
                 y: 0,
+                width: 60,
+                height: 16,
+                color: Color::from_palette(13),
+                filled: true,
+            }));
+            view.add(Element::Rect(RectElement {
+                x: clock_x,
+                y: 0,
+                width: 60,
+                height: 16,
+                color: Color::from_palette(3),
+                filled: false,
+            }));
+            view.add(Element::Text(TextElement {
+                x: clock_x + 2,
+                y: 0,
                 text: clock_str,
-                style: TextStyle::new(Color::from_palette(10)).bold(),
+                style: TextStyle::new(Color::from_palette(6)).bold(),
             }));
 
             // Row 1: Tab bar background
@@ -143,17 +161,30 @@ impl App {
                 )));
 
                 let sys_active = self.active_modal == ActiveModal::System;
-                let sys_style = if sys_active {
+                let res_style = if sys_active {
                     TextStyle::new(Color::from_palette(6)).with_bg(Color::from_palette(7)).bold()
                 } else {
                     TextStyle::new(Color::from_palette(9)).bold()
                 };
                 view.add(Element::Link(LinkElement::new(
-                    392,
+                    388,
                     16,
-                    format!("[SYS:{}]", self.system_mode.short_name()),
+                    format!("[RES:{}]", self.resolution.short_name()),
                     "#modal-system",
-                    sys_style,
+                    res_style,
+                )));
+
+                let clr_style = if sys_active {
+                    TextStyle::new(Color::from_palette(6)).with_bg(Color::from_palette(7)).bold()
+                } else {
+                    TextStyle::new(Color::from_palette(12)).bold()
+                };
+                view.add(Element::Link(LinkElement::new(
+                    476,
+                    16,
+                    format!("[CLR:{}]", self.color_theme.short_name()),
+                    "#modal-system",
+                    clr_style,
                 )));
 
                 let hlp_active = self.active_modal == ActiveModal::Help;
@@ -163,7 +194,7 @@ impl App {
                     TextStyle::new(Color::from_palette(8))
                 };
                 view.add(Element::Link(LinkElement::new(
-                    480,
+                    572,
                     16,
                     "[?]",
                     "#modal-help",
@@ -182,14 +213,16 @@ impl App {
             }
 
             // Row 2: Tab separator line (y = 32)
-            view.add(Element::Rect(RectElement {
-                x: 0,
-                y: 32,
-                width,
-                height: 1,
-                color: Color::from_palette(7),
-                filled: true,
-            }));
+            if self.current_tab != Tab::Projects {
+                view.add(Element::Rect(RectElement {
+                    x: 0,
+                    y: 32,
+                    width,
+                    height: 1,
+                    color: Color::from_palette(7),
+                    filled: true,
+                }));
+            }
         } else if cols == 40 {
             // 40 columns (Commodore 64 / Atari 800 / CGA)
             view.add(Element::Rect(RectElement {
@@ -219,13 +252,30 @@ impl App {
                 TextStyle::new(Color::from_palette(12)),
             )));
 
-            // Top Bar Clock at far right
+            // Top Bar Clock at far right with solid badge
             let clock_str = self.clock_formatted();
+            let clock_x = width.saturating_sub(48);
+            view.add(Element::Rect(RectElement {
+                x: clock_x.saturating_sub(2),
+                y: 0,
+                width: 48,
+                height: 10,
+                color: Color::from_palette(13),
+                filled: true,
+            }));
+            view.add(Element::Rect(RectElement {
+                x: clock_x.saturating_sub(2),
+                y: 0,
+                width: 48,
+                height: 10,
+                color: Color::from_palette(3),
+                filled: false,
+            }));
             view.add(Element::Text(TextElement {
-                x: width.saturating_sub(44),
+                x: clock_x + 1,
                 y: 1,
                 text: clock_str,
-                style: TextStyle::new(Color::from_palette(10)).bold(),
+                style: TextStyle::new(Color::from_palette(6)).bold(),
             }));
 
             view.add(Element::Rect(RectElement {
@@ -369,13 +419,30 @@ impl App {
                 TextStyle::new(Color::from_palette(12)),
             )));
 
-            // Top Bar Clock at top right
+            // Top Bar Clock at top right with solid badge
             let clock_str = self.clock_formatted();
+            let clock_x = width.saturating_sub(48);
+            view.add(Element::Rect(RectElement {
+                x: clock_x.saturating_sub(2),
+                y: 0,
+                width: 48,
+                height: 10,
+                color: Color::from_palette(13),
+                filled: true,
+            }));
+            view.add(Element::Rect(RectElement {
+                x: clock_x.saturating_sub(2),
+                y: 0,
+                width: 48,
+                height: 10,
+                color: Color::from_palette(3),
+                filled: false,
+            }));
             view.add(Element::Text(TextElement {
-                x: width.saturating_sub(44),
+                x: clock_x + 1,
                 y: 1,
                 text: clock_str,
-                style: TextStyle::new(Color::from_palette(10)).bold(),
+                style: TextStyle::new(Color::from_palette(6)).bold(),
             }));
 
             view.add(Element::Rect(RectElement {

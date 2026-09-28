@@ -1,6 +1,6 @@
 //! Dithered retro profile sprites and ASCII/ANSI art for Dmytro Yemelianov.
 
-use pixel_ssh_view::SystemMode;
+use pixel_ssh_view::{ColorTheme, SystemMode};
 
 pub static PROFILE_SPRITE_96_VGA: [u8; 9216] = [
     60, 53, 60, 54, 3, 54, 3, 54, 15, 54, 3, 54, 3, 54, 15, 54, 3, 54, 15, 54, 3, 54, 15, 54,
@@ -2798,25 +2798,28 @@ pub static PROFILE_SPRITE_64_MONO: [u8; 4096] = [
     122, 128, 118, 130, 117, 105, 113, 100, 111, 130, 110, 125, 133, 127, 120, 127,
 ];
 
-/// Returns the authentic retro dithered sprite matching the active system display standard.
-pub fn get_profile_sprite(system: SystemMode, size: u16) -> &'static [u8] {
+/// Returns the authentic retro dithered sprite matching the active color theme.
+pub fn get_profile_sprite_for_theme(theme: ColorTheme, size: u16) -> &'static [u8] {
     if size >= 96 {
-        match system {
-            SystemMode::Vga | SystemMode::Svga | SystemMode::Sga => &PROFILE_SPRITE_96_VGA,
-            SystemMode::Ega | SystemMode::Cga => &PROFILE_SPRITE_96_EGA,
-            SystemMode::C64 => &PROFILE_SPRITE_96_C64,
-            SystemMode::ZxSpectrum => &PROFILE_SPRITE_96_ZX,
-            SystemMode::Amber | SystemMode::GreenCrt => &PROFILE_SPRITE_96_MONO,
-            SystemMode::Atari => &PROFILE_SPRITE_96_VGA,
+        match theme {
+            ColorTheme::Commander | ColorTheme::VgaModern | ColorTheme::Atari => &PROFILE_SPRITE_96_VGA,
+            ColorTheme::Ega => &PROFILE_SPRITE_96_EGA,
+            ColorTheme::C64 => &PROFILE_SPRITE_96_C64,
+            ColorTheme::ZxSpectrum => &PROFILE_SPRITE_96_ZX,
+            ColorTheme::Amber | ColorTheme::GreenCrt => &PROFILE_SPRITE_96_MONO,
         }
     } else {
-        match system {
-            SystemMode::Vga | SystemMode::Svga | SystemMode::Sga => &PROFILE_SPRITE_64_VGA,
-            SystemMode::Ega | SystemMode::Cga => &PROFILE_SPRITE_64_EGA,
-            SystemMode::C64 => &PROFILE_SPRITE_64_C64,
-            SystemMode::ZxSpectrum => &PROFILE_SPRITE_64_ZX,
-            SystemMode::Amber | SystemMode::GreenCrt => &PROFILE_SPRITE_64_MONO,
-            SystemMode::Atari => &PROFILE_SPRITE_64_VGA,
+        match theme {
+            ColorTheme::Commander | ColorTheme::VgaModern | ColorTheme::Atari => &PROFILE_SPRITE_64_VGA,
+            ColorTheme::Ega => &PROFILE_SPRITE_64_EGA,
+            ColorTheme::C64 => &PROFILE_SPRITE_64_C64,
+            ColorTheme::ZxSpectrum => &PROFILE_SPRITE_64_ZX,
+            ColorTheme::Amber | ColorTheme::GreenCrt => &PROFILE_SPRITE_64_MONO,
         }
     }
+}
+
+/// Returns the authentic retro dithered sprite matching the active system display standard.
+pub fn get_profile_sprite(system: SystemMode, size: u16) -> &'static [u8] {
+    get_profile_sprite_for_theme(system.to_theme(), size)
 }

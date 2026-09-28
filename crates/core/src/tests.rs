@@ -702,4 +702,127 @@ use pixel_ssh_view::*;
         }
     }
 
+    #[test]
+    fn test_modal_and_article_strict_event_capture() {
+        let mut app = App::new_web();
+        app.current_tab = Tab::Projects;
+        app.selected_project = 0;
+
+        // 1. Open System modal
+        app.active_modal = ActiveModal::System;
+
+        // Pressing Down/Up or Tab should NOT navigate project list or switch tabs
+        app.update(InputEvent::KeyDown(Key::Down));
+        assert_eq!(app.selected_project, 0, "Modal must not allow Down arrow to leak to background project list");
+        assert_eq!(app.current_tab, Tab::Projects);
+
+        app.update(InputEvent::KeyDown(Key::Tab));
+        assert_eq!(app.current_tab, Tab::Projects, "Modal must not allow Tab to leak to background tab bar");
+
+        // Selecting resolution '4' (EGA)
+        app.update(InputEvent::KeyDown(Key::Char('4')));
+        assert_eq!(app.resolution, ResolutionMode::Ega);
+        assert_eq!(app.active_modal, ActiveModal::None);
+
+        // Re-open System modal and select theme 'A' (Commander)
+        app.active_modal = ActiveModal::System;
+        app.update(InputEvent::KeyDown(Key::Char('a')));
+        assert_eq!(app.color_theme, ColorTheme::Commander);
+        assert_eq!(app.active_modal, ActiveModal::None);
+
+        // 2. Open Visuals modal
+        app.active_modal = ActiveModal::Visuals;
+        app.update(InputEvent::KeyDown(Key::Char('2'))); // Trinitron preset
+        assert_eq!(app.status, "Preset: 80s Trinitron CRT");
+        assert_eq!(app.active_modal, ActiveModal::Visuals);
+
+        // Escape closes Visuals modal
+        app.update(InputEvent::KeyDown(Key::Escape));
+        assert_eq!(app.active_modal, ActiveModal::None);
+
+        // 3. Mouse Wheel while modal is active must not scroll background
+        app.active_modal = ActiveModal::Help;
+        app.update(InputEvent::Wheel { dx: 0, dy: 5 });
+        assert_eq!(app.selected_project, 0, "Wheel must not scroll background projects when modal is active");
+        app.update(InputEvent::KeyDown(Key::Escape));
+        assert_eq!(app.active_modal, ActiveModal::None);
+
+        // 4. Click outside modal dismisses it without clicking background
+        app.active_modal = ActiveModal::System;
+        app.update(InputEvent::PointerDown { x: 5, y: 5, button: Button::Left });
+        assert_eq!(app.active_modal, ActiveModal::None);
+        assert_eq!(app.current_tab, Tab::Projects);
+    }
+
+    #[test]
+    fn test_volkov_commander_single_panel_and_clock_badge() {
+        let mut app = App::new();
+        app.platform = Platform::Web;
+        app.resolution = ResolutionMode::Vga;
+        app.color_theme = ColorTheme::Commander;
+        app.set_time(14, 30, 0);
+
+        let view = app.render();
+
+        // 1. Volkov Commander clock badge at top right
+        let mut found_clock_bg = false;
+        let mut found_clock_text = false;
+        let clock_x = 640 - 60;
+
+        for elem in &view.elements {
+            match elem {
+                Element::Rect(r) if r.x == clock_x && r.y == 0 && r.width == 60 && r.height == 16 && r.filled => {
+                    assert_eq!(r.color.palette_index, 13, "Clock badge background must be black (index 13)");
+                    found_clock_bg = true;
+                }
+                Element::Text(t) if t.y == 0 && t.text.contains("14:30") => {
+                    assert_eq!(t.style.fg.palette_index, 6, "Clock text must be Volkov yellow (index 6)");
+                    found_clock_text = true;
+                }
+                _ => {}
+            }
+        }
+        assert!(found_clock_bg, "Volkov Commander clock background badge missing at top right");
+        assert!(found_clock_text, "Volkov Commander clock text missing");
+
+        // 2. Single panel borders
+        let mut found_top_border = false;
+        let mut found_col_header = false;
+        let mut found_divider = false;
+        let mut found_bot_border = false;
+        let mut found_dos_prompt = false;
+        let mut found_fkeys = false;
+
+        for elem in &view.elements {
+            if let Element::Text(t) = elem {
+                if t.y == 32 && t.text.starts_with("╔") && t.text.ends_with("╗") && t.text.contains("D:\\PORTFOLIO\\PROJECTS") {
+                    found_top_border = true;
+                }
+                if t.y == 48 && t.text.starts_with("║") && t.text.contains("Project Title") {
+                    found_col_header = true;
+                }
+                if t.y == 64 && t.text.starts_with("╟") && t.text.ends_with("╢") {
+                    found_divider = true;
+                }
+                if t.y == 320 && t.text.starts_with("╚") && t.text.ends_with("╝") && t.text.contains("16 Projects") {
+                    found_bot_border = true;
+                }
+                if t.y == 336 && t.text.contains("C:\\DMYTRO\\PROJECTS\\") {
+                    found_dos_prompt = true;
+                }
+                if t.y == 368 && t.text.contains("1Help") && t.text.contains("10Quit") {
+                    found_fkeys = true;
+                }
+            }
+        }
+
+        assert!(found_top_border, "Panel top border ╔═══...═══╗ missing at y=32");
+        assert!(found_col_header, "Panel column header missing at y=48");
+        assert!(found_divider, "Panel header divider ╟───...───╢ missing at y=64");
+        assert!(found_bot_border, "Panel bottom border ╚═══...═══╝ missing at y=320");
+        assert!(found_dos_prompt, "Bottom DOS prompt path C:\\DMYTRO\\PROJECTS\\... missing at y=336");
+        assert!(found_fkeys, "Bottom function key bar 1Help...10Quit missing at y=368");
+    }
+
+
 

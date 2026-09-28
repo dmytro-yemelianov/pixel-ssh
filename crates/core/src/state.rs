@@ -1,6 +1,6 @@
 //! Core application state, Tab enum, and session containers.
 
-use pixel_ssh_view::{ActiveModal, Platform, SystemMode, VisualEffects};
+use pixel_ssh_view::{ActiveModal, ColorTheme, Platform, ResolutionMode, SystemMode, VisualEffects};
 use crate::data::{
     project_detail_lines, ABOUT_LINES_32, ABOUT_LINES_40, ABOUT_LINES_80,
     PROJECTS, RESUME_LINES_32, RESUME_LINES_40, RESUME_LINES_80,
@@ -30,6 +30,8 @@ pub struct App {
     pub resume_scroll: usize,
     pub about_scroll: usize,
     pub detail_scroll: usize,
+    pub resolution: ResolutionMode,
+    pub color_theme: ColorTheme,
     pub system_mode: SystemMode,
     pub palette_mode: SystemMode,
     pub visual_effects: VisualEffects,
@@ -54,7 +56,9 @@ impl App {
     }
 
     pub fn new_web() -> Self {
-        let system_mode = SystemMode::default();
+        let resolution = ResolutionMode::default();
+        let color_theme = ColorTheme::default();
+        let system_mode = resolution.to_system_mode();
         Self {
             platform: Platform::Web,
             current_tab: Tab::Projects,
@@ -68,6 +72,8 @@ impl App {
             resume_scroll: 0,
             about_scroll: 0,
             detail_scroll: 0,
+            resolution,
+            color_theme,
             system_mode,
             palette_mode: system_mode,
             visual_effects: VisualEffects::default(),
@@ -82,7 +88,9 @@ impl App {
     }
 
     pub fn new_terminal() -> Self {
-        let system_mode = SystemMode::default();
+        let resolution = ResolutionMode::default();
+        let color_theme = ColorTheme::default();
+        let system_mode = resolution.to_system_mode();
         Self {
             platform: Platform::Terminal,
             current_tab: Tab::Projects,
@@ -96,6 +104,8 @@ impl App {
             resume_scroll: 0,
             about_scroll: 0,
             detail_scroll: 0,
+            resolution,
+            color_theme,
             system_mode,
             palette_mode: system_mode,
             visual_effects: VisualEffects::clean(),
@@ -109,19 +119,55 @@ impl App {
         }
     }
 
+    pub fn set_resolution(&mut self, res: ResolutionMode) {
+        self.resolution = res;
+        self.system_mode = res.to_system_mode();
+        let (w, h) = self.resolution.resolution();
+        let (c, r) = self.resolution.char_grid();
+        self.status = format!("Resolution: {} ({}x{}, {}x{} cols)", res.name(), w, h, c, r);
+    }
+
+    pub fn set_color_theme(&mut self, theme: ColorTheme) {
+        self.color_theme = theme;
+        self.palette_mode = match theme {
+            ColorTheme::Amber => SystemMode::Amber,
+            ColorTheme::GreenCrt => SystemMode::GreenCrt,
+            ColorTheme::Ega => SystemMode::Ega,
+            ColorTheme::C64 => SystemMode::C64,
+            ColorTheme::Atari => SystemMode::Atari,
+            ColorTheme::ZxSpectrum => SystemMode::ZxSpectrum,
+            ColorTheme::Commander | ColorTheme::VgaModern => SystemMode::Vga,
+        };
+        self.status = format!("Theme: {}", theme.name());
+    }
+
+    pub fn adjust_selected_slider(&mut self, delta: f32) {
+        match self.selected_fx_slider {
+            0 => self.visual_effects.scanlines = (self.visual_effects.scanlines + delta).clamp(0.0, 1.0),
+            1 => self.visual_effects.pixel_grid = (self.visual_effects.pixel_grid + delta).clamp(0.0, 1.0),
+            2 => self.visual_effects.chromatic = (self.visual_effects.chromatic + delta).clamp(0.0, 1.0),
+            3 => self.visual_effects.afterglow = (self.visual_effects.afterglow + delta).clamp(0.0, 1.0),
+            4 => self.visual_effects.curvature = (self.visual_effects.curvature + delta).clamp(0.0, 1.0),
+            5 => self.visual_effects.jitter = (self.visual_effects.jitter + delta).clamp(0.0, 1.0),
+            6 => self.visual_effects.magnet = (self.visual_effects.magnet + delta).clamp(0.0, 1.0),
+            7 => self.visual_effects.antenna_hum = (self.visual_effects.antenna_hum + delta).clamp(0.0, 1.0),
+            _ => {}
+        }
+    }
+
     pub fn set_terminal_size(&mut self, cols: u16, rows: u16) {
         self.terminal_cols = cols.max(40);
-        self.terminal_rows = rows.max(10);
+        self.terminal_rows = rows.max(20);
     }
 
     pub fn projects_max_visible(&self) -> usize {
         if self.platform == Platform::Terminal {
             (self.terminal_rows as usize).saturating_sub(5).max(6)
         } else {
-            let (cols, _) = self.palette_mode.char_grid();
+            let (cols, _) = self.resolution.char_grid();
             match cols {
-                100 => 28,
-                80 => 18,
+                100 => 24,
+                80 => 15,
                 40 => 12,
                 _ => 10,
             }
@@ -169,7 +215,7 @@ impl App {
             let visible = (self.terminal_rows as usize).saturating_sub(6).max(8);
             return RESUME_LINES_80.len().saturating_sub(visible);
         }
-        let (cols, _) = self.palette_mode.char_grid();
+        let (cols, _) = self.resolution.char_grid();
         match cols {
             80 => RESUME_LINES_80.len().saturating_sub(15),
             40 => RESUME_LINES_40.len().saturating_sub(14),
@@ -182,7 +228,7 @@ impl App {
             let visible = (self.terminal_rows as usize).saturating_sub(6).max(8);
             return ABOUT_LINES_80.len().saturating_sub(visible);
         }
-        let (cols, _) = self.palette_mode.char_grid();
+        let (cols, _) = self.resolution.char_grid();
         match cols {
             100 | 80 => ABOUT_LINES_80.len().saturating_sub(18),
             40 => ABOUT_LINES_40.len().saturating_sub(19),
@@ -191,7 +237,7 @@ impl App {
     }
 
     pub fn detail_max_scroll(&self) -> usize {
-        let (cols, _) = self.palette_mode.char_grid();
+        let (cols, _) = self.resolution.char_grid();
         let visible = if self.platform == Platform::Terminal {
             (self.terminal_rows as usize).saturating_sub(11).max(8)
         } else {

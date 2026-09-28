@@ -1,6 +1,6 @@
 //! Modal dialogs (System, Visuals, Help), article overlays (CV, About), and CRT screensaver.
 
-use pixel_ssh_view::{Color, Element, LinkElement, RectElement, SystemMode, TextElement, TextStyle, View};
+use pixel_ssh_view::{Color, Element, LinkElement, RectElement, TextElement, TextStyle, View};
 use crate::data::{ABOUT_LINES_32, ABOUT_LINES_40, ABOUT_LINES_80, RESUME_LINES_32, RESUME_LINES_40, RESUME_LINES_80};
 use crate::state::{App, Tab};
 
@@ -275,13 +275,23 @@ impl App {
         }));
     }
 
-    /// Renders the System mode / Resolution picker modal dialog.
+    /// Renders the System mode / Resolution & Color Theme picker modal dialog.
     pub(crate) fn render_system_modal(&self, view: &mut View, width: u16, height: u16, cols: u16) {
         let char_h: u16 = if height <= 200 { 8 } else { 16 };
-        let box_w = if cols >= 80 { 540u16.min(width.saturating_sub(32)) } else { width.saturating_sub(16) };
+        let box_w = if cols >= 80 { 580u16.min(width.saturating_sub(24)) } else { width.saturating_sub(16) };
         let box_h = (13 * char_h + 16).min(height.saturating_sub(24));
         let box_x = (width.saturating_sub(box_w)) / 2;
         let box_y = (height.saturating_sub(box_h)) / 2;
+
+        // Authentic Volkov Commander drop shadow (pure black index 13)
+        view.add(Element::Rect(RectElement {
+            x: box_x + 8,
+            y: box_y + 8,
+            width: box_w,
+            height: box_h,
+            color: Color::from_palette(13),
+            filled: true,
+        }));
 
         view.add(Element::Rect(RectElement {
             x: box_x,
@@ -296,7 +306,7 @@ impl App {
             y: box_y,
             width: box_w,
             height: box_h,
-            color: Color::from_palette(9),
+            color: Color::from_palette(3),
             filled: false,
         }));
 
@@ -311,7 +321,7 @@ impl App {
         view.add(Element::Text(TextElement {
             x: box_x + 8,
             y: box_y + 1,
-            text: "SELECT DISPLAY SYSTEM & RESOLUTION".to_string(),
+            text: "SELECT DISPLAY RESOLUTION & COLOR THEME".to_string(),
             style: TextStyle::new(Color::from_palette(6)).bold(),
         }));
         let close_x = (box_x + box_w).saturating_sub(40);
@@ -323,61 +333,132 @@ impl App {
             TextStyle::new(Color::from_palette(10)).bold(),
         )));
 
-        let modes = SystemMode::ALL;
         let row_start_y = box_y + char_h + 4;
-        for (i, mode) in modes.iter().enumerate() {
-            let y = row_start_y + (i as u16) * char_h;
-            if y + char_h > box_y + box_h - char_h { break; }
+        if cols >= 80 {
+            let col1_x = box_x + 12;
+            let col2_x = box_x + 300;
 
-            let is_cur = self.system_mode == *mode;
-            let (w, h) = mode.resolution();
-            let (c, r) = mode.char_grid();
+            // Section Headers
+            view.add(Element::Text(TextElement {
+                x: col1_x,
+                y: row_start_y,
+                text: "── RESOLUTION [1-8] ──".to_string(),
+                style: TextStyle::new(Color::from_palette(4)).bold(),
+            }));
+            view.add(Element::Text(TextElement {
+                x: col2_x,
+                y: row_start_y,
+                text: "── COLOR THEME [A-H] ──".to_string(),
+                style: TextStyle::new(Color::from_palette(4)).bold(),
+            }));
 
-            if is_cur {
-                view.add(Element::Rect(RectElement {
-                    x: box_x + 2,
+            // Resolution List (Left Column)
+            for (i, res) in pixel_ssh_view::ResolutionMode::ALL.iter().enumerate() {
+                let y = row_start_y + ((i + 1) as u16) * char_h;
+                if y + char_h > box_y + box_h - char_h { break; }
+
+                let is_cur = self.resolution == *res;
+                let (w, h) = res.resolution();
+
+                if is_cur {
+                    view.add(Element::Rect(RectElement {
+                        x: col1_x.saturating_sub(4),
+                        y,
+                        width: 270,
+                        height: char_h,
+                        color: Color::from_palette(2),
+                        filled: true,
+                    }));
+                }
+
+                let marker = if is_cur { "►" } else { " " };
+                let line_text = format!(
+                    "{} [{}] {:<4} {:>3}x{:<3} {}",
+                    marker, i + 1, res.short_name(), w, h,
+                    if is_cur { "[*]" } else { "" }
+                );
+
+                let fg = if is_cur { Color::from_palette(6) } else { Color::from_palette(5) };
+                view.add(Element::Text(TextElement {
+                    x: col1_x,
                     y,
-                    width: box_w.saturating_sub(4),
-                    height: char_h,
-                    color: Color::from_palette(2),
-                    filled: true,
+                    text: line_text,
+                    style: TextStyle::new(fg).bold(),
                 }));
             }
 
-            let num_key = (i + 1) % 10;
-            let marker = if is_cur { "►" } else { " " };
-            let line_text = if cols >= 80 {
-                format!(
-                    "{} [{}] {:<6} {:>4}x{:<3} ({:>3}x{:<2} cols) {}",
-                    marker, num_key, mode.short_name(), w, h, c, r,
-                    if is_cur { "[ACTIVE]" } else { "" }
-                )
-            } else {
-                format!(
-                    "{} [{}] {:<5} {:>3}x{:<3} {}",
-                    marker, num_key, mode.short_name(), w, h,
-                    if is_cur { "*" } else { "" }
-                )
-            };
+            // Color Theme List (Right Column)
+            for (i, theme) in pixel_ssh_view::ColorTheme::ALL.iter().enumerate() {
+                let y = row_start_y + ((i + 1) as u16) * char_h;
+                if y + char_h > box_y + box_h - char_h { break; }
 
-            let fg = if is_cur {
-                Color::from_palette(6)
-            } else {
-                Color::from_palette(5)
-            };
-            view.add(Element::Text(TextElement {
-                x: box_x + 8,
-                y,
-                text: line_text,
-                style: TextStyle::new(fg).bold(),
-            }));
+                let is_cur = self.color_theme == *theme;
+                let key_char = match i {
+                    0 => 'A', 1 => 'B', 2 => 'C', 3 => 'D',
+                    4 => 'E', 5 => 'F', 6 => 'G', _ => 'H',
+                };
+
+                if is_cur {
+                    view.add(Element::Rect(RectElement {
+                        x: col2_x.saturating_sub(4),
+                        y,
+                        width: 260,
+                        height: char_h,
+                        color: Color::from_palette(2),
+                        filled: true,
+                    }));
+                }
+
+                let marker = if is_cur { "►" } else { " " };
+                let line_text = format!(
+                    "{} [{}] {:<16} {}",
+                    marker, key_char, theme.short_name(),
+                    if is_cur { "[*]" } else { "" }
+                );
+
+                let fg = if is_cur { Color::from_palette(6) } else { Color::from_palette(5) };
+                view.add(Element::Text(TextElement {
+                    x: col2_x,
+                    y,
+                    text: line_text,
+                    style: TextStyle::new(fg).bold(),
+                }));
+            }
+        } else {
+            // Compact 40-col stacked list
+            for (i, res) in pixel_ssh_view::ResolutionMode::ALL.iter().take(4).enumerate() {
+                let y = row_start_y + (i as u16) * char_h;
+                let is_cur = self.resolution == *res;
+                let (w, h) = res.resolution();
+                let marker = if is_cur { "►" } else { " " };
+                let line_text = format!("{} [{}] {:<4} {:>3}x{:<3}", marker, i + 1, res.short_name(), w, h);
+                view.add(Element::Text(TextElement {
+                    x: box_x + 8,
+                    y,
+                    text: line_text,
+                    style: TextStyle::new(if is_cur { Color::from_palette(6) } else { Color::from_palette(5) }).bold(),
+                }));
+            }
+            for (i, theme) in pixel_ssh_view::ColorTheme::ALL.iter().take(4).enumerate() {
+                let y = row_start_y + ((i + 5) as u16) * char_h;
+                let is_cur = self.color_theme == *theme;
+                let key_char = match i { 0 => 'A', 1 => 'B', 2 => 'C', _ => 'D' };
+                let marker = if is_cur { "►" } else { " " };
+                let line_text = format!("{} [{}] {:<14}", marker, key_char, theme.short_name());
+                view.add(Element::Text(TextElement {
+                    x: box_x + 8,
+                    y,
+                    text: line_text,
+                    style: TextStyle::new(if is_cur { Color::from_palette(6) } else { Color::from_palette(5) }).bold(),
+                }));
+            }
         }
 
         let foot_y = (box_y + box_h).saturating_sub(char_h + 2);
         view.add(Element::Text(TextElement {
             x: box_x + 8,
             y: foot_y,
-            text: "Click or press [1-0] to switch • [ESC] Close".to_string(),
+            text: "Click or press [1-8] Resolution • [A-H] Theme • [ESC] Close".to_string(),
             style: TextStyle::new(Color::from_palette(4)),
         }));
     }
