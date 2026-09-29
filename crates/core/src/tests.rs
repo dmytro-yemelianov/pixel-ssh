@@ -521,6 +521,28 @@ fn test_project_row_click_matches_rendered_grid() {
 }
 
 #[test]
+fn compact_project_rows_fill_available_space_and_remain_clickable() {
+    for (resolution, visible, last_tag_y) in [
+        (ResolutionMode::C64, 7, 160),
+        (ResolutionMode::ZxSpectrum, 6, 144),
+    ] {
+        let mut app = App::new_web();
+        app.set_resolution(resolution);
+        assert_eq!(app.projects_visible_at(0), visible);
+        let view = app.render();
+        assert!(view.elements.iter().any(|element| matches!(element,
+            Element::Text(text) if text.y == last_tag_y && text.text.contains('<')
+        )));
+        assert!(app.update(InputEvent::PointerDown {
+            x: 24,
+            y: last_tag_y + 1,
+            button: Button::Left,
+        }));
+        assert_eq!(app.selected_project, visible - 1);
+    }
+}
+
+#[test]
 fn test_clock_colon_steady_cadence() {
     let mut app = App::new();
     app.set_time(12, 34, 56);

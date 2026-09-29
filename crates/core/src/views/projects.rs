@@ -7,6 +7,37 @@ use pixel_ssh_view::{
     View,
 };
 
+/// Show complete tag labels in compact lists, rotating the selected item's
+/// starting tag so every label remains reachable without slicing words.
+fn visible_project_tags(tags: &[&str], width: usize, tick: usize, selected: bool) -> String {
+    if tags.is_empty() {
+        return String::new();
+    }
+    let start = if selected {
+        (tick / 20) % tags.len()
+    } else {
+        0
+    };
+    let mut shown = String::new();
+    let mut count = 0;
+    for offset in 0..tags.len() {
+        let label = format!("<{}>", tags[(start + offset) % tags.len()]);
+        let required = label.chars().count() + usize::from(!shown.is_empty());
+        if shown.chars().count() + required > width {
+            break;
+        }
+        if !shown.is_empty() {
+            shown.push(' ');
+        }
+        shown.push_str(&label);
+        count += 1;
+    }
+    if count < tags.len() && shown.chars().count() + 2 <= width {
+        shown.push_str(" +");
+    }
+    shown
+}
+
 impl App {
     pub(crate) fn render_projects(&self, view: &mut View) {
         if self.platform == Platform::Terminal {
@@ -431,10 +462,9 @@ impl App {
             return;
         }
 
-        let max_visible: usize = 12;
-        let start = self.scroll_offset;
+        let start = self.scroll_offset.min(self.projects_max_scroll());
         let prefix_rows = usize::from(start == 0) * 4;
-        let end = (start + max_visible.saturating_sub(prefix_rows).max(1)).min(PROJECTS.len());
+        let end = (start + self.projects_visible_at(start)).min(PROJECTS.len());
 
         if start == 0 {
             for (row, label) in ["[00] CV", "[@@] Contacts", "[!!] About"]
@@ -445,23 +475,23 @@ impl App {
                 if selected {
                     view.add(Element::Rect(RectElement {
                         x: 2,
-                        y: 24 + (row as u16) * 12 - 1,
+                        y: 24 + (row as u16) * 8 - 1,
                         width: 316,
-                        height: 11,
+                        height: 8,
                         color: Color::from_palette(2),
                         filled: true,
                     }));
                 }
                 view.add(Element::Text(TextElement {
                     x: 4,
-                    y: 24 + (row as u16) * 12,
+                    y: 24 + (row as u16) * 8,
                     text: (*label).to_string(),
                     style: TextStyle::new(Color::from_palette(if selected { 6 } else { 5 })).bold(),
                 }));
             }
             view.add(Element::Text(TextElement {
                 x: 4,
-                y: 60,
+                y: 48,
                 text: "===========".to_string(),
                 style: TextStyle::new(Color::from_palette(4)),
             }));
@@ -470,14 +500,14 @@ impl App {
         for (i, p) in PROJECTS[start..end].iter().enumerate() {
             let idx = start + i;
             let is_sel = self.selected_list_item == idx + 3;
-            let y = 24 + (prefix_rows as u16 + i as u16) * 12;
+            let y = 24 + (prefix_rows as u16) * 8 + (i as u16) * 16;
 
             if is_sel {
                 view.add(Element::Rect(RectElement {
                     x: 2,
                     y: y - 1,
                     width: 316,
-                    height: 11,
+                    height: 16,
                     color: Color::from_palette(2),
                     filled: true,
                 }));
@@ -493,34 +523,29 @@ impl App {
             };
 
             let num = format!("{:02}", idx + 1);
-            let title = horizontal_scroll(p.title, 14, self.tick);
-
-            let tag_str = p
-                .tags
-                .iter()
-                .map(|t| format!("<{t}>"))
-                .collect::<Vec<_>>()
-                .join(" ");
-            let tag_display = if is_sel || tag_str.chars().count() > 17 {
-                horizontal_scroll(&tag_str, 17, self.tick)
-            } else {
-                tag_str
-            };
+            let title = horizontal_scroll(p.title, 33, self.tick);
+            let tag_display = visible_project_tags(p.tags, 37, self.tick, is_sel);
 
             view.add(Element::Text(TextElement {
                 x: 4,
                 y,
-                text: format!("{marker} [{num}] {title:<14} {tag_display}"),
+                text: format!("{marker}[{num}] {title}"),
                 style: TextStyle::new(fg).bold(),
+            }));
+            view.add(Element::Text(TextElement {
+                x: 12,
+                y: y + 8,
+                text: tag_display,
+                style: TextStyle::new(Color::from_palette(4)),
             }));
         }
 
-        if PROJECTS.len() > max_visible {
+        if PROJECTS.len() > self.projects_visible_at(start) {
             view.add(Element::Text(TextElement {
                 x: 4,
-                y: 176,
+                y: 168,
                 text: format!(
-                    "{}-{} of {}. [j/k]Nav [Enter]Info",
+                    "{:02}-{:02}/{} [j/k] Nav [Enter] Info",
                     start + 1,
                     end,
                     PROJECTS.len()
@@ -606,10 +631,9 @@ impl App {
             return;
         }
 
-        let max_visible = self.projects_max_visible();
         let start = self.scroll_offset.min(self.projects_max_scroll());
         let prefix_rows = usize::from(start == 0) * 4;
-        let end = (start + max_visible.saturating_sub(prefix_rows).max(1)).min(PROJECTS.len());
+        let end = (start + self.projects_visible_at(start)).min(PROJECTS.len());
 
         if start == 0 {
             for (row, label) in ["[00] CV", "[@@] Contacts", "[!!] About"]
@@ -672,17 +696,7 @@ impl App {
             let num = format!("{:02}", idx + 1);
             let title = horizontal_scroll(p.title, 25, self.tick);
 
-            let tag_str = p
-                .tags
-                .iter()
-                .map(|t| format!("<{t}>"))
-                .collect::<Vec<_>>()
-                .join(" ");
-            let tag_display = if is_sel || tag_str.chars().count() > 29 {
-                horizontal_scroll(&tag_str, 29, self.tick)
-            } else {
-                tag_str
-            };
+            let tag_display = visible_project_tags(p.tags, 29, self.tick, is_sel);
 
             view.add(Element::Text(TextElement {
                 x: 2,
@@ -699,10 +713,10 @@ impl App {
             }));
         }
 
-        if PROJECTS.len() > max_visible {
+        if PROJECTS.len() > self.projects_visible_at(start) {
             view.add(Element::Text(TextElement {
                 x: 2,
-                y: 24 + (max_visible as u16) * 16,
+                y: 152,
                 text: format!("{:02}-{:02}/{} j/k ENTER", start + 1, end, PROJECTS.len()),
                 style: TextStyle::new(Color::from_palette(4)),
             }));

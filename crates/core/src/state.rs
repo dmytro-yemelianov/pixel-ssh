@@ -207,7 +207,7 @@ impl App {
             let (cols, rows) = self.resolution.char_grid();
             match cols {
                 100 | 80 => (rows as usize).saturating_sub(6) / 2,
-                40 => 12,
+                40 => 9,
                 // ZX gives each item a title row and a separate tag row. Eight
                 // two-row items fit above the navigation bar and leave one row
                 // for the list position and controls.
@@ -228,6 +228,12 @@ impl App {
                     .checked_div(2)
                     .unwrap_or(0)
                     .max(1);
+            }
+            if cols == 40 {
+                return if offset == 0 { 7 } else { 9 };
+            }
+            if cols == 32 {
+                return if offset == 0 { 6 } else { 8 };
             }
         }
         self.projects_max_visible()

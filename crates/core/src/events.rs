@@ -1540,14 +1540,12 @@ impl App {
                         };
                         let project_row_h = if cols >= 80 {
                             2 * self.resolution.line_height()
-                        } else if cols == 40 {
-                            12
                         } else {
                             16
                         };
                         let prefix_row_h = if cols >= 80 {
                             self.resolution.line_height()
-                        } else if cols == 32 {
+                        } else if cols <= 40 {
                             8
                         } else {
                             project_row_h
