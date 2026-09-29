@@ -747,6 +747,50 @@ fn truncate_chars(s: &str, max_chars: usize) -> &str {
     }
 }
 
+fn wrap_table_cell(text: &str, width: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current = String::new();
+
+    for word in text.split_whitespace() {
+        let chars: Vec<char> = word.chars().collect();
+        let mut offset = 0;
+        while offset < chars.len() {
+            if !current.is_empty() {
+                if current.chars().count() + 1 + chars.len() - offset <= width {
+                    current.push(' ');
+                    current.extend(&chars[offset..]);
+                    break;
+                }
+                lines.push(std::mem::take(&mut current));
+            }
+
+            let end = (offset + width).min(chars.len());
+            current.extend(&chars[offset..end]);
+            offset = end;
+            if offset < chars.len() {
+                lines.push(std::mem::take(&mut current));
+            }
+        }
+    }
+
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    lines
+}
+
+fn compact_spec_rows(key: &str, value: &str, key_width: usize, value_width: usize) -> Vec<String> {
+    let key_lines = wrap_table_cell(key, key_width);
+    let value_lines = wrap_table_cell(value, value_width);
+    (0..key_lines.len().max(value_lines.len()))
+        .map(|row| {
+            let key = key_lines.get(row).map(String::as_str).unwrap_or("");
+            let value = value_lines.get(row).map(String::as_str).unwrap_or("");
+            format!("│ {key:<key_width$} │ {value:<value_width$} │")
+        })
+        .collect()
+}
+
 pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(String, u8, bool)> {
     let mut lines = Vec::new();
     let detail = get_project_detail(p.slug);
@@ -927,9 +971,9 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
             false,
         ));
         for (k, v) in detail.specs {
-            let k_fmt = truncate_chars(k, 14);
-            let v_fmt = truncate_chars(v, 17);
-            lines.push((format!("│ {k_fmt:<14} │ {v_fmt:<17} │"), 5, false));
+            for row in compact_spec_rows(k, v, 14, 17) {
+                lines.push((row, 5, false));
+            }
         }
         lines.push((
             "└────────────────┴───────────────────┘".to_string(),
@@ -1020,9 +1064,9 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
         lines.push(("│ Metric     │ Specification│".to_string(), 6, true));
         lines.push(("├────────────┼──────────────┤".to_string(), 7, false));
         for (k, v) in detail.specs {
-            let k_fmt = truncate_chars(k, 10);
-            let v_fmt = truncate_chars(v, 12);
-            lines.push((format!("│ {k_fmt:<10} │ {v_fmt:<12} │"), 5, false));
+            for row in compact_spec_rows(k, v, 10, 12) {
+                lines.push((row, 5, false));
+            }
         }
         lines.push(("└────────────┴──────────────┘".to_string(), 7, false));
 
@@ -1042,4 +1086,36 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
     }
 
     lines
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::PROJECTS;
+
+    #[test]
+    fn compact_spec_cells_keep_all_text_at_both_widths() {
+        for project in PROJECTS {
+            for (key, value) in get_project_detail(project.slug).specs {
+                for (key_width, value_width) in [(14, 17), (10, 12)] {
+                    let rows = compact_spec_rows(key, value, key_width, value_width);
+                    assert!(rows
+                        .iter()
+                        .all(|row| row.chars().count() == key_width + value_width + 7));
+                    let rendered_key: String = rows
+                        .iter()
+                        .flat_map(|row| row.chars().skip(2).take(key_width))
+                        .filter(|ch| !ch.is_whitespace())
+                        .collect();
+                    let rendered_value: String = rows
+                        .iter()
+                        .flat_map(|row| row.chars().skip(key_width + 5).take(value_width))
+                        .filter(|ch| !ch.is_whitespace())
+                        .collect();
+                    assert_eq!(rendered_key, key.split_whitespace().collect::<String>());
+                    assert_eq!(rendered_value, value.split_whitespace().collect::<String>());
+                }
+            }
+        }
+    }
 }
