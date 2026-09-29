@@ -591,6 +591,39 @@ fn test_all_16_projects_have_detailed_specs_and_subsystems() {
 }
 
 #[test]
+fn test_project_diagrams_have_distinct_layouts_at_each_width() {
+    use crate::data::get_project_detail;
+    use std::collections::HashSet;
+
+    for select in [
+        |d: &crate::data::ProjectDetail| d.diagram_80,
+        |d: &crate::data::ProjectDetail| d.diagram_40,
+        |d: &crate::data::ProjectDetail| d.diagram_32,
+    ] {
+        let layouts: HashSet<String> = PROJECTS
+            .iter()
+            .map(|project| {
+                select(&get_project_detail(project.slug))
+                    .iter()
+                    .map(|line| {
+                        line.chars()
+                            .map(|ch| if ch.is_alphanumeric() { 'x' } else { ch })
+                            .collect::<String>()
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            })
+            .collect();
+
+        assert!(
+            layouts.len() >= 12,
+            "Project diagrams have only {} distinct layouts",
+            layouts.len()
+        );
+    }
+}
+
+#[test]
 fn test_project_detail_lines_width_bounds_across_all_resolutions() {
     for p in PROJECTS {
         // SVGA uses the full 94-character content width.
