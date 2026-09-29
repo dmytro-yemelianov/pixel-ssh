@@ -216,10 +216,14 @@
       position: relative;
       width: 100%;
     }
-    .key-sub {
-      font-size: 8px;
-      opacity: 0.55;
-      margin-bottom: 1px;
+    .key-label {
+      font-size: 10px;
+      white-space: nowrap;
+    }
+    .key-hotkey {
+      color: var(--deck-accent-cyan);
+      text-decoration: underline;
+      font-weight: 900;
     }
 
     /* Active Tab & Modal highlighted via data-tab and data-modal on #cyberdeck */
@@ -232,11 +236,10 @@
       box-shadow: 0 0 12px rgba(0, 255, 204, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4);
       font-weight: bold;
     }
-    #cyberdeck[data-tab="projects"][data-modal="none"] .tab-btn[data-key="p"] .key-sub,
-    #cyberdeck[data-modal="help"] .tab-btn[data-key="h"] .key-sub,
-    #cyberdeck[data-modal="visuals"] .tab-btn[data-key="v"] .key-sub {
-      color: #06090e;
-      opacity: 0.85;
+    #cyberdeck[data-tab="projects"][data-modal="none"] .tab-btn[data-key="p"] .key-hotkey,
+    #cyberdeck[data-modal="help"] .tab-btn[data-key="h"] .key-hotkey,
+    #cyberdeck[data-modal="visuals"] .tab-btn[data-key="v"] .key-hotkey {
+      color: #064c4a;
     }
     .deck-controls-row {
       display: flex;
@@ -383,11 +386,11 @@
 
       <!-- Navigation & Modal Buttons -->
       <div class="deck-row deck-tabs-row">
-        <button type="button" class="deck-btn tab-btn" data-key="p"><span class="key-sub">P</span>PRJ</button>
-        <button type="button" class="deck-btn tab-btn" data-key="h"><span class="key-sub">H</span>HLP</button>
-        <button type="button" class="deck-btn tab-btn" data-key="s"><span class="key-sub">S</span>SYS</button>
-        <button type="button" class="deck-btn tab-btn" data-key="v"><span class="key-sub">V</span>VIS</button>
-        <button type="button" class="deck-btn tab-btn" data-key="q"><span class="key-sub">Q</span>QUT</button>
+        <button type="button" class="deck-btn tab-btn" data-key="p"><span class="key-label"><span class="key-hotkey">P</span>rojects</span></button>
+        <button type="button" class="deck-btn tab-btn" data-key="h"><span class="key-label"><span class="key-hotkey">H</span>elp</span></button>
+        <button type="button" class="deck-btn tab-btn" data-key="s"><span class="key-label"><span class="key-hotkey">S</span>ystem</span></button>
+        <button type="button" class="deck-btn tab-btn" data-key="v"><span class="key-label"><span class="key-hotkey">V</span>isuals</span></button>
+        <button type="button" class="deck-btn tab-btn" data-key="q"><span class="key-label"><span class="key-hotkey">Q</span>uit</span></button>
       </div>
 
       <!-- D-Pad and Tactical Action Buttons -->
