@@ -23,18 +23,6 @@ struct ClientState {
     start_time_ms: f64,
 }
 
-fn active_deck_preset(effects: pixel_ssh_view::VisualEffects) -> &'static str {
-    if effects == pixel_ssh_view::VisualEffects::clean() {
-        "clean"
-    } else if effects == pixel_ssh_view::VisualEffects::crt_trinitron() {
-        "crt"
-    } else if effects == pixel_ssh_view::VisualEffects::retro_glitch() {
-        "glitch"
-    } else {
-        "custom"
-    }
-}
-
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -252,28 +240,6 @@ pub fn start() -> Result<(), JsValue> {
             true,
         );
         s.dirty = false;
-
-        let tab = match s.app.current_tab {
-            pixel_ssh_core::Tab::Projects => "projects",
-            pixel_ssh_core::Tab::Resume => "resume",
-            pixel_ssh_core::Tab::About => "about",
-            pixel_ssh_core::Tab::Contact => "contact",
-            _ => "projects",
-        };
-        if let Some(deck) = document.get_element_by_id("cyberdeck") {
-            let _ = deck.set_attribute("data-tab", tab);
-            let modal_str = match s.app.active_modal {
-                pixel_ssh_view::ActiveModal::None => "none",
-                pixel_ssh_view::ActiveModal::Visuals => "visuals",
-                pixel_ssh_view::ActiveModal::Help => "help",
-            };
-            let _ = deck.set_attribute("data-modal", modal_str);
-            let _ = deck.set_attribute("data-mode", s.app.resolution.short_name());
-            let _ = deck.set_attribute("data-preset", active_deck_preset(s.app.visual_effects));
-        }
-        if let Some(indicator) = document.get_element_by_id("deck-mode-indicator") {
-            indicator.set_text_content(Some(&format!("SYS: {}", s.app.resolution.short_name())));
-        }
     }
 
     // Keyboard event listener
@@ -362,8 +328,12 @@ pub fn start() -> Result<(), JsValue> {
     {
         let state = Rc::clone(&state);
         let canvas_clone = canvas.clone();
-        let closure =
-            Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |event: web_sys::MouseEvent| {
+        let closure = Closure::<dyn FnMut(web_sys::PointerEvent)>::new(
+            move |event: web_sys::PointerEvent| {
+                // Touch taps are dispatched on touchend below, after swipe detection.
+                if event.pointer_type() == "touch" {
+                    return;
+                }
                 let rect = canvas_clone.get_bounding_client_rect();
                 let rect_width = rect.width();
                 let rect_height = rect.height();
@@ -399,7 +369,8 @@ pub fn start() -> Result<(), JsValue> {
                 }) {
                     s.dirty = true;
                 }
-            });
+            },
+        );
 
         canvas.add_event_listener_with_callback("pointerdown", closure.as_ref().unchecked_ref())?;
         closure.forget();
@@ -718,37 +689,6 @@ pub fn start() -> Result<(), JsValue> {
         }
     }
 
-    // Custom CRT preset listener dispatched from cyberdeck UI
-    {
-        let state = Rc::clone(&state);
-        let closure =
-            Closure::<dyn FnMut(web_sys::CustomEvent)>::new(move |event: web_sys::CustomEvent| {
-                if let Some(detail) = event.detail().as_string() {
-                    let mut s = state.borrow_mut();
-                    match detail.as_str() {
-                        "clean" => {
-                            s.app.visual_effects = pixel_ssh_view::VisualEffects::clean();
-                            s.app.status = "Preset: Clean (Pixel-Perfect)".to_string();
-                            s.dirty = true;
-                        }
-                        "crt" => {
-                            s.app.visual_effects = pixel_ssh_view::VisualEffects::crt_trinitron();
-                            s.app.status = "Preset: 80s Trinitron CRT".to_string();
-                            s.dirty = true;
-                        }
-                        "glitch" => {
-                            s.app.visual_effects = pixel_ssh_view::VisualEffects::retro_glitch();
-                            s.app.status = "Preset: Retro Glitch".to_string();
-                            s.dirty = true;
-                        }
-                        _ => {}
-                    }
-                }
-            });
-        window.add_event_listener_with_callback("deck-preset", closure.as_ref().unchecked_ref())?;
-        closure.forget();
-    }
-
     // Window resize listener
     {
         let state = Rc::clone(&state);
@@ -765,7 +705,6 @@ pub fn start() -> Result<(), JsValue> {
     {
         let state = Rc::clone(&state);
         let canvas_render = canvas.clone();
-        let document_render = document.clone();
         let mut frame_count: u32 = 0;
         let f: Rc<RefCell<Option<Closure<dyn FnMut()>>>> = Rc::new(RefCell::new(None));
         let g = f.clone();
@@ -819,39 +758,6 @@ pub fn start() -> Result<(), JsValue> {
                         s.mouse_active,
                         content_dirty,
                     );
-
-                    // Sync Cyberdeck active state attributes
-                    if content_dirty {
-                        if let Some(deck) = document_render.get_element_by_id("cyberdeck") {
-                            let tab = match s.app.current_tab {
-                                pixel_ssh_core::Tab::Projects => "projects",
-                                pixel_ssh_core::Tab::Resume => "resume",
-                                pixel_ssh_core::Tab::About => "about",
-                                pixel_ssh_core::Tab::Contact => "contact",
-                                _ => "projects",
-                            };
-                            let _ = deck.set_attribute("data-tab", tab);
-                            let modal_str = match s.app.active_modal {
-                                pixel_ssh_view::ActiveModal::None => "none",
-                                pixel_ssh_view::ActiveModal::Visuals => "visuals",
-                                pixel_ssh_view::ActiveModal::Help => "help",
-                            };
-                            let _ = deck.set_attribute("data-modal", modal_str);
-                            let _ = deck.set_attribute("data-mode", s.app.resolution.short_name());
-                            let _ = deck.set_attribute(
-                                "data-preset",
-                                active_deck_preset(s.app.visual_effects),
-                            );
-                        }
-                        if let Some(indicator) =
-                            document_render.get_element_by_id("deck-mode-indicator")
-                        {
-                            indicator.set_text_content(Some(&format!(
-                                "SYS: {}",
-                                s.app.resolution.short_name()
-                            )));
-                        }
-                    }
 
                     s.dirty = false;
                 }
