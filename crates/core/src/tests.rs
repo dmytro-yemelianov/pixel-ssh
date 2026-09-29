@@ -543,6 +543,35 @@ fn compact_project_rows_fill_available_space_and_remain_clickable() {
 }
 
 #[test]
+fn tall_portrait_view_uses_extra_rows_without_stretching_columns() {
+    for (resolution, height) in [
+        (ResolutionMode::C64, 696),
+        (ResolutionMode::ZxSpectrum, 552),
+    ] {
+        let mut app = App::new_web();
+        app.set_resolution(resolution);
+        app.set_web_height(Some(height));
+        let view = app.render();
+        assert_eq!(view.width, resolution.resolution().0);
+        assert_eq!(view.height, height);
+        assert_eq!(app.projects_visible_at(0), PROJECTS.len());
+
+        let pitch = app.compact_project_pitch(0, resolution.char_grid().0);
+        let last_y = 56 + (PROJECTS.len() as u16 - 1) * pitch;
+        assert!(app.update(InputEvent::PointerDown {
+            x: 24,
+            y: last_y + 1,
+            button: Button::Left,
+        }));
+        assert_eq!(app.selected_project, PROJECTS.len() - 1);
+
+        app.set_web_height(None);
+        assert_eq!(app.view_dimensions(), resolution.resolution());
+        assert!(app.scroll_offset > 0);
+    }
+}
+
+#[test]
 fn test_clock_colon_steady_cadence() {
     let mut app = App::new();
     app.set_time(12, 34, 56);

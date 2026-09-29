@@ -1,4 +1,7 @@
 /target/
 .DS_Store
 *.png
+!web/icon-192.png
+!web/icon-512.png
+!web/apple-touch-icon.png
 ssh_host_ed25519_key

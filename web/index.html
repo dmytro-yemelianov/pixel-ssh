@@ -5,8 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Interactive terminal · Dmytro Yemelianov</title>
   <meta name="description" content="Explore Dmytro Yemelianov's projects in an interactive pixel terminal." />
+  <meta name="theme-color" content="#05070a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="canonical" href="https://yemelianov.dev/terminal/" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
   <link rel="stylesheet" href="./screen.css" />
 </head>
 <body>
@@ -17,6 +22,14 @@
 
   <script type="module">
     import init from './pkg/pixel_ssh_web_client.js?v=screen-2';
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.error('Offline support unavailable:', err);
+        });
+      });
+    }
 
     init({ module_or_path: './pkg/pixel_ssh_web_client_bg.wasm?v=screen-2' }).then(() => {
       const params = new URLSearchParams(window.location.search);

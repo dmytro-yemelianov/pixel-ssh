@@ -6,7 +6,7 @@ use std::rc::Rc;
 use pixel_ssh_core::App;
 use pixel_ssh_framebuffer::Framebuffer;
 use pixel_ssh_render_web::WebGlRenderer;
-use pixel_ssh_view::{Button, InputEvent, Key};
+use pixel_ssh_view::{Button, InputEvent, Key, ResolutionMode};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -21,6 +21,35 @@ struct ClientState {
     mouse_uv: (f32, f32),
     mouse_active: bool,
     start_time_ms: f64,
+}
+
+fn portrait_view_height(mode: ResolutionMode, css_width: i32, css_height: i32) -> Option<u16> {
+    if css_width <= 0 || css_height <= css_width {
+        return None;
+    }
+    let (native_width, native_height) = mode.resolution();
+    let row_height = mode.line_height() as u32;
+    let proportional = native_width as u32 * css_height as u32 / css_width as u32;
+    let rounded = ((proportional + row_height / 2) / row_height) * row_height;
+    Some(rounded.clamp(native_height as u32, 4096) as u16)
+}
+
+#[cfg(test)]
+mod viewport_tests {
+    use super::*;
+
+    #[test]
+    fn portrait_height_tracks_display_width_and_rotation() {
+        assert_eq!(
+            portrait_view_height(ResolutionMode::C64, 390, 844),
+            Some(696)
+        );
+        assert_eq!(
+            portrait_view_height(ResolutionMode::ZxSpectrum, 390, 844),
+            Some(552)
+        );
+        assert_eq!(portrait_view_height(ResolutionMode::C64, 844, 390), None);
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -188,12 +217,6 @@ pub fn start() -> Result<(), JsValue> {
                 init_mouse_active = true;
             }
         }
-        if init_mouse_active {
-            let (fb_w, fb_h) = app.resolution.resolution();
-            let fb_x = ((init_mouse_uv.0 * fb_w as f32).round() as u16).min(fb_w.saturating_sub(1));
-            let fb_y = ((init_mouse_uv.1 * fb_h as f32).round() as u16).min(fb_h.saturating_sub(1));
-            app.mouse_pos = Some((fb_x, fb_y));
-        }
     }
 
     // In portrait, use a readable 40-column grid without changing palette or theme.
@@ -201,8 +224,20 @@ pub fn start() -> Result<(), JsValue> {
         app.set_resolution(pixel_ssh_view::ResolutionMode::C64);
     }
 
-    let (init_w, init_h) = app.resolution.resolution();
-    let scale: u32 = if init_w <= 320 { 4 } else { 2 };
+    app.set_web_height(portrait_view_height(
+        app.resolution,
+        canvas.client_width(),
+        canvas.client_height(),
+    ));
+    if init_mouse_active {
+        let (fb_w, fb_h) = app.view_dimensions();
+        let fb_x = ((init_mouse_uv.0 * fb_w as f32).round() as u16).min(fb_w.saturating_sub(1));
+        let fb_y = ((init_mouse_uv.1 * fb_h as f32).round() as u16).min(fb_h.saturating_sub(1));
+        app.mouse_pos = Some((fb_x, fb_y));
+    }
+
+    let (init_w, init_h) = app.view_dimensions();
+    let scale: u32 = if init_w <= 320 && init_h <= 400 { 4 } else { 2 };
     let draw_w = init_w as u32 * scale;
     let draw_h = init_h as u32 * scale;
     canvas.set_width(draw_w);
@@ -345,7 +380,7 @@ pub fn start() -> Result<(), JsValue> {
                 let client_y = event.client_y() as f64 - rect.top();
 
                 let mut s = state.borrow_mut();
-                let (fb_w, fb_h) = s.app.resolution.resolution();
+                let (fb_w, fb_h) = s.app.view_dimensions();
                 let fb_x =
                     ((client_x / rect_width) * fb_w as f64).clamp(0.0, (fb_w - 1) as f64) as u16;
                 let fb_y =
@@ -399,7 +434,7 @@ pub fn start() -> Result<(), JsValue> {
                 s.mouse_uv = (norm_x, norm_y);
                 s.mouse_active = true;
 
-                let (fb_w, fb_h) = s.app.resolution.resolution();
+                let (fb_w, fb_h) = s.app.view_dimensions();
                 let fb_x =
                     ((client_x / rect_width) * fb_w as f64).clamp(0.0, (fb_w - 1) as f64) as u16;
                 let fb_y =
@@ -575,7 +610,7 @@ pub fn start() -> Result<(), JsValue> {
                         let mut s = state.borrow_mut();
                         s.mouse_uv = (norm_x, norm_y);
 
-                        let (fb_w, fb_h) = s.app.resolution.resolution();
+                        let (fb_w, fb_h) = s.app.view_dimensions();
                         let fb_x = (((cx - rect.left()) / rect.width()) * fb_w as f64)
                             .clamp(0.0, (fb_w - 1) as f64)
                             as u16;
@@ -646,7 +681,7 @@ pub fn start() -> Result<(), JsValue> {
                                     let client_y = start_y - rect.top();
 
                                     let mut s = state.borrow_mut();
-                                    let (fb_w, fb_h) = s.app.resolution.resolution();
+                                    let (fb_w, fb_h) = s.app.view_dimensions();
                                     let fb_x = ((client_x / rect.width()) * fb_w as f64)
                                         .clamp(0.0, (fb_w - 1) as f64)
                                         as u16;
@@ -736,9 +771,18 @@ pub fn start() -> Result<(), JsValue> {
                 if s.dirty || shader_animated {
                     let content_dirty = s.dirty;
                     if content_dirty {
+                        s.app.set_web_height(portrait_view_height(
+                            s.app.resolution,
+                            canvas_render.client_width(),
+                            canvas_render.client_height(),
+                        ));
                         let view = s.app.render();
-                        let (target_w, target_h) = view.resolution.resolution();
-                        let scale: u32 = if target_w <= 320 { 4 } else { 2 };
+                        let (target_w, target_h) = (view.width, view.height);
+                        let scale: u32 = if target_w <= 320 && target_h <= 400 {
+                            4
+                        } else {
+                            2
+                        };
                         let draw_w = target_w as u32 * scale;
                         let draw_h = target_h as u32 * scale;
                         if canvas_render.width() != draw_w || canvas_render.height() != draw_h {

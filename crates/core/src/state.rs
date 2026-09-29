@@ -51,6 +51,8 @@ pub struct App {
     pub mouse_pos: Option<(u16, u16)>,
     pub terminal_cols: u16,
     pub terminal_rows: u16,
+    /// Extra logical rows for a tall browser viewport; display system width stays native.
+    pub web_height: Option<u16>,
 }
 
 impl Default for App {
@@ -96,6 +98,7 @@ impl App {
             mouse_pos: None,
             terminal_cols: 80,
             terminal_rows: 25,
+            web_height: None,
         }
     }
 
@@ -131,6 +134,7 @@ impl App {
             mouse_pos: None,
             terminal_cols: 80,
             terminal_rows: 25,
+            web_height: None,
         }
     }
 
@@ -200,11 +204,43 @@ impl App {
         self.terminal_rows = rows.max(20);
     }
 
+    pub fn view_dimensions(&self) -> (u16, u16) {
+        if self.platform == Platform::Terminal {
+            (self.terminal_cols * 8, self.terminal_rows * 16)
+        } else {
+            let (width, native_height) = self.resolution.resolution();
+            (
+                width,
+                self.web_height.unwrap_or(native_height).max(native_height),
+            )
+        }
+    }
+
+    pub fn set_web_height(&mut self, height: Option<u16>) {
+        if self.web_height != height {
+            self.web_height = height;
+            self.ensure_selected_project_visible();
+            self.detail_scroll = self.detail_scroll.min(self.detail_max_scroll());
+            self.resume_scroll = self.resume_scroll.min(self.resume_max_scroll());
+            self.about_scroll = self.about_scroll.min(self.about_max_scroll());
+        }
+    }
+
+    pub(crate) fn compact_project_pitch(&self, offset: usize, cols: u16) -> u16 {
+        let (_, height) = self.view_dimensions();
+        let summary_y = height.saturating_sub(if cols == 40 { 32 } else { 40 });
+        let project_top = 24 + if offset == 0 { 32 } else { 0 };
+        let visible = self.projects_visible_at(offset).max(1) as u16;
+        (summary_y.saturating_sub(project_top) / visible).max(16)
+    }
+
     pub fn projects_max_visible(&self) -> usize {
         if self.platform == Platform::Terminal {
             (self.terminal_rows as usize).saturating_sub(6).max(6)
         } else {
-            let (cols, rows) = self.resolution.char_grid();
+            let (cols, _) = self.resolution.char_grid();
+            let (_, height) = self.view_dimensions();
+            let rows = height / self.resolution.line_height();
             match cols {
                 100 | 80 => (rows as usize).saturating_sub(6) / 2,
                 40 => 9,
@@ -220,7 +256,9 @@ impl App {
     pub(crate) fn projects_visible_at(&self, offset: usize) -> usize {
         let prefix_rows = if offset == 0 { 4 } else { 0 };
         if self.platform == Platform::Web {
-            let (cols, rows) = self.resolution.char_grid();
+            let (cols, _) = self.resolution.char_grid();
+            let (_, height) = self.view_dimensions();
+            let rows = height / self.resolution.line_height();
             if cols >= 80 {
                 // Rows 0-2 hold the header; rows -3..-1 hold guidance and navigation.
                 return (rows as usize)
@@ -230,10 +268,12 @@ impl App {
                     .max(1);
             }
             if cols == 40 {
-                return if offset == 0 { 7 } else { 9 };
+                let top = 24 + if offset == 0 { 32 } else { 0 };
+                return ((height.saturating_sub(32 + top) / 16) as usize).clamp(1, PROJECTS.len());
             }
             if cols == 32 {
-                return if offset == 0 { 6 } else { 8 };
+                let top = 24 + if offset == 0 { 32 } else { 0 };
+                return ((height.saturating_sub(40 + top) / 16) as usize).clamp(1, PROJECTS.len());
             }
         }
         self.projects_max_visible()
@@ -315,7 +355,7 @@ impl App {
             return RESUME_LINES_80.len().saturating_sub(visible);
         }
         let (cols, _) = self.resolution.char_grid();
-        let (_, height) = self.resolution.resolution();
+        let (_, height) = self.view_dimensions();
         let visible = (height / self.resolution.line_height()).saturating_sub(7) as usize;
         let len = match cols {
             100 | 80 => RESUME_LINES_80.len(),
@@ -331,7 +371,7 @@ impl App {
             return ABOUT_LINES_80.len().saturating_sub(visible);
         }
         let (cols, _) = self.resolution.char_grid();
-        let (_, height) = self.resolution.resolution();
+        let (_, height) = self.view_dimensions();
         let visible = (height / self.resolution.line_height()).saturating_sub(7) as usize;
         let len = match cols {
             100 | 80 => ABOUT_LINES_80.len(),
@@ -348,7 +388,7 @@ impl App {
         } else {
             match cols {
                 100 | 80 => self.detail_wide_visible_rows(),
-                40 => 16,
+                40 | 32 => (self.view_dimensions().1.saturating_sub(64) / 8) as usize,
                 _ => 15,
             }
         };
@@ -359,7 +399,7 @@ impl App {
 
     /// Content rows between the fixed detail header and the bottom menu.
     pub(crate) fn detail_wide_visible_rows(&self) -> usize {
-        let (_, height) = self.resolution.resolution();
+        let (_, height) = self.view_dimensions();
         let nav_y = height.saturating_sub(32);
         (nav_y / self.resolution.line_height())
             .saturating_sub(10)

@@ -39,5 +39,11 @@ canvas#screen {
   background: #101820;
 }
 @media (orientation: portrait) {
-  canvas#screen { cursor: default; }
+  canvas#screen {
+    width: 100vw;
+    height: 100dvh;
+    aspect-ratio: auto;
+    border-radius: 0;
+    cursor: default;
+  }
 }

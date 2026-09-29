@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "Dmytro Yemelianov · Pixel Terminal",
+  "short_name": "Pixel Terminal",
+  "description": "Explore Dmytro Yemelianov's projects in an interactive pixel terminal.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#05070a",
+  "theme_color": "#05070a",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -893,7 +893,7 @@ impl App {
             InputEvent::PointerDown { x, y, .. } => {
                 self.mouse_pos = Some((x, y));
                 let (cols, _rows) = self.resolution.char_grid();
-                let (width, height) = self.resolution.resolution();
+                let (width, height) = self.view_dimensions();
 
                 // 0. If screensaver active, any click wakes and dismisses it
                 if self.screensaver_active {
@@ -1541,7 +1541,7 @@ impl App {
                         let project_row_h = if cols >= 80 {
                             2 * self.resolution.line_height()
                         } else {
-                            16
+                            self.compact_project_pitch(self.scroll_offset, cols)
                         };
                         let prefix_row_h = if cols >= 80 {
                             self.resolution.line_height()

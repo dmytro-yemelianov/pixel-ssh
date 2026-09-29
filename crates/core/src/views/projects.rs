@@ -247,7 +247,8 @@ impl App {
         let start = self.scroll_offset;
         let prefix_rows = usize::from(start == 0) * 4;
         let end = (start + self.projects_visible_at(start)).min(PROJECTS.len());
-        let (cols, rows) = self.resolution.char_grid();
+        let cols = view.width / 8;
+        let rows = view.height / self.resolution.line_height();
 
         if start == 0 {
             for (row, label) in ["[00] CV", "[@@] Contacts", "[!!] About"]
@@ -387,14 +388,17 @@ impl App {
     }
 
     pub(crate) fn render_projects_40(&self, view: &mut View) {
+        let summary_y = view.height.saturating_sub(32);
         if self.show_detail {
             let p = &PROJECTS[self.selected_project];
             let lines = project_detail_lines(p, 40, self.tick);
             let max_scroll = self.detail_max_scroll();
+            let content_bottom = summary_y.saturating_sub(8);
+            let visible_rows = content_bottom.saturating_sub(24) / 8;
 
             for (i, (line_text, pal_idx, bold)) in lines.iter().enumerate() {
                 let line_y = 24 + ((i as i32) - (self.detail_scroll as i32)) * 8;
-                if (24..=172).contains(&line_y) {
+                if line_y >= 24 && line_y + 8 <= content_bottom as i32 {
                     let mut style = TextStyle::new(Color::from_palette(*pal_idx));
                     if *bold {
                         style = style.bold();
@@ -408,7 +412,6 @@ impl App {
                 }
             }
 
-            // Scrollbar at x = 310
             view.add(Element::Text(TextElement {
                 x: 310,
                 y: 24,
@@ -420,12 +423,12 @@ impl App {
                 x: 313,
                 y: 34,
                 width: 2,
-                height: 134,
+                height: content_bottom.saturating_sub(44),
                 color: Color::from_palette(3),
                 filled: true,
             }));
 
-            let track_h = 134.0 - 16.0;
+            let track_h = content_bottom.saturating_sub(60) as f32;
             let thumb_ratio = if max_scroll > 0 {
                 self.detail_scroll as f32 / max_scroll as f32
             } else {
@@ -443,18 +446,18 @@ impl App {
 
             view.add(Element::Text(TextElement {
                 x: 310,
-                y: 168,
+                y: content_bottom.saturating_sub(8),
                 text: "▼".to_string(),
                 style: TextStyle::new(Color::from_palette(7)).bold(),
             }));
 
             view.add(Element::Text(TextElement {
                 x: 4,
-                y: 177,
+                y: summary_y,
                 text: format!(
                     "[h/l]Prj {}-{} of {} [k/j] | [ESC]Back",
                     self.detail_scroll + 1,
-                    (self.detail_scroll + 16).min(lines.len()),
+                    (self.detail_scroll + visible_rows as usize).min(lines.len()),
                     lines.len()
                 ),
                 style: TextStyle::new(Color::from_palette(4)),
@@ -465,6 +468,7 @@ impl App {
         let start = self.scroll_offset.min(self.projects_max_scroll());
         let prefix_rows = usize::from(start == 0) * 4;
         let end = (start + self.projects_visible_at(start)).min(PROJECTS.len());
+        let pitch = self.compact_project_pitch(start, 40);
 
         if start == 0 {
             for (row, label) in ["[00] CV", "[@@] Contacts", "[!!] About"]
@@ -500,14 +504,14 @@ impl App {
         for (i, p) in PROJECTS[start..end].iter().enumerate() {
             let idx = start + i;
             let is_sel = self.selected_list_item == idx + 3;
-            let y = 24 + (prefix_rows as u16) * 8 + (i as u16) * 16;
+            let y = 24 + (prefix_rows as u16) * 8 + (i as u16) * pitch;
 
             if is_sel {
                 view.add(Element::Rect(RectElement {
                     x: 2,
                     y: y - 1,
                     width: 316,
-                    height: 16,
+                    height: pitch.saturating_sub(1),
                     color: Color::from_palette(2),
                     filled: true,
                 }));
@@ -538,12 +542,22 @@ impl App {
                 text: tag_display,
                 style: TextStyle::new(Color::from_palette(4)),
             }));
+            if pitch > 18 {
+                view.add(Element::Rect(RectElement {
+                    x: 4,
+                    y: y + pitch - 2,
+                    width: 312,
+                    height: 1,
+                    color: Color::from_palette(3),
+                    filled: true,
+                }));
+            }
         }
 
         if PROJECTS.len() > self.projects_visible_at(start) {
             view.add(Element::Text(TextElement {
                 x: 4,
-                y: 168,
+                y: summary_y,
                 text: format!(
                     "{:02}-{:02}/{} [j/k] Nav [Enter] Info",
                     start + 1,
@@ -556,14 +570,17 @@ impl App {
     }
 
     pub(crate) fn render_projects_32(&self, view: &mut View) {
+        let summary_y = view.height.saturating_sub(40);
         if self.show_detail {
             let p = &PROJECTS[self.selected_project];
             let lines = project_detail_lines(p, 32, self.tick);
             let max_scroll = self.detail_max_scroll();
+            let content_bottom = summary_y.saturating_sub(8);
+            let visible_rows = content_bottom.saturating_sub(24) / 8;
 
             for (i, (line_text, pal_idx, bold)) in lines.iter().enumerate() {
                 let line_y = 24 + ((i as i32) - (self.detail_scroll as i32)) * 8;
-                if (24..=162).contains(&line_y) {
+                if line_y >= 24 && line_y + 8 <= content_bottom as i32 {
                     let mut style = TextStyle::new(Color::from_palette(*pal_idx));
                     if *bold {
                         style = style.bold();
@@ -589,12 +606,12 @@ impl App {
                 x: 249,
                 y: 34,
                 width: 2,
-                height: 124,
+                height: content_bottom.saturating_sub(44),
                 color: Color::from_palette(3),
                 filled: true,
             }));
 
-            let track_h = 124.0 - 14.0;
+            let track_h = content_bottom.saturating_sub(58) as f32;
             let thumb_ratio = if max_scroll > 0 {
                 self.detail_scroll as f32 / max_scroll as f32
             } else {
@@ -612,18 +629,18 @@ impl App {
 
             view.add(Element::Text(TextElement {
                 x: 246,
-                y: 158,
+                y: content_bottom.saturating_sub(8),
                 text: "▼".to_string(),
                 style: TextStyle::new(Color::from_palette(7)).bold(),
             }));
 
             view.add(Element::Text(TextElement {
                 x: 2,
-                y: 169,
+                y: summary_y,
                 text: format!(
                     "[h/l]Prj {}-{} of {} | [ESC]",
                     self.detail_scroll + 1,
-                    (self.detail_scroll + 15).min(lines.len()),
+                    (self.detail_scroll + visible_rows as usize).min(lines.len()),
                     lines.len()
                 ),
                 style: TextStyle::new(Color::from_palette(4)),
@@ -634,6 +651,7 @@ impl App {
         let start = self.scroll_offset.min(self.projects_max_scroll());
         let prefix_rows = usize::from(start == 0) * 4;
         let end = (start + self.projects_visible_at(start)).min(PROJECTS.len());
+        let pitch = self.compact_project_pitch(start, 32);
 
         if start == 0 {
             for (row, label) in ["[00] CV", "[@@] Contacts", "[!!] About"]
@@ -671,14 +689,14 @@ impl App {
             let is_sel = self.selected_list_item == idx + 3;
             // Each ZX item owns two text rows: title and tags. This prevents a
             // long tag marquee from running into the next project title.
-            let y = 24 + (prefix_rows as u16) * 8 + (i as u16) * 16;
+            let y = 24 + (prefix_rows as u16) * 8 + (i as u16) * pitch;
 
             if is_sel {
                 view.add(Element::Rect(RectElement {
                     x: 1,
                     y: y - 1,
                     width: 254,
-                    height: 16,
+                    height: pitch.saturating_sub(1),
                     color: Color::from_palette(2),
                     filled: true,
                 }));
@@ -711,12 +729,22 @@ impl App {
                 text: format!("  {tag_display:<29}"),
                 style: TextStyle::new(Color::from_palette(4)),
             }));
+            if pitch > 18 {
+                view.add(Element::Rect(RectElement {
+                    x: 2,
+                    y: y + pitch - 2,
+                    width: 252,
+                    height: 1,
+                    color: Color::from_palette(3),
+                    filled: true,
+                }));
+            }
         }
 
         if PROJECTS.len() > self.projects_visible_at(start) {
             view.add(Element::Text(TextElement {
                 x: 2,
-                y: 152,
+                y: summary_y,
                 text: format!("{:02}-{:02}/{} j/k ENTER", start + 1, end, PROJECTS.len()),
                 style: TextStyle::new(Color::from_palette(4)),
             }));

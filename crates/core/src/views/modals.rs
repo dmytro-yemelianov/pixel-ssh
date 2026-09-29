@@ -25,7 +25,7 @@ impl App {
     }
 
     fn dialog_geometry(&self, compact_rows: u16) -> SystemDialogGeometry {
-        let (width, height) = self.resolution.resolution();
+        let (width, height) = self.view_dimensions();
         let (cols, _) = self.resolution.char_grid();
         let char_h = self.resolution.line_height();
         let box_cols = if cols >= 80 {

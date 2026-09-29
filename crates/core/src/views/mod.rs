@@ -16,15 +16,11 @@ use pixel_ssh_view::{
 
 impl App {
     pub fn render(&self) -> View {
-        let (width, height) = if self.platform == Platform::Terminal {
-            (self.terminal_cols * 8, self.terminal_rows * 16)
-        } else {
-            self.resolution.resolution()
-        };
+        let (width, height) = self.view_dimensions();
         let (cols, _rows) = if self.platform == Platform::Terminal {
             (self.terminal_cols, self.terminal_rows)
         } else {
-            self.resolution.char_grid()
+            (width / 8, height / self.resolution.line_height())
         };
         let mut view = View::new(width, height);
         view.resolution = self.resolution;
