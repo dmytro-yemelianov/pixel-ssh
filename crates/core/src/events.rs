@@ -16,10 +16,6 @@ impl App {
 
         self.selected_project = self.selected_list_item - PROJECT_LIST_PREFIX_ITEMS;
         self.ensure_selected_project_visible();
-        let first_page_capacity = self.projects_max_visible().saturating_sub(4).max(1);
-        if self.scroll_offset == 0 && self.selected_project >= first_page_capacity {
-            self.scroll_offset = 1;
-        }
     }
 
     fn activate_selected_list_item(&mut self) {
@@ -1543,13 +1539,19 @@ impl App {
                             24
                         };
                         let project_row_h = if cols >= 80 {
-                            self.resolution.line_height()
+                            2 * self.resolution.line_height()
                         } else if cols == 40 {
                             12
                         } else {
                             16
                         };
-                        let prefix_row_h = if cols == 32 { 8 } else { project_row_h };
+                        let prefix_row_h = if cols >= 80 {
+                            self.resolution.line_height()
+                        } else if cols == 32 {
+                            8
+                        } else {
+                            project_row_h
+                        };
                         let prefix_rows = usize::from(self.scroll_offset == 0) * 4;
                         if self.scroll_offset == 0 && y >= list_top {
                             let prefix_y_end = list_top + prefix_rows as u16 * prefix_row_h;
@@ -1567,8 +1569,7 @@ impl App {
                         }
                         let project_top = list_top + prefix_rows as u16 * prefix_row_h;
                         let list_bot = project_top
-                            + (self.projects_max_visible().saturating_sub(prefix_rows) as u16)
-                                * project_row_h;
+                            + self.projects_visible_at(self.scroll_offset) as u16 * project_row_h;
                         if y >= project_top && y < list_bot {
                             let row_idx = ((y - project_top) / project_row_h) as usize;
                             let project_idx = self.scroll_offset + row_idx;

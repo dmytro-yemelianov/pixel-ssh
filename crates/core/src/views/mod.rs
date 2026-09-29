@@ -438,18 +438,21 @@ impl App {
         let row_h = if compact { 10 } else { 16 };
         let items = [
             (
-                "Prj",
+                if compact { "Prj" } else { "Projects" },
                 self.current_tab == Tab::Projects
                     && !self.show_detail
                     && self.active_modal == ActiveModal::None,
             ),
             (
-                "Hlp",
+                if compact { "Hlp" } else { "Help" },
                 self.active_modal == ActiveModal::Help || self.current_tab == Tab::Help,
             ),
-            ("Sys", false),
-            ("Vis", self.active_modal == ActiveModal::Visuals),
-            ("Qut", false),
+            (if compact { "Sys" } else { "System" }, false),
+            (
+                if compact { "Vis" } else { "Visuals" },
+                self.active_modal == ActiveModal::Visuals,
+            ),
+            (if compact { "Qut" } else { "Quit" }, false),
         ];
         view.add(Element::Rect(RectElement {
             x: 0,
@@ -465,12 +468,12 @@ impl App {
             let bg = if active {
                 Color::from_palette(6)
             } else {
-                Color::from_palette(3)
+                Color::from_palette(1)
             };
             let fg = if active {
                 Color::from_palette(0)
             } else {
-                Color::from_palette(13)
+                Color::from_palette(5)
             };
             view.add(Element::Rect(RectElement {
                 x: x + 1,
@@ -480,10 +483,19 @@ impl App {
                 color: bg,
                 filled: true,
             }));
+            let (hotkey, rest) = label.split_at(1);
             view.add(Element::Text(TextElement {
                 x: x + 3,
                 y: nav_y,
-                text: label.to_string(),
+                text: hotkey.to_string(),
+                style: TextStyle::new(Color::from_palette(if active { 10 } else { 12 }))
+                    .bold()
+                    .underline(),
+            }));
+            view.add(Element::Text(TextElement {
+                x: x + 11,
+                y: nav_y,
+                text: rest.to_string(),
                 style: TextStyle::new(fg).bold(),
             }));
         }

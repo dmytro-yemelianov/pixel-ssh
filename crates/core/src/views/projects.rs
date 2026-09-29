@@ -212,12 +212,11 @@ impl App {
             return;
         }
 
-        // Project list sized by the selected display resolution
-        let max_visible = self.projects_max_visible();
+        // Two rows per project keep names and complete tag sets separate.
         let start = self.scroll_offset;
-        // Keep the personal entry points at the top of the Projects screen.
         let prefix_rows = usize::from(start == 0) * 4;
-        let end = (start + max_visible.saturating_sub(prefix_rows).max(1)).min(PROJECTS.len());
+        let end = (start + self.projects_visible_at(start)).min(PROJECTS.len());
+        let (cols, rows) = self.resolution.char_grid();
 
         if start == 0 {
             for (row, label) in ["[00] CV", "[@@] Contacts", "[!!] About"]
@@ -225,50 +224,81 @@ impl App {
                 .enumerate()
             {
                 let selected = self.selected_list_item == row;
-                if selected {
-                    view.add(Element::Rect(RectElement {
-                        x: 0,
-                        y: (3 + row as u16) * lh,
-                        width: view.width,
-                        height: lh,
-                        color: Color::from_palette(2),
-                        filled: true,
-                    }));
-                }
+                let y = (3 + row as u16) * lh;
+                view.add(Element::Rect(RectElement {
+                    x: 0,
+                    y,
+                    width: view.width,
+                    height: lh,
+                    color: Color::from_palette(if selected { 2 } else { 1 }),
+                    filled: true,
+                }));
                 view.add(Element::Text(TextElement {
                     x: 16,
-                    y: (3 + row as u16) * lh,
+                    y,
                     text: (*label).to_string(),
-                    style: TextStyle::new(Color::from_palette(if selected { 6 } else { 5 })).bold(),
+                    style: TextStyle::new(Color::from_palette(if selected { 12 } else { 5 }))
+                        .bold(),
+                }));
+                view.add(Element::Rect(RectElement {
+                    x: 16,
+                    y: y + lh - 1,
+                    width: view.width.saturating_sub(32),
+                    height: 1,
+                    color: Color::from_palette(3),
+                    filled: true,
                 }));
             }
             view.add(Element::Text(TextElement {
                 x: 16,
                 y: 6 * lh,
-                text: "===========".to_string(),
-                style: TextStyle::new(Color::from_palette(4)),
+                text: "PROJECTS".to_string(),
+                style: TextStyle::new(Color::from_palette(7)).bold(),
+            }));
+            view.add(Element::Rect(RectElement {
+                x: 104,
+                y: 6 * lh + lh / 2,
+                width: view.width.saturating_sub(120),
+                height: 1,
+                color: Color::from_palette(3),
+                filled: true,
             }));
         }
 
         for (i, p) in PROJECTS[start..end].iter().enumerate() {
             let idx = start + i;
             let is_sel = self.selected_list_item == idx + 3;
-            let y = (3 + prefix_rows as u16 + i as u16) * lh;
-
+            let y = (3 + prefix_rows as u16 + (i as u16) * 2) * lh;
+            view.add(Element::Rect(RectElement {
+                x: 0,
+                y,
+                width: view.width,
+                height: 2 * lh,
+                color: Color::from_palette(if is_sel || idx % 2 == 1 { 2 } else { 1 }),
+                filled: true,
+            }));
             if is_sel {
                 view.add(Element::Rect(RectElement {
                     x: 0,
                     y,
-                    width: view.width,
-                    height: lh,
-                    color: Color::from_palette(2),
+                    width: 4,
+                    height: 2 * lh,
+                    color: Color::from_palette(12),
                     filled: true,
                 }));
             }
+            view.add(Element::Rect(RectElement {
+                x: 16,
+                y: y + 2 * lh - 1,
+                width: view.width.saturating_sub(32),
+                height: 1,
+                color: Color::from_palette(3),
+                filled: true,
+            }));
 
             let marker = if is_sel { ">" } else { " " };
             let fg = if is_sel {
-                Color::from_palette(6)
+                Color::from_palette(12)
             } else if p.wip {
                 Color::from_palette(10)
             } else {
@@ -276,65 +306,53 @@ impl App {
             };
 
             let num = format!("{:02}", idx + 1);
-            let title = horizontal_scroll(p.title, 22, self.tick);
-
             view.add(Element::Text(TextElement {
                 x: 16,
                 y,
-                text: format!("{marker} [{num}] {title:<22}"),
+                text: format!("{marker} [{num}] {}", p.title),
                 style: TextStyle::new(fg).bold(),
             }));
 
-            // Tags formatted with horizontal auto-scroll when selected or long
+            // All current tag sets fit on the dedicated second row at 80 columns.
             let tag_str = p
                 .tags
                 .iter()
                 .map(|t| format!("<{t}>"))
                 .collect::<Vec<_>>()
                 .join(" ");
-            let tag_width = (view.width as usize / 8).saturating_sub(46);
-            let tag_display = if is_sel || tag_str.chars().count() > tag_width {
-                horizontal_scroll(&tag_str, tag_width, self.tick)
-            } else {
-                tag_str
-            };
+            let tag_width = (cols as usize).saturating_sub(10);
 
             view.add(Element::Text(TextElement {
-                x: 256,
-                y,
-                text: tag_display,
-                style: TextStyle::new(Color::from_palette(4)),
+                x: 48,
+                y: y + lh,
+                text: horizontal_scroll(&tag_str, tag_width, self.tick),
+                style: TextStyle::new(Color::from_palette(if is_sel { 6 } else { 4 })),
             }));
 
-            // Detail arrow
             let arrow_x = view.width.saturating_sub(96);
             view.add(Element::Text(TextElement {
                 x: arrow_x,
                 y,
-                text: if is_sel { "[Enter] ->" } else { "  Details " }.to_string(),
+                text: if is_sel { "[Enter]" } else { "Details" }.to_string(),
                 style: TextStyle::new(if is_sel {
-                    Color::from_palette(7)
+                    Color::from_palette(12)
                 } else {
-                    Color::from_palette(3)
+                    Color::from_palette(4)
                 }),
             }));
         }
 
-        // Scroll guidance note if more items exist
-        if PROJECTS.len() > max_visible {
-            let guide_y = (3 + prefix_rows as u16 + (end - start) as u16) * lh;
-            view.add(Element::Text(TextElement {
-                x: 16,
-                y: guide_y,
-                text: format!(
-                    "Showing {}-{} of {} projects. Use [Up/Down] or [k/j] to scroll.",
-                    start + 1,
-                    end,
-                    PROJECTS.len()
-                ),
-                style: TextStyle::new(Color::from_palette(4)),
-            }));
-        }
+        view.add(Element::Text(TextElement {
+            x: 16,
+            y: (rows - 3) * lh,
+            text: format!(
+                "Projects {:02}-{:02}/{}  [Up/Down] or [k/j] Scroll  [Enter] Details",
+                start + 1,
+                end,
+                PROJECTS.len()
+            ),
+            style: TextStyle::new(Color::from_palette(4)),
+        }));
     }
 
     pub(crate) fn render_projects_40(&self, view: &mut View) {

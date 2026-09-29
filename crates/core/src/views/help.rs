@@ -42,7 +42,7 @@ impl App {
         ];
 
         let mouse_items = vec![
-            "Menu controls:   Click Prj, Hlp, Sys, Vis, or Qut",
+            "Menu controls:   Click Projects, Help, System, Visuals, or Quit",
             "Resume / About:   Click ▲ / ▼ or drag/click vertical scrollbar track",
             "Wheel Navigation: Scroll up and down through content lines and projects",
             "Project Rows:     Click project row to select; click again for details",

@@ -507,7 +507,7 @@ fn test_project_row_click_matches_rendered_grid() {
     ] {
         let mut app = App::new_web();
         app.set_resolution(resolution);
-        let y = (3 + 4 + 3) * resolution.line_height() + 1;
+        let y = (3 + 4 + 3 * 2 + 1) * resolution.line_height() + 1;
         assert!(app.update(InputEvent::PointerDown {
             x: 24,
             y,
@@ -919,7 +919,7 @@ fn test_terminal_mode_expands_to_custom_dimensions() {
 }
 
 #[test]
-fn test_vga_80_col_consecutive_project_rows_no_2_grouping() {
+fn test_vga_project_cards_use_two_rows_and_fill_list_area() {
     let app = App::new();
     assert_eq!(app.platform, Platform::Web);
     assert_eq!(app.system_mode, SystemMode::Vga);
@@ -935,18 +935,97 @@ fn test_vga_80_col_consecutive_project_rows_no_2_grouping() {
     }
 
     assert!(
-        row_ys.len() >= 11,
-        "Expected at least 11 visible project rows on VGA, found {}",
+        row_ys.len() == 7,
+        "Expected seven complete two-row project cards on VGA, found {}",
         row_ys.len()
     );
 
     for i in 0..row_ys.len() - 1 {
         let delta = row_ys[i + 1] - row_ys[i];
         assert_eq!(
-                delta, 16,
-                "80-col project rows must be on consecutive lines! Row {} (y={}) and Row {} (y={}) delta={}",
-                i, row_ys[i], i + 1, row_ys[i + 1], delta
-            );
+            delta,
+            32,
+            "80-col project cards must use two lines. Card {} (y={}) and card {} (y={}) delta={}",
+            i,
+            row_ys[i],
+            i + 1,
+            row_ys[i + 1],
+            delta
+        );
+    }
+}
+
+#[test]
+fn wide_project_cards_show_complete_titles_tags_and_footer_labels() {
+    for resolution in [
+        ResolutionMode::Svga,
+        ResolutionMode::Sga,
+        ResolutionMode::Vga,
+        ResolutionMode::Ega,
+    ] {
+        let mut app = App::new_web();
+        app.set_resolution(resolution);
+        let view = app.render();
+        let (cols, rows) = resolution.char_grid();
+        let lh = resolution.line_height();
+        let count = app.projects_visible_at(0);
+        for (index, project) in PROJECTS.iter().take(count).enumerate() {
+            let title_y = (7 + index as u16 * 2) * lh;
+            let tags = project
+                .tags
+                .iter()
+                .map(|tag| format!("<{tag}>"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            assert!(view.elements.iter().any(|element| matches!(element,
+                Element::Text(text) if text.x == 16 && text.y == title_y && text.text.contains(project.title)
+            )));
+            assert!(view.elements.iter().any(|element| matches!(element,
+                Element::Text(text) if text.x == 48 && text.y == title_y + lh && text.text == tags
+            )));
+        }
+        assert!((7 + count as u16 * 2) <= rows - 3);
+
+        let slot_width = view.width / 5;
+        let nav_y = view.height - 32;
+        for (index, label) in ["Projects", "Help", "System", "Visuals", "Quit"]
+            .iter()
+            .enumerate()
+        {
+            let x = index as u16 * slot_width;
+            let (hotkey, rest) = label.split_at(1);
+            assert!(view.elements.iter().any(|element| matches!(element,
+                Element::Text(text) if text.x == x + 3 && text.y == nav_y && text.text == hotkey && text.style.underline
+            )));
+            assert!(view.elements.iter().any(|element| matches!(element,
+                Element::Text(text) if text.x == x + 11 && text.y == nav_y && text.text == rest
+            )));
+        }
+        assert!(cols >= 80);
+    }
+}
+
+#[test]
+fn wide_project_list_can_scroll_to_the_last_card() {
+    for resolution in [
+        ResolutionMode::Svga,
+        ResolutionMode::Sga,
+        ResolutionMode::Vga,
+        ResolutionMode::Ega,
+    ] {
+        let mut app = App::new_web();
+        app.set_resolution(resolution);
+        assert!(app.update(InputEvent::KeyDown(Key::End)));
+        assert_eq!(app.selected_project, PROJECTS.len() - 1);
+        assert_eq!(app.scroll_offset, app.projects_max_scroll());
+
+        let view = app.render();
+        let last_row = PROJECTS.len() - 1 - app.scroll_offset;
+        let y = (3 + last_row as u16 * 2) * resolution.line_height();
+        assert!(view.elements.iter().any(|element| matches!(element,
+            Element::Text(text) if text.x == 16 && text.y == y && text.text.contains("[16] Emoji Madness")
+        )));
+        assert!(y + 2 * resolution.line_height() <= view.height - 3 * resolution.line_height());
     }
 }
 

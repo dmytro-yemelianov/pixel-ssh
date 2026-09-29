@@ -204,10 +204,9 @@ impl App {
         if self.platform == Platform::Terminal {
             (self.terminal_rows as usize).saturating_sub(6).max(6)
         } else {
-            let (cols, _) = self.resolution.char_grid();
+            let (cols, rows) = self.resolution.char_grid();
             match cols {
-                100 => 24,
-                80 => 15,
+                100 | 80 => (rows as usize).saturating_sub(6) / 2,
                 40 => 12,
                 // ZX gives each item a title row and a separate tag row. Eight
                 // two-row items fit above the navigation bar and leave one row
@@ -217,8 +216,27 @@ impl App {
         }
     }
 
+    /// Number of project items that fit with the optional profile links above them.
+    pub(crate) fn projects_visible_at(&self, offset: usize) -> usize {
+        let prefix_rows = if offset == 0 { 4 } else { 0 };
+        if self.platform == Platform::Web {
+            let (cols, rows) = self.resolution.char_grid();
+            if cols >= 80 {
+                // Rows 0-2 hold the header; rows -3..-1 hold guidance and navigation.
+                return (rows as usize)
+                    .saturating_sub(6 + prefix_rows)
+                    .checked_div(2)
+                    .unwrap_or(0)
+                    .max(1);
+            }
+        }
+        self.projects_max_visible()
+            .saturating_sub(prefix_rows)
+            .max(1)
+    }
+
     pub fn projects_max_scroll(&self) -> usize {
-        PROJECTS.len().saturating_sub(self.projects_max_visible())
+        PROJECTS.len().saturating_sub(self.projects_visible_at(1))
     }
 
     /// Keeps the current project in the visible window after a navigation or
@@ -231,13 +249,19 @@ impl App {
         }
 
         self.selected_project = self.selected_project.min(PROJECTS.len() - 1);
-        let visible = self.projects_max_visible();
         self.scroll_offset = self.scroll_offset.min(self.projects_max_scroll());
 
         if self.selected_project < self.scroll_offset {
             self.scroll_offset = self.selected_project;
-        } else if self.selected_project >= self.scroll_offset + visible {
-            self.scroll_offset = self.selected_project + 1 - visible;
+        }
+        if self.scroll_offset == 0 && self.selected_project >= self.projects_visible_at(0) {
+            self.scroll_offset = 1;
+        }
+        let visible = self.projects_visible_at(self.scroll_offset);
+        if self.selected_project >= self.scroll_offset + visible {
+            self.scroll_offset = (self.selected_project + 1)
+                .saturating_sub(self.projects_visible_at(1))
+                .max(1);
         }
     }
 
