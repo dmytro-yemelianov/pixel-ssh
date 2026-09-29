@@ -1,6 +1,6 @@
 # Pixel SSH
 
-An interactive portfolio with a shared Rust application core and two front ends: a WebAssembly/WebGL2 canvas and an ANSI terminal over SSH. Each connection has its own application state. The browser also has DOM touch controls below the canvas in portrait mode.
+An interactive portfolio with a shared Rust application core and two front ends: a WebAssembly/WebGL2 canvas and an ANSI terminal over SSH. Each connection has its own application state.
 
 ## Display and controls
 
@@ -8,7 +8,7 @@ The web client supports SVGA 800×600, SGA 640×480, VGA 640×400, EGA 640×350,
 
 The framebuffer uses 8-bit color indices. WebGL2 looks up the active 256-color palette from a 256×1 RGBA texture, then applies optional CRT effects. VGA-sized layouts use an 8×16 CP437-ordered bitmap and compact layouts use 8×8 bitmaps. EGA uses a separately sourced 8×14 CP437 bitmap, licensed under CC BY-SA 4.0; see [its attribution](crates/framebuffer/assets/README.md). The provenance status for every bundled font and named palette is documented in [the asset audit](docs/font-palette-provenance.md).
 
-The Projects screen starts with CV, Contacts, and About, then the numbered portfolio entries. The bottom menu is `Prj Hlp Sys Vis Qut`: its first letters open Projects, Help, cycle display systems, Visuals, and Quit. Numbers have no global assignment; `1`–`6` select presets only inside Visuals. `v` opens Visuals. Arrow keys and `j`/`k` navigate lists, Enter activates the selected item, and Escape closes a dialog or returns to Projects. Portrait touch controls provide the same menu and preset actions.
+The Projects screen starts with CV, Contacts, and About, then the numbered portfolio entries. The bottom menu is `Prj Hlp Sys Vis Qut`: its first letters open Projects, Help, cycle display systems, Visuals, and Quit. Numbers have no global assignment; `1`–`6` select presets only inside Visuals. `v` opens Visuals. Arrow keys and `j`/`k` navigate lists, Enter activates the selected item, and Escape closes a dialog or returns to Projects. On touch screens, tap the canvas menu and swipe to navigate.
 
 The terminal uses the same content and ANSI rendering. `S` cycles display systems, each with its own font and colors.
 
@@ -17,12 +17,13 @@ The terminal uses the same content and ANSI rendering. `S` cycles display system
 Build the browser client (requires the `wasm32-unknown-unknown` target and `wasm-bindgen` CLI):
 
 ```sh
-cargo build -p pixel-ssh-web-client --target wasm32-unknown-unknown --release
+cargo build -p pixel-ssh-web-client --target wasm32-unknown-unknown --release --locked
 wasm-bindgen target/wasm32-unknown-unknown/release/pixel_ssh_web_client.wasm --out-dir web/pkg --target web --no-typescript
 python3 -m http.server 8085 --directory web
 ```
 
 Open `http://localhost:8085`. The generated `web/pkg` files are tracked for static hosting. Their size varies with the build; inspect the built files rather than relying on a fixed size claim.
+CI regenerates the tracked browser bundle with Rust 1.88.0 and wasm-bindgen-cli 0.2.129 and fails if it differs from the source.
 
 Run the SSH server in another terminal:
 
