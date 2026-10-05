@@ -386,10 +386,10 @@ fn test_native_zx_content_stays_above_bottom_navigation() {
     let projects = app.render();
     let nav_y = projects.height - 20;
     assert!(projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y == 152 && t.text.contains("/18")
+        Element::Text(t) if t.y == 152 && t.text.contains("/19")
     )));
     assert!(!projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y > 152 && t.y < nav_y && t.text.contains("/18")
+        Element::Text(t) if t.y > 152 && t.y < nav_y && t.text.contains("/19")
     )));
 
     app.current_tab = Tab::Resume;
@@ -589,10 +589,10 @@ fn test_clock_colon_steady_cadence() {
 }
 
 #[test]
-fn test_all_18_projects_have_detailed_specs_and_subsystems() {
+fn test_all_19_projects_have_detailed_specs_and_subsystems() {
     use crate::data::details::get_project_detail;
 
-    assert_eq!(PROJECTS.len(), 18, "Expected exactly 18 portfolio projects");
+    assert_eq!(PROJECTS.len(), 19, "Expected exactly 19 portfolio projects");
 
     for p in PROJECTS {
         let detail = get_project_detail(p.slug);
@@ -1074,7 +1074,7 @@ fn wide_project_list_can_scroll_to_the_last_card() {
         let last_row = PROJECTS.len() - 1 - app.scroll_offset;
         let y = (3 + last_row as u16 * 2) * resolution.line_height();
         assert!(view.elements.iter().any(|element| matches!(element,
-            Element::Text(text) if text.x == 16 && text.y == y && text.text.contains("[18] AutoCADED")
+            Element::Text(text) if text.x == 16 && text.y == y && text.text.contains("[19] NetHackED")
         )));
         assert!(y + 2 * resolution.line_height() <= view.height - 3 * resolution.line_height());
     }
@@ -1495,4 +1495,53 @@ fn wide_detail_shows_live_demo_link_and_tab_cycles_three_items() {
     assert_eq!(PROJECTS[0].demo, None);
     assert_eq!(app.detail_item_count(), 2);
     assert!(!links(&app).iter().any(|(t, _)| t.contains("Live demo")));
+}
+
+#[test]
+fn touch_drag_scrolls_the_project_list_with_the_finger() {
+    // Finger moving up (dy > 0) moves the list content up, like the detail
+    // pages; it scrolls the viewport instead of moving the highlight down.
+    for resolution in [
+        ResolutionMode::Vga,
+        ResolutionMode::Cga,
+        ResolutionMode::ZxSpectrum,
+    ] {
+        let mut app = App::new_web();
+        app.set_resolution(resolution);
+        assert_eq!(app.scroll_offset, 0);
+        assert!(app.update(InputEvent::TouchDrag { dy: 1 }));
+        assert_eq!(app.scroll_offset, 1, "{resolution:?}");
+        let visible = app.projects_visible_at(app.scroll_offset);
+        assert!(
+            app.selected_project >= app.scroll_offset
+                && app.selected_project < app.scroll_offset + visible,
+            "highlight stays on screen"
+        );
+        for _ in 0..100 {
+            app.update(InputEvent::TouchDrag { dy: 1 });
+        }
+        assert_eq!(app.scroll_offset, app.projects_max_scroll());
+        assert!(
+            !app.update(InputEvent::TouchDrag { dy: 1 }),
+            "stops at the end"
+        );
+        for _ in 0..100 {
+            app.update(InputEvent::TouchDrag { dy: -1 });
+        }
+        assert_eq!(app.scroll_offset, 0);
+    }
+}
+
+#[test]
+fn touch_drag_on_a_detail_page_scrolls_like_the_wheel() {
+    let mut a = App::new_web();
+    let mut b = App::new_web();
+    for app in [&mut a, &mut b] {
+        app.current_tab = Tab::Projects;
+        app.show_detail = true;
+    }
+    a.update(InputEvent::TouchDrag { dy: 1 });
+    b.update(InputEvent::Wheel { dx: 0, dy: 1 });
+    assert_eq!(a.detail_scroll, b.detail_scroll);
+    assert_eq!(a.detail_scroll, 1);
 }

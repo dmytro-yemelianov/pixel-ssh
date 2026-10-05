@@ -778,6 +778,48 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
                 "Cross-compiled from one Linux CI box for six targets with SHA256SUMS",
             ],
         },
+        "nethacked" => ProjectDetail {
+            overview: "NetHackED reimplements NetHack 5.0 as a deterministic, serializable Rust engine. Every mechanic it ports cites the C source, and a public audit of 542 player-visible features tracks what works, what is partial and what is missing. Lean 4 models of selected mechanics are machine-checked, and rule packs change game data without code.",
+            subsystems: &[
+                "engine: deterministic sim; C-cited combat, peace, alignment",
+                "data: C bestiary, item and role tables; .nhpack rule packs",
+                "web: wasm terminal on the pixel-ssh renderer; pack manager",
+                "terminal: crossterm TUI, playable over SSH",
+                "agents: MCP, JSON-RPC and GraphQL on one session API",
+                "proofs: 41 Lean 4 modules with 308 machine-checked theorems",
+            ],
+            specs: &[
+                ("Language", "Rust 1.88 and Lean 4"),
+                ("Status", "58 of 542 features as in C; 175 partial"),
+                ("Content", "55 of 394 monsters, 51 of 439 objects"),
+                ("Tests", "676 native tests; golden determinism"),
+                ("Live", "nethacked.yemelianov.dev (EN and UK)"),
+            ],
+            diagram_80: &[
+                "NetHack 5.0 C ══ cites ══► Rust engine (sim · core · data) ──► session",
+                "                                 │                              │",
+                "      rule packs (.nhpack) ──────┘     terminal · wasm · MCP ◄──┘",
+                "parity tables: 542 features, evidence per row, checked in CI",
+            ],
+            diagram_40: &[
+                "C source ══► Rust engine",
+                "   packs ──┘     │",
+                "   TUI · wasm · MCP ◄┘",
+                "542-row parity audit",
+            ],
+            diagram_32: &[
+                "C ══► engine ◄── packs",
+                "        │",
+                "TUI · wasm · MCP",
+                "parity audit",
+            ],
+            highlights: &[
+                "Monster attacks, peace_minded and alignment follow C",
+                "Browser-built packs are byte-identical to CLI builds",
+                "Parity tables come from evidence and are checked in CI",
+                "Ukrainian UI with real Cyrillic glyphs from pixel-ssh",
+            ],
+        },
         "autocaded" => ProjectDetail {
             overview: "AutoCADED rebuilds AutoCAD 1.4 (1983, MS-DOS) as a handwritten Rust editor. It reads and writes the original AC1.2/AC1.40 DWG and 1983 DXF files, implements the 54 software commands of the recovered dispatcher table, and settles compatibility questions by running the original ACAD.EXE in an in-tree 8086 emulator and under QEMU.",
             subsystems: &[
