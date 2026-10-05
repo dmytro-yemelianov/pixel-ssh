@@ -95,6 +95,27 @@ impl App {
                 }),
             }));
 
+            // Live demo link (interactive item 1) beside the status badge.
+            if let Some(demo) = p.demo {
+                let cell = view.width / cols;
+                let demo_active = self.selected_detail_item == 1;
+                view.add(Element::Link(LinkElement::new(
+                    16 + (status_badge.chars().count() as u16 + 3) * cell,
+                    4 * lh,
+                    format!(
+                        "{} [ Live demo: {} ]",
+                        if demo_active { "►" } else { " " },
+                        demo.trim_start_matches("https://")
+                    ),
+                    demo,
+                    if demo_active {
+                        TextStyle::new(Color::from_palette(14)).bold().underline()
+                    } else {
+                        TextStyle::new(Color::from_palette(7))
+                    },
+                )));
+            }
+
             view.add(Element::Text(TextElement {
                 x: 16,
                 y: 5 * lh,
@@ -207,9 +228,9 @@ impl App {
                 style: TextStyle::new(Color::from_palette(7)).bold(),
             }));
 
-            // Clickable Return button (interactive item 1, Row 8 + visible_rows)
+            // Clickable Return button (last interactive item, Row 8 + visible_rows)
             let return_row = 8 + visible_rows as u16;
-            let back_active = self.selected_detail_item == 1;
+            let back_active = self.selected_detail_item == self.detail_item_count() - 1;
             let back_style = if back_active {
                 TextStyle::new(Color::from_palette(0))
                     .with_bg(Color::from_palette(7))
