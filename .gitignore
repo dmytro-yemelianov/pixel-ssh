@@ -5,3 +5,4 @@
 !web/icon-512.png
 !web/apple-touch-icon.png
 ssh_host_ed25519_key
+__pycache__/

@@ -1,7 +1,8 @@
 pub mod font;
 
 use font::{
-    font_8x16_for_mode, font_for_mode, unicode_to_cp437, EGA_FONT_8X14, FONT_HEIGHT, FONT_WIDTH,
+    cyrillic_index, font_8x16_for_mode, font_for_mode, unicode_to_cp437, CYRILLIC_FONT_8X14,
+    CYRILLIC_FONT_8X16, CYRILLIC_FONT_8X8, EGA_FONT_8X14, FONT_HEIGHT, FONT_WIDTH,
 };
 use pixel_ssh_view::{is_table_border_char, ColorPalette, Element, PaletteMode, View};
 
@@ -458,17 +459,29 @@ impl Framebuffer {
     pub fn draw_char(&mut self, x: u16, y: u16, ch: char, fg: u8, bg: Option<u8>) {
         let fg = if is_table_border_char(ch) { 7 } else { fg };
         let code = unicode_to_cp437(ch);
-        let tall_glyph: Option<(&[u8], u16)> = if self.font_height == 16
-            && !matches!(
-                self.font_mode,
-                PaletteMode::C64 | PaletteMode::Atari | PaletteMode::ZxSpectrum
-            ) {
-            font_8x16_for_mode(self.font_mode).map(|font16| (font16[code as usize].as_slice(), 16))
+        // Cyrillic letters use their own bitmaps (same font family) instead of
+        // CP437 homoglyphs or '?'.
+        let cyrillic = cyrillic_index(ch);
+        let tall_family = !matches!(
+            self.font_mode,
+            PaletteMode::C64 | PaletteMode::Atari | PaletteMode::ZxSpectrum
+        );
+        let tall_glyph: Option<(&[u8], u16)> = if self.font_height == 16 && tall_family {
+            match cyrillic {
+                Some(i) => Some((&CYRILLIC_FONT_8X16[i * 16..i * 16 + 16], 16)),
+                None => font_8x16_for_mode(self.font_mode)
+                    .map(|font16| (font16[code as usize].as_slice(), 16)),
+            }
         } else if self.font_height == 14
             && matches!(self.font_mode, PaletteMode::Ega | PaletteMode::Vga)
         {
-            let start = (code as usize) * 14;
-            Some((&EGA_FONT_8X14[start..start + 14], 14))
+            match cyrillic {
+                Some(i) => Some((&CYRILLIC_FONT_8X14[i * 14..i * 14 + 14], 14)),
+                None => {
+                    let start = (code as usize) * 14;
+                    Some((&EGA_FONT_8X14[start..start + 14], 14))
+                }
+            }
         } else {
             None
         };
@@ -499,7 +512,10 @@ impl Framebuffer {
             }
         } else {
             let font = font_for_mode(self.font_mode);
-            let glyph = font[code as usize];
+            let mut glyph = font[code as usize];
+            if let Some(i) = cyrillic {
+                glyph.copy_from_slice(&CYRILLIC_FONT_8X8[i * 8..i * 8 + 8]);
+            }
 
             for row in 0..self.font_height {
                 let py = y + row;
@@ -883,6 +899,52 @@ mod tests {
     use super::*;
     use crate::font::{font_for_mode, unicode_to_cp437};
     use pixel_ssh_view::{Color, RectElement, TextElement, TextStyle};
+
+    /// Rows drawn for `ch` in an 8-wide framebuffer, as bit patterns.
+    fn drawn_rows(mode: PaletteMode, font_height: u16, ch: char) -> Vec<u8> {
+        let mut fb = Framebuffer::new(8, font_height);
+        fb.font_mode = mode;
+        fb.font_height = font_height;
+        fb.draw_char(0, 0, ch, 1, None);
+        (0..font_height as usize)
+            .map(|y| {
+                (0..8).fold(0u8, |acc, x| {
+                    acc | ((fb.pixels[y * 8 + x] != 0) as u8) << (7 - x)
+                })
+            })
+            .collect()
+    }
+
+    #[test]
+    fn ukrainian_letters_draw_their_own_glyphs_in_every_font_size() {
+        // Ї and Ґ have no CP437 homoglyph; before Cyrillic support they drew '?'.
+        for (mode, height) in [
+            (PaletteMode::Vga, 16),
+            (PaletteMode::Ega, 14),
+            (PaletteMode::Vga, 8),
+            (PaletteMode::C64, 8),
+        ] {
+            let question = drawn_rows(mode, height, '?');
+            for ch in "ҐЄІЇґєіїЖЩЮЯжщюя".chars() {
+                let rows = drawn_rows(mode, height, ch);
+                assert!(
+                    rows.iter().any(|r| *r != 0),
+                    "{ch} blank in {mode:?}/{height}"
+                );
+                assert_ne!(rows, question, "{ch} drew '?' in {mode:?}/{height}");
+            }
+            assert_ne!(drawn_rows(mode, height, 'Ї'), drawn_rows(mode, height, 'І'));
+        }
+    }
+
+    #[test]
+    fn cyrillic_8x16_glyph_matches_the_bundled_asset() {
+        let idx = crate::font::cyrillic_index('Ї').expect("Ї is supported");
+        assert_eq!(
+            drawn_rows(PaletteMode::Vga, 16, 'Ї'),
+            crate::font::CYRILLIC_FONT_8X16[idx * 16..idx * 16 + 16].to_vec()
+        );
+    }
 
     #[test]
     fn ega_glyphs_stay_within_fourteen_pixel_rows() {
