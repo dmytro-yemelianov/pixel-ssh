@@ -25,3 +25,11 @@ jobs:
       - run: cargo build -p pixel-ssh-web-client --target wasm32-unknown-unknown --release --locked
       - run: wasm-bindgen target/wasm32-unknown-unknown/release/pixel_ssh_web_client.wasm --out-dir web/pkg --target web --no-typescript
       - run: git diff --exit-code -- web/pkg
+      # The bundle is not byte-reproducible across hosts (a macOS or prebuilt
+      # wasm-bindgen build differs). On a mismatch, download this artifact and
+      # commit it as web/pkg.
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-pkg
+          path: web/pkg
