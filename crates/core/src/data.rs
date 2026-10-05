@@ -156,6 +156,14 @@ pub static PROJECTS: &[Project] = &[
         wip: true,
         demo: Some("https://autocaded.yemelianov.dev"),
     },
+    Project {
+        title: "NetHackED",
+        slug: "nethacked",
+        tldr: "NetHack 5.0 being rebuilt in Rust by Yemelianov Dmytro: a deterministic engine checked against the C source, Lean 4 models; browser and terminal.",
+        tags: &["rust", "roguelike", "lean-4", "wasm"],
+        wip: true,
+        demo: Some("https://nethacked.yemelianov.dev"),
+    },
 ];
 
 pub const RESUME_MAX_SCROLL: usize = 80;
