@@ -749,7 +749,7 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
             specs: &[
                 ("Language", "Rust 1.88, edition 2024, zero dependencies"),
                 ("Verification", "Lean 4 model, 0 sorry; 3-way fuzzer 50/50"),
-                ("Null build", "1.7-2.2x faster than GNU make (modular, 10k)"),
+                ("Null build", "~1.9x faster than GNU make at 10k targets"),
                 ("Real project", "Lua 5.4.9 at parity with GNU make, -j8"),
                 ("Releases", "Linux musl, macOS universal2, Windows x64"),
             ],
