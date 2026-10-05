@@ -1,5 +1,5 @@
 //! In-depth architectural overviews, subsystem breakdowns, technical specifications,
-//! and bespoke ASCII dataflow diagrams for all 16 portfolio projects.
+//! and bespoke ASCII dataflow diagrams for all 17 portfolio projects.
 
 use crate::data::Project;
 use pixel_ssh_view::{horizontal_scroll, word_wrap};
@@ -734,6 +734,48 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
                 "Custom Metal compute shaders calculate pairwise spatial grid collisions",
                 "Zero-copy unified memory eliminates CPU-to-GPU transfer bottlenecks",
                 "Native Swift 5.9 implementation with hardened macOS runtime sandbox",
+            ],
+        },
+        "makeyd" => ProjectDetail {
+            overview: "makeyd is a POSIX make with the GNU extensions real Makefiles use, written in Rust with no external crates. A Lean 4 model defines the rebuild semantics, and a differential fuzzer runs makeyd, GNU make and the model on random dependency graphs. Any disagreement in which targets get rebuilt fails CI.",
+            subsystems: &[
+                "parser: variables, conditionals, include, define, eval/call, second expansion",
+                "graph + freshness: cycle detection, POSIX mtime rules or SHA-256 content hashes",
+                "executor: ready-queue scheduler, worker threads, shell-bypass fast path",
+                "jobserver: GNU token protocol as master or client, through recursive $(MAKE)",
+                "extras: CAS cache, Ninja import/export, compile_commands.json, Perfetto trace",
+                "lean_make: Lean 4 model with 30 kernel-checked theorems about the model",
+            ],
+            specs: &[
+                ("Language", "Rust 1.88, edition 2024, zero dependencies"),
+                ("Verification", "Lean 4 model, 0 sorry; 3-way fuzzer 50/50"),
+                ("Null build", "1.7-2.2x faster than GNU make (modular, 10k)"),
+                ("Real project", "Lua 5.4.9 at parity with GNU make, -j8"),
+                ("Releases", "Linux musl, macOS universal2, Windows x64"),
+            ],
+            diagram_80: &[
+                "Makefile ──► parser ──► DAG ──► freshness ──► scheduler ──► -j8 workers",
+                "                                                  │",
+                "                                     jobserver tokens ─► $(MAKE)",
+                "fuzzer:  makeyd  ==  GNU make  ==  Lean 4 model   (rebuilt-target sets)",
+            ],
+            diagram_40: &[
+                "Makefile ─► parser ─► DAG",
+                "               │",
+                "  freshness ─► scheduler ─► workers",
+                "  makeyd == gmake == Lean model",
+            ],
+            diagram_32: &[
+                "Makefile ─► DAG",
+                "    │",
+                "fresh? ─► -jN workers",
+                "makeyd=gmake=Lean",
+            ],
+            highlights: &[
+                "Own SHA-256, JSON and ANSI renderer: the binary has no third-party code",
+                "Recursive $(MAKE) inherits job slots through MAKEFLAGS, like GNU make",
+                "Lean theorems are about the model; the fuzzer is the bridge to the binary",
+                "Cross-compiled from one Linux CI box for six targets with SHA256SUMS",
             ],
         },
         unknown => panic!("No project detail for slug: {unknown}"),

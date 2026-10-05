@@ -386,10 +386,10 @@ fn test_native_zx_content_stays_above_bottom_navigation() {
     let projects = app.render();
     let nav_y = projects.height - 20;
     assert!(projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y == 152 && t.text.contains("/16")
+        Element::Text(t) if t.y == 152 && t.text.contains("/17")
     )));
     assert!(!projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y > 152 && t.y < nav_y && t.text.contains("/16")
+        Element::Text(t) if t.y > 152 && t.y < nav_y && t.text.contains("/17")
     )));
 
     app.current_tab = Tab::Resume;
@@ -432,14 +432,14 @@ fn test_zx_projects_use_two_rows_with_reachable_scroll_and_clicks() {
     assert_eq!(app.selected_project, PROJECTS.len() - 1);
     assert_eq!(app.scroll_offset, app.projects_max_scroll());
 
-    // The first and last title/tag rows in the final window select project 9
-    // and project 16 respectively. The position line below them is inert.
+    // The first and last title/tag rows in the final window select the first
+    // and last of the eight visible projects. The position line is inert.
     assert!(app.update(InputEvent::PointerDown {
         x: 2,
         y: 24,
         button: Button::Left,
     }));
-    assert_eq!(app.selected_project, 8);
+    assert_eq!(app.selected_project, PROJECTS.len() - 8);
     assert!(app.update(InputEvent::PointerDown {
         x: 2,
         y: 24 + 7 * 16 + 8,
@@ -589,10 +589,10 @@ fn test_clock_colon_steady_cadence() {
 }
 
 #[test]
-fn test_all_16_projects_have_detailed_specs_and_subsystems() {
+fn test_all_17_projects_have_detailed_specs_and_subsystems() {
     use crate::data::details::get_project_detail;
 
-    assert_eq!(PROJECTS.len(), 16, "Expected exactly 16 portfolio projects");
+    assert_eq!(PROJECTS.len(), 17, "Expected exactly 17 portfolio projects");
 
     for p in PROJECTS {
         let detail = get_project_detail(p.slug);
@@ -1074,7 +1074,7 @@ fn wide_project_list_can_scroll_to_the_last_card() {
         let last_row = PROJECTS.len() - 1 - app.scroll_offset;
         let y = (3 + last_row as u16 * 2) * resolution.line_height();
         assert!(view.elements.iter().any(|element| matches!(element,
-            Element::Text(text) if text.x == 16 && text.y == y && text.text.contains("[16] Emoji Madness")
+            Element::Text(text) if text.x == 16 && text.y == y && text.text.contains("[17] makeyd")
         )));
         assert!(y + 2 * resolution.line_height() <= view.height - 3 * resolution.line_height());
     }
