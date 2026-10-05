@@ -386,10 +386,10 @@ fn test_native_zx_content_stays_above_bottom_navigation() {
     let projects = app.render();
     let nav_y = projects.height - 20;
     assert!(projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y == 152 && t.text.contains("/17")
+        Element::Text(t) if t.y == 152 && t.text.contains("/18")
     )));
     assert!(!projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y > 152 && t.y < nav_y && t.text.contains("/17")
+        Element::Text(t) if t.y > 152 && t.y < nav_y && t.text.contains("/18")
     )));
 
     app.current_tab = Tab::Resume;
@@ -589,10 +589,10 @@ fn test_clock_colon_steady_cadence() {
 }
 
 #[test]
-fn test_all_17_projects_have_detailed_specs_and_subsystems() {
+fn test_all_18_projects_have_detailed_specs_and_subsystems() {
     use crate::data::details::get_project_detail;
 
-    assert_eq!(PROJECTS.len(), 17, "Expected exactly 17 portfolio projects");
+    assert_eq!(PROJECTS.len(), 18, "Expected exactly 18 portfolio projects");
 
     for p in PROJECTS {
         let detail = get_project_detail(p.slug);
@@ -1074,7 +1074,7 @@ fn wide_project_list_can_scroll_to_the_last_card() {
         let last_row = PROJECTS.len() - 1 - app.scroll_offset;
         let y = (3 + last_row as u16 * 2) * resolution.line_height();
         assert!(view.elements.iter().any(|element| matches!(element,
-            Element::Text(text) if text.x == 16 && text.y == y && text.text.contains("[17] makeyd")
+            Element::Text(text) if text.x == 16 && text.y == y && text.text.contains("[18] AutoCADED")
         )));
         assert!(y + 2 * resolution.line_height() <= view.height - 3 * resolution.line_height());
     }

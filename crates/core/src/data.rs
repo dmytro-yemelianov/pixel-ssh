@@ -129,6 +129,13 @@ pub static PROJECTS: &[Project] = &[
         tags: &["rust", "lean-4", "build-systems", "formal-methods"],
         wip: false,
     },
+    Project {
+        title: "AutoCADED",
+        slug: "autocaded",
+        tldr: "AutoCAD 1.4 (1983) rebuilt in Rust by Yemelianov Dmytro: original DWG/DXF files and commands, checked against the real ACAD.EXE in an 8086 emulator; window, MCP and browser.",
+        tags: &["rust", "cad", "reverse-engineering", "wasm"],
+        wip: true,
+    },
 ];
 
 pub const RESUME_MAX_SCROLL: usize = 80;

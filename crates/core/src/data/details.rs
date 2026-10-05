@@ -778,6 +778,48 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
                 "Cross-compiled from one Linux CI box for six targets with SHA256SUMS",
             ],
         },
+        "autocaded" => ProjectDetail {
+            overview: "AutoCADED rebuilds AutoCAD 1.4 (1983, MS-DOS) as a handwritten Rust editor. It reads and writes the original AC1.2/AC1.40 DWG and 1983 DXF files, implements the 54 software commands of the recovered dispatcher table, and settles compatibility questions by running the original ACAD.EXE in an in-tree 8086 emulator and under QEMU.",
+            subsystems: &[
+                "codecs: AC1.2 and AC1.40 DWG, 1983 KEYWORD DXF, SHP fonts, MNU menus",
+                "editor: 54 recovered commands, prompts, selection, UNDO, HATCH, DIM",
+                "render: SHP text, blocks, budgeted CPU rasteriser, 1983 palette",
+                "app: winit window, Unix socket API and MCP server on one Session",
+                "wasm: the same Session in the browser, keys to its own command line",
+                "oracle: 8086 core and QEMU run ACAD.EXE for differential tests",
+            ],
+            specs: &[
+                ("Language", "Rust 1.88, hand-written, no transpiled code"),
+                ("Formats", "DWG AC1.2/AC1.40, 1983 DXF, SHP, MNU"),
+                ("Commands", "54 of 57 recovered; 3 need hardware"),
+                ("Tests", "995 native tests; oracle vs ACAD.EXE"),
+                ("Targets", "Linux, macOS, Windows, WebAssembly"),
+            ],
+            diagram_80: &[
+                "DWG/DXF ──► codecs ──► Drawing ──► Editor (54 commands) ──► Session",
+                "                                                              │",
+                "      window · socket API · MCP · browser (wasm) ◄── frame ◄──┘",
+                "oracle:  ACAD.EXE (8086 core / QEMU)  ==  native  (DWG bytes, frames)",
+            ],
+            diagram_40: &[
+                "DWG/DXF ─► codecs ─► Drawing",
+                "               │",
+                "  Editor ─► Session ─► frame",
+                "  ACAD.EXE == native (oracle)",
+            ],
+            diagram_32: &[
+                "DWG ─► Drawing ─► Editor",
+                "    │",
+                "Session ─► window/MCP/wasm",
+                "ACAD.EXE == native",
+            ],
+            highlights: &[
+                "SUBDIV.DXF round-trips byte for byte; LINE frames match QEMU",
+                "Colours follow the disassembled 1983 Tecmar display driver",
+                "33 original DIM drawings compare exactly, entity by entity",
+                "Corpus bytes never ship: the browser loads your own 1.4 files",
+            ],
+        },
         unknown => panic!("No project detail for slug: {unknown}"),
     }
 }
