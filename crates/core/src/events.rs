@@ -351,7 +351,8 @@ impl App {
                     // Tab key: In detail view, cycles interactive items; otherwise cycles views
                     Key::Tab => {
                         if self.current_tab == Tab::Projects && self.show_detail {
-                            self.selected_detail_item = (self.selected_detail_item + 1) % 2;
+                            self.selected_detail_item =
+                                (self.selected_detail_item + 1) % self.detail_item_count();
                             true
                         } else {
                             self.current_tab = match (self.platform, self.current_tab) {
@@ -729,8 +730,8 @@ impl App {
                                     self.detail_scroll += 1;
                                     return true;
                                 } else {
-                                    self.selected_detail_item =
-                                        (self.selected_detail_item + 1).min(1);
+                                    self.selected_detail_item = (self.selected_detail_item + 1)
+                                        .min(self.detail_item_count() - 1);
                                     return true;
                                 }
                             } else if self.selected_list_item + 1
@@ -809,7 +810,9 @@ impl App {
                     }
                     Key::Enter => {
                         if self.current_tab == Tab::Projects {
-                            if self.show_detail && self.selected_detail_item == 1 {
+                            if self.show_detail
+                                && self.selected_detail_item == self.detail_item_count() - 1
+                            {
                                 self.show_detail = false;
                                 self.detail_scroll = 0;
                             } else {

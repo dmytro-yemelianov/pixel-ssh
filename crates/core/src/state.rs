@@ -381,6 +381,17 @@ impl App {
         len.saturating_sub(visible)
     }
 
+    /// Focusable links on the open project detail page: the repository, the
+    /// live demo where the wide web layout shows one, then Return.
+    pub fn detail_item_count(&self) -> usize {
+        let wide_web = self.platform != Platform::Terminal && self.resolution.char_grid().0 >= 80;
+        if wide_web && PROJECTS[self.selected_project].demo.is_some() {
+            3
+        } else {
+            2
+        }
+    }
+
     pub fn detail_max_scroll(&self) -> usize {
         let (cols, _) = self.resolution.char_grid();
         let visible = if self.platform == Platform::Terminal {

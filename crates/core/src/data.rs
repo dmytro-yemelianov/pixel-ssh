@@ -7,6 +7,8 @@ pub struct Project {
     pub tldr: &'static str,
     pub tags: &'static [&'static str],
     pub wip: bool,
+    /// Live demo URL, shown as a second link on wide web detail pages.
+    pub demo: Option<&'static str>,
 }
 
 pub static PROJECTS: &[Project] = &[
@@ -16,6 +18,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "An open-core Rust CLI and MCP server that exposes 16 Autodesk Platform Services APIs to AI agents via typed contracts and 51 robust tools.",
         tags: &["rust", "mcp", "agents", "cad", "python"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Dry",
@@ -23,6 +26,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A typed, units-aware multi-level IR and Rust engine for algorithmic machine toolpaths (FFF/CNC/laser/robot) — LLVM/MLIR for machine motion.",
         tags: &["rust", "compilers", "cnc", "3d-printing"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Glueball",
@@ -30,6 +34,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A CAD-agnostic routed-assembly solver for frames, weldments, tube & pipe, and wire harnesses that compiles 3D graphs into deterministic build plans without linking a geometry kernel.",
         tags: &["rust", "cad-engine", "solvers", "compilers"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Klen",
@@ -37,6 +42,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A universal kernel for describing, executing, and formally verifying system safety contracts and state machine invariants in Lean 4.",
         tags: &["lean-4", "formal-methods", "verification", "rust"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "FTTH CAD Lineage",
@@ -44,6 +50,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "Four generations of FTTH design tooling (FiberCAD -> Gluon -> Photon -> Muon). Gluon replaces an LLM-authors-the-drawing approach with a deterministic pipeline.",
         tags: &["python", "autocad", "agents", "llm"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "VPA",
@@ -51,6 +58,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "Verifiable Physical Agent: A domain-specific language, optimizing compiler, and formally verified VM for hard real-time physical automation.",
         tags: &["compilers", "formal-verification", "assembly"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Barvinca",
@@ -58,6 +66,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A Cloudflare Workers control plane for edge workloads, combining routing, state, and deployment tools.",
         tags: &["typescript", "cloudflare-workers", "turborepo"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Upyr",
@@ -65,6 +74,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A local keyboard layout fixer that detects mistyped text and suggests the intended layout without sending keystrokes to a server.",
         tags: &["rust", "nlp", "privacy"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Dryer",
@@ -72,6 +82,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A generator for deterministic machine firmware, from declarative device configuration to buildable control code.",
         tags: &["rust", "embedded", "3d-printing"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Verbacorpus",
@@ -79,6 +90,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A searchable corpus of Ukrainian proverbs and sayings with structured metadata and an API.",
         tags: &["typescript", "pwa", "api"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Ukrainian Pattern Archive",
@@ -86,6 +98,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A structured, deduplicated corpus of Ukrainian vyshyvanka folk-embroidery charts powered by an OCR and computational geometry pipeline.",
         tags: &["python", "ocr", "computational-geometry"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Nasinnia",
@@ -93,6 +106,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A raster-first API and rendering engine for historical Ukrainian typography, pixel fonts, and bitmap glyph matrix generation.",
         tags: &["typescript", "typography", "canvas"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Criticality Lab",
@@ -100,6 +114,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "Interactive GPU-accelerated simulation of self-organized criticality, sandpile models, and percolation thresholds using WebGPU.",
         tags: &["rust", "wgpu", "simulation"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Tawara",
@@ -107,6 +122,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A WebAssembly runtime verification harness and memory assertion tool for sandboxed untrusted plugin evaluation.",
         tags: &["rust", "wasm", "verification"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Media Glitch",
@@ -114,6 +130,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "Deterministic databending and bitstream corruptor implemented in WebAssembly for algorithmic visual glitch generation.",
         tags: &["rust", "wasm", "glitch-art"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "Emoji Madness",
@@ -121,13 +138,15 @@ pub static PROJECTS: &[Project] = &[
         tldr: "Metal-accelerated cellular automata and particle system generating generative dynamic wallpaper simulations.",
         tags: &["swift", "metal", "generative-art"],
         wip: false,
+        demo: None,
     },
     Project {
-        title: "makeyd",
-        slug: "makeyd",
-        tldr: "make by Yemelianov Dmytro: a zero-dependency POSIX/GNU make in Rust with an executable Lean 4 model, checked three ways against GNU make by differential fuzzing.",
+        title: "maked",
+        slug: "maked",
+        tldr: "make + ed (Yemelianov/Emelyanov Dmytro): a zero-dependency POSIX/GNU make in Rust with an executable Lean 4 model, checked three ways against GNU make by differential fuzzing.",
         tags: &["rust", "lean-4", "build-systems", "formal-methods"],
         wip: false,
+        demo: None,
     },
     Project {
         title: "AutoCADED",
@@ -135,6 +154,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "AutoCAD 1.4 (1983) rebuilt in Rust by Yemelianov Dmytro: original DWG/DXF files and commands, checked against the real ACAD.EXE in an 8086 emulator; window, MCP and browser.",
         tags: &["rust", "cad", "reverse-engineering", "wasm"],
         wip: true,
+        demo: Some("https://autocaded.yemelianov.dev"),
     },
 ];
 

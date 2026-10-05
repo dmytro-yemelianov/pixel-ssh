@@ -1443,3 +1443,56 @@ fn wide_project_viewer_fills_available_height_and_tracks_clicks() {
         assert!(!app.show_detail, "{resolution:?}: return row");
     }
 }
+
+#[test]
+fn wide_detail_shows_live_demo_link_and_tab_cycles_three_items() {
+    let mut app = App::new();
+    app.current_tab = Tab::Projects;
+    app.show_detail = true;
+    app.selected_project = PROJECTS.iter().position(|p| p.slug == "autocaded").unwrap();
+    assert_eq!(app.detail_item_count(), 3);
+
+    let links = |app: &App| -> Vec<(String, String)> {
+        app.render()
+            .elements
+            .iter()
+            .filter_map(|e| match e {
+                Element::Link(l) => Some((l.text.clone(), l.url.clone())),
+                _ => None,
+            })
+            .collect()
+    };
+    let shown = links(&app);
+    assert!(shown
+        .iter()
+        .any(|(text, url)| url == "https://autocaded.yemelianov.dev"
+            && text.contains("Live demo: autocaded.yemelianov.dev")));
+    assert!(shown
+        .iter()
+        .any(|(_, url)| url == "https://github.com/dmytro-yemelianov/autocaded"));
+
+    // Tab: repository -> live demo -> Return -> repository.
+    for expected in [1, 2, 0] {
+        app.update(InputEvent::KeyDown(Key::Tab));
+        assert_eq!(app.selected_detail_item, expected);
+    }
+    assert!(
+        links(&app)
+            .iter()
+            .any(|(t, u)| u.ends_with("/autocaded") && t.starts_with('►')),
+        "repository focused"
+    );
+    // Enter on Return (the last item) closes the detail page.
+    app.update(InputEvent::KeyDown(Key::Tab));
+    app.update(InputEvent::KeyDown(Key::Tab));
+    app.update(InputEvent::KeyDown(Key::Enter));
+    assert!(!app.show_detail);
+
+    // Projects without a demo keep two items.
+    app.show_detail = true;
+    app.selected_detail_item = 0;
+    app.selected_project = 0;
+    assert_eq!(PROJECTS[0].demo, None);
+    assert_eq!(app.detail_item_count(), 2);
+    assert!(!links(&app).iter().any(|(t, _)| t.contains("Live demo")));
+}
