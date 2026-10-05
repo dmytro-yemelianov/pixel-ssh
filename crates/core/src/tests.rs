@@ -1496,3 +1496,52 @@ fn wide_detail_shows_live_demo_link_and_tab_cycles_three_items() {
     assert_eq!(app.detail_item_count(), 2);
     assert!(!links(&app).iter().any(|(t, _)| t.contains("Live demo")));
 }
+
+#[test]
+fn touch_drag_scrolls_the_project_list_with_the_finger() {
+    // Finger moving up (dy > 0) moves the list content up, like the detail
+    // pages; it scrolls the viewport instead of moving the highlight down.
+    for resolution in [
+        ResolutionMode::Vga,
+        ResolutionMode::Cga,
+        ResolutionMode::ZxSpectrum,
+    ] {
+        let mut app = App::new_web();
+        app.set_resolution(resolution);
+        assert_eq!(app.scroll_offset, 0);
+        assert!(app.update(InputEvent::TouchDrag { dy: 1 }));
+        assert_eq!(app.scroll_offset, 1, "{resolution:?}");
+        let visible = app.projects_visible_at(app.scroll_offset);
+        assert!(
+            app.selected_project >= app.scroll_offset
+                && app.selected_project < app.scroll_offset + visible,
+            "highlight stays on screen"
+        );
+        for _ in 0..100 {
+            app.update(InputEvent::TouchDrag { dy: 1 });
+        }
+        assert_eq!(app.scroll_offset, app.projects_max_scroll());
+        assert!(
+            !app.update(InputEvent::TouchDrag { dy: 1 }),
+            "stops at the end"
+        );
+        for _ in 0..100 {
+            app.update(InputEvent::TouchDrag { dy: -1 });
+        }
+        assert_eq!(app.scroll_offset, 0);
+    }
+}
+
+#[test]
+fn touch_drag_on_a_detail_page_scrolls_like_the_wheel() {
+    let mut a = App::new_web();
+    let mut b = App::new_web();
+    for app in [&mut a, &mut b] {
+        app.current_tab = Tab::Projects;
+        app.show_detail = true;
+    }
+    a.update(InputEvent::TouchDrag { dy: 1 });
+    b.update(InputEvent::Wheel { dx: 0, dy: 1 });
+    assert_eq!(a.detail_scroll, b.detail_scroll);
+    assert_eq!(a.detail_scroll, 1);
+}

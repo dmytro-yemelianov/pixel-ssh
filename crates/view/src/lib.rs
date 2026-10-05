@@ -753,12 +753,34 @@ pub enum Button {
 pub enum InputEvent {
     KeyDown(Key),
     KeyUp(Key),
-    PointerMove { x: u16, y: u16 },
-    PointerDown { x: u16, y: u16, button: Button },
-    PointerUp { x: u16, y: u16, button: Button },
+    PointerMove {
+        x: u16,
+        y: u16,
+    },
+    PointerDown {
+        x: u16,
+        y: u16,
+        button: Button,
+    },
+    PointerUp {
+        x: u16,
+        y: u16,
+        button: Button,
+    },
     PointerLeave,
-    Wheel { dx: i16, dy: i16 },
-    Resize { width: u16, height: u16 },
+    Wheel {
+        dx: i16,
+        dy: i16,
+    },
+    /// Touch drag by one step: `dy > 0` when the finger moved up. Lists scroll
+    /// with the finger (content follows it), like the detail pages.
+    TouchDrag {
+        dy: i16,
+    },
+    Resize {
+        width: u16,
+        height: u16,
+    },
 }
 
 /// Word wrap utility that wraps text to fit within `max_chars` per line.

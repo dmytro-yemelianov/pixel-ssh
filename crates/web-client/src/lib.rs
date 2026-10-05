@@ -592,14 +592,11 @@ pub fn start() -> Result<(), JsValue> {
                             *touch_dragged.borrow_mut() = true;
                             *touch_last_y.borrow_mut() = cy;
 
-                            // Dragging finger DOWN (dy > 0) scrolls UP (dy = -1 in Wheel)
-                            // Dragging finger UP (dy < 0) scrolls DOWN (dy = 1 in Wheel)
+                            // Content follows the finger on every page: dragging up
+                            // (dy < 0) sends TouchDrag +1, dragging down sends -1.
                             let scroll_step: i16 = if dy > 0.0 { -1 } else { 1 };
                             let mut s = state.borrow_mut();
-                            if s.app.update(InputEvent::Wheel {
-                                dx: 0,
-                                dy: scroll_step,
-                            }) {
+                            if s.app.update(InputEvent::TouchDrag { dy: scroll_step }) {
                                 s.dirty = true;
                             }
                         }
