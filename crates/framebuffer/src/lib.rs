@@ -938,6 +938,17 @@ mod tests {
     }
 
     #[test]
+    fn typographic_punctuation_maps_to_cp437_not_question_mark() {
+        use crate::font::unicode_to_cp437;
+        assert_eq!(unicode_to_cp437('—'), b'-');
+        assert_eq!(unicode_to_cp437('–'), b'-');
+        assert_eq!(unicode_to_cp437('’'), b'\'');
+        assert_eq!(unicode_to_cp437('ʼ'), b'\'');
+        assert_eq!(unicode_to_cp437('«'), 0xAE);
+        assert_eq!(unicode_to_cp437('»'), 0xAF);
+    }
+
+    #[test]
     fn cyrillic_8x16_glyph_matches_the_bundled_asset() {
         let idx = crate::font::cyrillic_index('Ї').expect("Ї is supported");
         assert_eq!(

@@ -2245,6 +2245,14 @@ pub fn unicode_to_cp437(ch: char) -> u8 {
         '♫' => 0x0E,
         '☼' => 0x0F,
 
+        // Typographic punctuation without a CP437 glyph: nearest ASCII or the
+        // CP437 guillemets.
+        '—' | '–' | '‒' | '―' => b'-',
+        '’' | '‘' | 'ʼ' => b'\'',
+        '“' | '”' => b'"',
+        '«' => 0xAE,
+        '»' => 0xAF,
+
         // Cyrillic uppercase visual homoglyphs
         'А' => b'A',
         'В' => b'B',
