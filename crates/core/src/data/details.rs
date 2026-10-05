@@ -744,7 +744,7 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
                 "executor: ready-queue scheduler, worker threads, shell-bypass fast path",
                 "jobserver: GNU token protocol as master or client, through recursive $(MAKE)",
                 "extras: CAS cache, Ninja import/export, compile_commands.json, Perfetto trace",
-                "lean_make: Lean 4 model with 30 kernel-checked theorems about the model",
+                "lean_make: Lean 4 model, 52 theorems incl. Graham bound for -jN schedules",
             ],
             specs: &[
                 ("Language", "Rust 1.88, edition 2024, zero dependencies"),
@@ -774,7 +774,7 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
             highlights: &[
                 "Own SHA-256, JSON and ANSI renderer: the binary has no third-party code",
                 "Recursive $(MAKE) inherits job slots through MAKEFLAGS, like GNU make",
-                "Lean theorems are about the model; the fuzzer is the bridge to the binary",
+                "Real -jN schedules are checked in CI by a proven-sound Lean checker",
                 "Cross-compiled from one Linux CI box for six targets with SHA256SUMS",
             ],
         },
