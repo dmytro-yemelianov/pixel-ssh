@@ -123,9 +123,9 @@ pub static PROJECTS: &[Project] = &[
         wip: false,
     },
     Project {
-        title: "makeyd",
-        slug: "makeyd",
-        tldr: "make by Yemelianov Dmytro: a zero-dependency POSIX/GNU make in Rust with an executable Lean 4 model, checked three ways against GNU make by differential fuzzing.",
+        title: "maked",
+        slug: "maked",
+        tldr: "make + ed (Yemelianov/Emelyanov Dmytro): a zero-dependency POSIX/GNU make in Rust with an executable Lean 4 model, checked three ways against GNU make by differential fuzzing.",
         tags: &["rust", "lean-4", "build-systems", "formal-methods"],
         wip: false,
     },

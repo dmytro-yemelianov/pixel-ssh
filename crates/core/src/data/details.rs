@@ -736,8 +736,8 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
                 "Native Swift 5.9 implementation with hardened macOS runtime sandbox",
             ],
         },
-        "makeyd" => ProjectDetail {
-            overview: "makeyd is a POSIX make with the GNU extensions real Makefiles use, written in Rust with no external crates. A Lean 4 model defines the rebuild semantics, and a differential fuzzer runs makeyd, GNU make and the model on random dependency graphs. Any disagreement in which targets get rebuilt fails CI.",
+        "maked" => ProjectDetail {
+            overview: "maked is a POSIX make with the GNU extensions real Makefiles use, written in Rust with no external crates. A Lean 4 model defines the rebuild semantics, and a differential fuzzer runs maked, GNU make and the model on random dependency graphs. Any disagreement in which targets get rebuilt fails CI.",
             subsystems: &[
                 "parser: variables, conditionals, include, define, eval/call, second expansion",
                 "graph + freshness: cycle detection, POSIX mtime rules or SHA-256 content hashes",
@@ -757,19 +757,19 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
                 "Makefile ──► parser ──► DAG ──► freshness ──► scheduler ──► -j8 workers",
                 "                                                  │",
                 "                                     jobserver tokens ─► $(MAKE)",
-                "fuzzer:  makeyd  ==  GNU make  ==  Lean 4 model   (rebuilt-target sets)",
+                "fuzzer:  maked  ==  GNU make  ==  Lean 4 model   (rebuilt-target sets)",
             ],
             diagram_40: &[
                 "Makefile ─► parser ─► DAG",
                 "               │",
                 "  freshness ─► scheduler ─► workers",
-                "  makeyd == gmake == Lean model",
+                "  maked == gmake == Lean model",
             ],
             diagram_32: &[
                 "Makefile ─► DAG",
                 "    │",
                 "fresh? ─► -jN workers",
-                "makeyd=gmake=Lean",
+                "maked=gmake=Lean",
             ],
             highlights: &[
                 "Own SHA-256, JSON and ANSI renderer: the binary has no third-party code",
