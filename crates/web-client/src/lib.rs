@@ -141,6 +141,12 @@ pub fn start() -> Result<(), JsValue> {
                 }
             }
         }
+        let native_route = search.contains("doc=")
+            || search.contains("project=")
+            || search.contains("tab=projects");
+        if native_route {
+            app.open_route(&format!("/{search}"));
+        }
         if let Some(scroll_str) = search.split("scroll=").nth(1) {
             let num_str: String = scroll_str
                 .chars()
@@ -367,7 +373,9 @@ pub fn start() -> Result<(), JsValue> {
                         s.dirty = true;
                     }
                     if let Some(url) = s.app.take_link_activation() {
-                        if let Some(window) = web_sys::window() {
+                        if s.app.open_route(&url) {
+                            s.dirty = true;
+                        } else if let Some(window) = web_sys::window() {
                             let _ = window.open_with_url_and_target(&url, "_blank");
                         }
                     }
@@ -410,6 +418,10 @@ pub fn start() -> Result<(), JsValue> {
 
                 // Check if user clicked on a link
                 if let Some(link) = view.link_at(fb_x, fb_y) {
+                    if s.app.open_route(&link.url) {
+                        s.dirty = true;
+                        return;
+                    }
                     if !link.url.starts_with('#') {
                         if let Some(w) = web_sys::window() {
                             let _ = w.open_with_url_and_target(&link.url, "_blank");
@@ -709,6 +721,10 @@ pub fn start() -> Result<(), JsValue> {
                                     let view = s.app.render();
 
                                     if let Some(link) = view.link_at(fb_x, fb_y) {
+                                        if s.app.open_route(&link.url) {
+                                            s.dirty = true;
+                                            return;
+                                        }
                                         if !link.url.starts_with('#') {
                                             if let Some(w) = web_sys::window() {
                                                 let _ =

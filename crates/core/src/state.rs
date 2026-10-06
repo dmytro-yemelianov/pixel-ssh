@@ -36,6 +36,8 @@ pub struct App {
     pub scroll_offset: usize,
     pub resume_scroll: usize,
     pub about_scroll: usize,
+    pub document: Option<usize>,
+    pub(crate) document_lines: Vec<(String, u8, bool)>,
     pub detail_scroll: usize,
     pub resolution: ResolutionMode,
     /// Native RGB palette of the selected display system.
@@ -90,6 +92,8 @@ impl App {
             scroll_offset: 0,
             resume_scroll: 0,
             about_scroll: 0,
+            document: None,
+            document_lines: Vec::new(),
             detail_scroll: 0,
             resolution,
             color_palette,
@@ -129,6 +133,8 @@ impl App {
             scroll_offset: 0,
             resume_scroll: 0,
             about_scroll: 0,
+            document: None,
+            document_lines: Vec::new(),
             detail_scroll: 0,
             resolution,
             color_palette,
@@ -172,6 +178,8 @@ impl App {
         self.palette_mode = self.interface_theme.font_mode();
         self.ensure_selected_project_visible();
         self.select_link(self.selected_link);
+        self.reflow_document();
+        self.about_scroll = self.about_scroll.min(self.about_max_scroll());
         let (w, h) = self.resolution.resolution();
         let (c, r) = self.resolution.char_grid();
         self.status = format!("System: {} ({}x{}, {}x{} cols)", res.name(), w, h, c, r);
@@ -213,6 +221,8 @@ impl App {
     pub fn set_terminal_size(&mut self, cols: u16, rows: u16) {
         self.terminal_cols = cols.max(40);
         self.terminal_rows = rows.max(20);
+        self.reflow_document();
+        self.about_scroll = self.about_scroll.min(self.about_max_scroll());
     }
 
     pub fn view_dimensions(&self) -> (u16, u16) {
@@ -234,6 +244,7 @@ impl App {
             self.select_link(self.selected_link);
             self.detail_scroll = self.detail_scroll.min(self.detail_max_scroll());
             self.resume_scroll = self.resume_scroll.min(self.resume_max_scroll());
+            self.reflow_document();
             self.about_scroll = self.about_scroll.min(self.about_max_scroll());
         }
     }
@@ -378,6 +389,17 @@ impl App {
     }
 
     pub fn about_max_scroll(&self) -> usize {
+        if self.document.is_some() {
+            let rows = if self.platform == Platform::Terminal {
+                self.terminal_rows
+            } else {
+                self.view_dimensions().1 / self.resolution.line_height()
+            };
+            return self
+                .document_lines
+                .len()
+                .saturating_sub(rows.saturating_sub(7) as usize);
+        }
         if self.platform == Platform::Terminal {
             let visible = (self.terminal_rows as usize).saturating_sub(6).max(8);
             return ABOUT_LINES_80.len().saturating_sub(visible);

@@ -23,7 +23,10 @@ impl App {
         match self.selected_list_item {
             0 => self.current_tab = Tab::Resume,
             1 => self.current_tab = Tab::Contact,
-            2 => self.current_tab = Tab::About,
+            2 => {
+                self.document = None;
+                self.current_tab = Tab::About;
+            }
             _ => {
                 self.selected_project = self.selected_list_item - PROJECT_LIST_PREFIX_ITEMS;
                 self.show_detail = true;
@@ -287,7 +290,10 @@ impl App {
 
                         Key::Tab => {
                             self.current_tab = match self.current_tab {
-                                Tab::Resume => Tab::About,
+                                Tab::Resume => {
+                                    self.document = None;
+                                    Tab::About
+                                }
                                 Tab::About => Tab::Contact,
                                 _ => Tab::Projects,
                             };

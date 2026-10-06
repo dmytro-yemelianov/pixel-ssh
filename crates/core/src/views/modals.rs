@@ -213,7 +213,9 @@ impl App {
         cols: u16,
     ) {
         let is_resume = self.current_tab == Tab::Resume;
-        let article_title = if cols >= 80 {
+        let article_title = if let Some(index) = self.document {
+            crate::documents::DOCUMENTS[index].1
+        } else if cols >= 80 {
             if is_resume {
                 "ARTICLE: CURRICULUM VITAE"
             } else {
@@ -296,21 +298,29 @@ impl App {
             TextStyle::new(Color::from_palette(10)).bold(),
         )));
 
-        let (lines, scroll_offset, max_scroll): (&[(&str, u8, bool)], usize, usize) = if is_resume {
-            let l: &[(&str, u8, bool)] = match cols {
-                100 | 80 => RESUME_LINES_80,
-                40 => RESUME_LINES_40,
-                _ => RESUME_LINES_32,
+        let document_lines: Vec<_> = self
+            .document_lines
+            .iter()
+            .map(|(s, p, b)| (s.as_str(), *p, *b))
+            .collect();
+        let (lines, scroll_offset, max_scroll): (&[(&str, u8, bool)], usize, usize) =
+            if self.document.is_some() {
+                (&document_lines, self.about_scroll, self.about_max_scroll())
+            } else if is_resume {
+                let l: &[(&str, u8, bool)] = match cols {
+                    100 | 80 => RESUME_LINES_80,
+                    40 => RESUME_LINES_40,
+                    _ => RESUME_LINES_32,
+                };
+                (l, self.resume_scroll, self.resume_max_scroll())
+            } else {
+                let l: &[(&str, u8, bool)] = match cols {
+                    100 | 80 => ABOUT_LINES_80,
+                    40 => ABOUT_LINES_40,
+                    _ => ABOUT_LINES_32,
+                };
+                (l, self.about_scroll, self.about_max_scroll())
             };
-            (l, self.resume_scroll, self.resume_max_scroll())
-        } else {
-            let l: &[(&str, u8, bool)] = match cols {
-                100 | 80 => ABOUT_LINES_80,
-                40 => ABOUT_LINES_40,
-                _ => ABOUT_LINES_32,
-            };
-            (l, self.about_scroll, self.about_max_scroll())
-        };
 
         let visible_lines = (box_rows.saturating_sub(2)) as usize;
         let content_y_start = box_y + char_h;
@@ -350,7 +360,11 @@ impl App {
         }
 
         // On Web, render high-resolution dithered portrait sprite inside the framed architect card
-        if !is_resume && self.platform == pixel_ssh_view::Platform::Web && scroll_offset == 0 {
+        if !is_resume
+            && self.document.is_none()
+            && self.platform == pixel_ssh_view::Platform::Web
+            && scroll_offset == 0
+        {
             let sprite_size = if cols >= 80 { 96 } else { 64 };
             let sprite_x = box_x + 16;
             let sprite_y = content_y_start + char_h;
