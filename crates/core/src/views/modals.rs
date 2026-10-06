@@ -879,7 +879,10 @@ impl App {
         }
 
         let shortcuts = [
-            ("P H S V Q", "Projects, Help, cycle System, Visuals, Quit"),
+            (
+                "P L H S V Q",
+                "Projects, Links, Help, cycle System, Visuals, Quit",
+            ),
             ("Enter", "Open project details / Return to catalog"),
             ("h / l", "Navigate previous / next project in detail view"),
             (

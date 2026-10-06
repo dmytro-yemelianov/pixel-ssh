@@ -19,7 +19,7 @@ The project screen begins with three destinations, followed by a divider and num
 [01] RAPS
 ```
 
-The footer contains `Prj Hlp Sys Vis Qut`, in that order. `P`, `H`, `S`, `V`, and `Q` invoke those controls. `S` immediately cycles the eight systems. On the plain Projects list, `h` also opens Help. In a project detail, `h`/`l` or Left/Right change projects. `Qut` closes a dialog or detail first; from the plain Projects list it opens the screensaver in the browser or ends the SSH session in the terminal. Numbers do not select global destinations. Up/Down and `j`/`k` navigate the focused list or menu; Enter activates the selection; Escape closes a menu or returns to Projects. On touch screens, the corresponding buttons and direction pad perform the same actions.
+The footer contains `Prj Hlp Sys Vis Qut Lnk`, in that order. `P`, `H`, `S`, `V`, and `Q` invoke those controls. `L` opens project launchers and repositories in the same framebuffer UI. `S` immediately cycles the eight systems. On the plain Projects list, `h` also opens Help. In a project detail, `h`/`l` or Left/Right change projects. `Qut` closes a dialog or detail first; from the plain Projects list it opens the screensaver in the browser or ends the SSH session in the terminal. Numbers do not select global destinations. Up/Down and `j`/`k` navigate the focused list or menu; Enter activates the selection; Escape closes a menu or returns to Projects. On touch screens, the corresponding buttons and direction pad perform the same actions.
 
 | System resolution | Grid | Projects and footer | Settings controls |
 | --- | --- | --- | --- |

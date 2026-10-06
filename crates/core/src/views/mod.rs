@@ -3,6 +3,7 @@
 pub mod about;
 pub mod contact;
 pub mod help;
+pub mod links;
 pub mod modals;
 pub mod projects;
 pub mod resume;
@@ -204,6 +205,8 @@ impl App {
         if self.platform == Platform::Web {
             if self.current_tab == Tab::Contact {
                 self.render_contact(&mut view);
+            } else if self.current_tab == Tab::Links {
+                self.render_links(&mut view);
             } else {
                 self.render_projects(&mut view);
             }
@@ -216,6 +219,7 @@ impl App {
         } else {
             match self.current_tab {
                 Tab::Projects => self.render_projects(&mut view),
+                Tab::Links => self.render_links(&mut view),
                 Tab::Resume => self.render_resume(&mut view),
                 Tab::About => self.render_about(&mut view),
                 Tab::Visuals => self.render_about(&mut view),
@@ -311,7 +315,7 @@ impl App {
             } else if self.current_tab == Tab::Resume || self.current_tab == Tab::About {
                 "[j/k] Scroll [ESC] Return"
             } else if self.platform == Platform::Web {
-                "P/H/S/V/Q j/k:Nav"
+                "P/L/H/S/V/Q j/k:Nav"
             } else {
                 "P/H/S/V/Q j/k:Scroll Enter"
             };
@@ -345,7 +349,7 @@ impl App {
             } else if self.current_tab == Tab::Resume || self.current_tab == Tab::About {
                 "j/k: Scroll ESC: Exit"
             } else {
-                "P/H/S/V/Q j/k:Nav"
+                "P/L/H/S/V/Q j/k:Nav"
             };
             view.add(Element::Text(TextElement {
                 x: 2,
@@ -422,18 +426,11 @@ impl App {
         &self,
         view: &mut View,
         width: u16,
-        height: u16,
+        _height: u16,
         cols: u16,
     ) {
         let compact = cols < 80;
-        let nav_y = if self.platform == Platform::Terminal {
-            (self.terminal_rows.saturating_sub(2)) * 16
-        } else if compact {
-            height.saturating_sub(20)
-        } else {
-            height.saturating_sub(32)
-        };
-        let row_h = if compact { 10 } else { 16 };
+        let (nav_y, row_h) = self.navigation_geometry();
         let items = [
             (
                 if compact { "Prj" } else { "Projects" },
@@ -451,6 +448,10 @@ impl App {
                 self.active_modal == ActiveModal::Visuals,
             ),
             (if compact { "Qut" } else { "Quit" }, false),
+            (
+                if compact { "Lnk" } else { "Links" },
+                self.current_tab == Tab::Links && self.active_modal == ActiveModal::None,
+            ),
         ];
         view.add(Element::Rect(RectElement {
             x: 0,

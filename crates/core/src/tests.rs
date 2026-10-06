@@ -4,6 +4,77 @@ use super::*;
 use pixel_ssh_view::*;
 
 #[test]
+fn links_screen_opens_apps_and_repositories_and_drags_with_the_finger() {
+    let mut app = App::new_web();
+    app.update(InputEvent::KeyDown(Key::Char('l')));
+    assert_eq!(app.current_tab, Tab::Links);
+    for url in [
+        "https://autocaded.yemelianov.dev/",
+        "https://github.com/dmytro-yemelianov/autocaded",
+        "https://nethacked.yemelianov.dev/",
+        "https://github.com/dmytro-yemelianov/NetHackED",
+    ] {
+        app.update(InputEvent::KeyDown(Key::Enter));
+        assert_eq!(app.take_link_activation().as_deref(), Some(url));
+        app.update(InputEvent::KeyDown(Key::Tab));
+    }
+    app.update(InputEvent::KeyDown(Key::Home));
+    app.update(InputEvent::TouchDrag { dy: -1 });
+    assert_eq!(app.selected_link, 1);
+    assert_eq!(app.take_link_activation(), None);
+    app.update(InputEvent::TouchDrag { dy: 1 });
+    assert_eq!(app.selected_link, 0);
+    app.update(InputEvent::KeyDown(Key::Escape));
+    assert_eq!(app.current_tab, Tab::Projects);
+}
+
+#[test]
+fn links_menu_and_last_link_remain_accessible_in_every_display_size() {
+    for resolution in ResolutionMode::ALL {
+        for portrait in [false, true] {
+            let mut app = App::new_web();
+            app.set_resolution(resolution);
+            if portrait {
+                app.set_web_height(Some(1200));
+            }
+            let (width, _) = app.view_dimensions();
+            let (nav_y, nav_h) = app.navigation_geometry();
+            app.update(InputEvent::PointerDown {
+                x: width / 6 * 5 + 12,
+                y: nav_y + nav_h / 2,
+                button: Button::Left,
+            });
+            assert_eq!(app.current_tab, Tab::Links);
+            app.update(InputEvent::KeyDown(Key::End));
+            let view = app.render();
+            let last = view
+                .elements
+                .iter()
+                .find_map(|element| match element {
+                    Element::Link(link) if link.url == "https://yemelianov.dev/catalog/" => {
+                        Some(link)
+                    }
+                    _ => None,
+                })
+                .unwrap();
+            assert!(last.y + resolution.line_height() < nav_y);
+            assert_eq!(
+                view.link_at(last.x + 4, last.y + 2)
+                    .map(|link| link.url.as_str()),
+                Some("https://yemelianov.dev/catalog/")
+            );
+            app.update(InputEvent::KeyDown(Key::Enter));
+            assert_eq!(
+                app.take_link_activation().as_deref(),
+                Some("https://yemelianov.dev/catalog/")
+            );
+            app.update(InputEvent::KeyDown(Key::Home));
+            assert_eq!(app.links_scroll, 0);
+        }
+    }
+}
+
+#[test]
 fn detail_enter_activates_links_without_reopening_or_resetting_the_page() {
     let mut app = App::new_web();
     app.selected_project = PROJECTS.iter().position(|p| p.demo.is_some()).unwrap();
@@ -143,6 +214,7 @@ fn test_all_systems_and_tabs_render_within_bounds() {
 
         for tab in [
             Tab::Projects,
+            Tab::Links,
             Tab::Resume,
             Tab::About,
             Tab::Visuals,
@@ -324,6 +396,7 @@ fn test_terminal_mode_omits_visuals_tab_and_cycles_cleanly() {
         app.palette_mode = mode;
         for tab in [
             Tab::Projects,
+            Tab::Links,
             Tab::Resume,
             Tab::About,
             Tab::Contact,
@@ -413,7 +486,7 @@ fn test_web_mode_modals_and_articles() {
     assert!(app.update(InputEvent::KeyDown(Key::Escape)));
     assert_eq!(app.current_tab, Tab::Projects);
 
-    // Tab cycling cycles 1 -> 2 -> 3 -> 4 -> 1
+    // Tab reaches Links; Escape returns to Projects.
     assert!(app.update(InputEvent::KeyDown(Key::Tab)));
     assert_eq!(app.current_tab, Tab::Resume);
     assert!(app.update(InputEvent::KeyDown(Key::Tab)));
@@ -421,6 +494,8 @@ fn test_web_mode_modals_and_articles() {
     assert!(app.update(InputEvent::KeyDown(Key::Tab)));
     assert_eq!(app.current_tab, Tab::Contact);
     assert!(app.update(InputEvent::KeyDown(Key::Tab)));
+    assert_eq!(app.current_tab, Tab::Links);
+    assert!(app.update(InputEvent::KeyDown(Key::Escape)));
     assert_eq!(app.current_tab, Tab::Projects);
 }
 
@@ -1162,9 +1237,9 @@ fn wide_project_cards_show_complete_titles_tags_and_footer_labels() {
         }
         assert!((7 + count as u16 * 2) <= rows - 3);
 
-        let slot_width = view.width / 5;
+        let slot_width = view.width / 6;
         let nav_y = view.height - 32;
-        for (index, label) in ["Projects", "Help", "System", "Visuals", "Quit"]
+        for (index, label) in ["Projects", "Help", "System", "Visuals", "Quit", "Links"]
             .iter()
             .enumerate()
         {
@@ -1210,6 +1285,7 @@ fn wide_project_list_can_scroll_to_the_last_card() {
 fn test_80_col_all_elements_aligned_to_16px_grid() {
     for tab in [
         Tab::Projects,
+        Tab::Links,
         Tab::Resume,
         Tab::About,
         Tab::Visuals,
