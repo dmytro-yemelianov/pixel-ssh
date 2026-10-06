@@ -26,6 +26,10 @@ canvas#screen {
   cursor: none;
 }
 .startup-error { color: #f85149; padding: 20px; }
+canvas#screen:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
 .accessible-link {
   position: absolute;
   left: -9999px;

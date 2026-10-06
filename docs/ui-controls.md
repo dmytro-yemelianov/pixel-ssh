@@ -4,6 +4,11 @@ The `S` key cycles eight display systems. Each system applies its native resolut
 
 ## Projects and navigation
 
+In the browser, Tab first focuses the standard portfolio link, then the canvas.
+Click the canvas or focus it with Tab to use application shortcuts. Within the
+canvas, Tab cycles application controls and Shift+Tab returns focus to the standard
+portfolio link. Browser shortcuts using Ctrl, Cmd, or Alt remain available.
+
 The project screen begins with three destinations, followed by a divider and numbered portfolio entries:
 
 ```text

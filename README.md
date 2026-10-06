@@ -12,6 +12,10 @@ The Projects screen starts with CV, Contacts, and About, then the numbered portf
 
 The terminal uses the same content and ANSI rendering. `S` cycles display systems, each with its own font and colors.
 
+In the browser, Tab focuses the standard portfolio link and then the canvas.
+Click or focus the canvas to use its keyboard controls. Tab cycles controls inside
+the app; Shift+Tab returns to the standard portfolio link.
+
 On portrait screens, the browser keeps the selected system's column width and adds logical rows to fill the available height. The installable browser app is scoped to the terminal route and caches its interface and WASM bundle for offline use. Online visits check for updated files.
 
 ## Run locally

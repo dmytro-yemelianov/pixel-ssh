@@ -17,7 +17,7 @@
 <body>
   <main id="screen-shell">
     <a class="accessible-link" href="/">Read the standard portfolio</a>
-    <canvas id="screen" width="1280" height="800" role="img" aria-label="Interactive pixel portfolio. Press H for controls, P for projects, S to cycle systems, and V for visuals. The standard portfolio is available through the first keyboard link."></canvas>
+    <canvas id="screen" width="1280" height="800" tabindex="0" role="img" aria-label="Interactive pixel portfolio. Focus this canvas to use H for controls, P for projects, S to cycle systems, and V for visuals. Tab cycles app controls; Shift+Tab returns to the standard portfolio link."></canvas>
   </main>
 
   <script type="module">
@@ -35,6 +35,7 @@
       const params = new URLSearchParams(window.location.search);
       const keys = params.get('keys');
       if (keys) {
+        document.getElementById('screen').focus();
         let delay = 150;
         for (const key of keys.split(',')) {
           setTimeout(() => {
