@@ -95,6 +95,8 @@ pub fn start() -> Result<(), JsValue> {
             app.current_tab = pixel_ssh_core::Tab::Contact;
         } else if search.contains("tab=help") {
             app.active_modal = pixel_ssh_view::ActiveModal::Help;
+        } else if search.contains("tab=links") {
+            app.current_tab = pixel_ssh_core::Tab::Links;
         }
         if search.contains("detail=1") {
             app.show_detail = true;

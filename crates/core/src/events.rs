@@ -2,6 +2,7 @@
 
 use crate::data::PROJECTS;
 use crate::state::{App, Tab};
+use crate::views::links::PROJECT_LINKS;
 use pixel_ssh_view::{ActiveModal, InputEvent, Key, Platform, VisualEffects};
 
 const PROJECT_LIST_PREFIX_ITEMS: usize = 3;
@@ -224,6 +225,44 @@ impl App {
                     }
                 }
 
+                if matches!(key, Key::Char('l') | Key::Char('L'))
+                    && !(self.current_tab == Tab::Projects && self.show_detail)
+                {
+                    self.current_tab = Tab::Links;
+                    self.show_detail = false;
+                    self.select_link(self.selected_link);
+                    return true;
+                }
+
+                if self.current_tab == Tab::Links {
+                    let selected = match key {
+                        Key::Up | Key::Char('k') => Some(self.selected_link.saturating_sub(1)),
+                        Key::Down | Key::Char('j') => Some(self.selected_link + 1),
+                        Key::Tab => Some((self.selected_link + 1) % PROJECT_LINKS.len()),
+                        Key::Home => Some(0),
+                        Key::End => Some(PROJECT_LINKS.len() - 1),
+                        Key::PageUp => {
+                            Some(self.selected_link.saturating_sub(self.links_geometry().2))
+                        }
+                        Key::PageDown => Some(self.selected_link + self.links_geometry().2),
+                        Key::Enter => {
+                            self.link_activation =
+                                Some(PROJECT_LINKS[self.selected_link].1.to_owned());
+                            self.status = format!("Open: {}", PROJECT_LINKS[self.selected_link].1);
+                            return true;
+                        }
+                        Key::Escape | Key::Char('q') | Key::Char('Q') => {
+                            self.current_tab = Tab::Projects;
+                            return true;
+                        }
+                        _ => None,
+                    };
+                    if let Some(selected) = selected {
+                        self.select_link(selected);
+                        return true;
+                    }
+                }
+
                 // If on Web with an article overlay open (Tab::Resume or Tab::About):
                 if self.platform == Platform::Web
                     && (self.current_tab == Tab::Resume || self.current_tab == Tab::About)
@@ -359,7 +398,7 @@ impl App {
                                 (Platform::Web, Tab::Projects) => Tab::Resume,
                                 (Platform::Web, Tab::Resume) => Tab::About,
                                 (Platform::Web, Tab::About) => Tab::Contact,
-                                (Platform::Web, Tab::Contact) => Tab::Projects,
+                                (Platform::Web, Tab::Contact) => Tab::Links,
                                 (Platform::Web, _) => Tab::Projects,
 
                                 (Platform::Terminal, Tab::Projects) => Tab::Resume,
@@ -368,6 +407,7 @@ impl App {
                                 (Platform::Terminal, Tab::Visuals) => Tab::Contact,
                                 (Platform::Terminal, Tab::Contact) => Tab::Help,
                                 (Platform::Terminal, Tab::Help) => Tab::Projects,
+                                (Platform::Terminal, Tab::Links) => Tab::Projects,
                             };
                             self.show_detail = false;
                             true
@@ -857,8 +897,8 @@ impl App {
                 }
             }
             InputEvent::TouchDrag { dy } => {
-                let list = self.current_tab == Tab::Projects
-                    && !self.show_detail
+                let list = (self.current_tab == Tab::Links
+                    || (self.current_tab == Tab::Projects && !self.show_detail))
                     && self.active_modal == ActiveModal::None;
                 // TouchDrag uses the wheel convention: positive means finger up.
                 // Lists move the selector with the finger; articles scroll content.
@@ -874,6 +914,17 @@ impl App {
                 }
 
                 let delta = (dy.unsigned_abs() as usize).max(1);
+                if self.current_tab == Tab::Links {
+                    let selected = if dy > 0 {
+                        self.selected_link.saturating_add(delta)
+                    } else if dy < 0 {
+                        self.selected_link.saturating_sub(delta)
+                    } else {
+                        return false;
+                    };
+                    self.select_link(selected);
+                    return true;
+                }
                 if self.current_tab == Tab::Resume {
                     if dy > 0 {
                         self.resume_scroll =
@@ -932,14 +983,11 @@ impl App {
                 }
 
                 // 1.5. Single global bottom navigation bar clicks (interacts across all views and modals)
-                let fkey_y_range = if height <= 200 {
-                    height.saturating_sub(22)..=height.saturating_sub(10)
-                } else {
-                    height.saturating_sub(34)..=height.saturating_sub(16)
-                };
+                let (nav_y, nav_h) = self.navigation_geometry();
+                let fkey_y_range = nav_y..nav_y + nav_h;
 
                 if fkey_y_range.contains(&y) {
-                    let slot_count = 5;
+                    let slot_count = 6;
                     let slot_w = width / slot_count;
                     let slot = ((x / slot_w) as usize).min(slot_count as usize - 1);
                     match slot {
@@ -971,6 +1019,13 @@ impl App {
                             } else {
                                 self.screensaver_active = true;
                             }
+                            return true;
+                        }
+                        5 => {
+                            self.current_tab = Tab::Links;
+                            self.show_detail = false;
+                            self.active_modal = ActiveModal::None;
+                            self.select_link(self.selected_link);
                             return true;
                         }
                         _ => {}
@@ -1204,6 +1259,14 @@ impl App {
                             }
                             return true;
                         }
+                    }
+                }
+
+                if self.current_tab == Tab::Links {
+                    let (top, lh, visible) = self.links_geometry();
+                    if y >= top && y < top + visible as u16 * 2 * lh {
+                        self.select_link(self.links_scroll + ((y - top) / (2 * lh)) as usize);
+                        return true;
                     }
                 }
 

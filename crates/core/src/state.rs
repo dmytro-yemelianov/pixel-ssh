@@ -11,6 +11,7 @@ use pixel_ssh_view::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
     Projects,
+    Links,
     Resume,
     About,
     Visuals,
@@ -28,6 +29,8 @@ pub struct App {
     /// Focused row in the Projects list: CV, Contacts, About, then projects.
     pub selected_list_item: usize,
     pub selected_project: usize,
+    pub selected_link: usize,
+    pub links_scroll: usize,
     pub show_detail: bool,
     pub status: String,
     pub scroll_offset: usize,
@@ -80,6 +83,8 @@ impl App {
             screensaver_tick: 0,
             selected_list_item: 0,
             selected_project: 0,
+            selected_link: 0,
+            links_scroll: 0,
             show_detail: false,
             status: String::from("Ready. P Projects | H Help | S Cycle system | V Visuals"),
             scroll_offset: 0,
@@ -117,6 +122,8 @@ impl App {
             screensaver_tick: 0,
             selected_list_item: 0,
             selected_project: 0,
+            selected_link: 0,
+            links_scroll: 0,
             show_detail: false,
             status: String::from("Ready. P Projects | H Help | S Cycle system | j/k Scroll"),
             scroll_offset: 0,
@@ -164,6 +171,7 @@ impl App {
         };
         self.palette_mode = self.interface_theme.font_mode();
         self.ensure_selected_project_visible();
+        self.select_link(self.selected_link);
         let (w, h) = self.resolution.resolution();
         let (c, r) = self.resolution.char_grid();
         self.status = format!("System: {} ({}x{}, {}x{} cols)", res.name(), w, h, c, r);
@@ -223,6 +231,7 @@ impl App {
         if self.web_height != height {
             self.web_height = height;
             self.ensure_selected_project_visible();
+            self.select_link(self.selected_link);
             self.detail_scroll = self.detail_scroll.min(self.detail_max_scroll());
             self.resume_scroll = self.resume_scroll.min(self.resume_max_scroll());
             self.about_scroll = self.about_scroll.min(self.about_max_scroll());

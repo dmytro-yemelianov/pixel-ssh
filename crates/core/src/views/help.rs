@@ -35,7 +35,7 @@ impl App {
         }));
 
         let shortcuts = vec![
-            "[P/H/S/V/Q] Projects, Help, cycle System, Visuals, Quit",
+            "[P/L/H/S/V/Q] Projects, Links, Help, cycle System, Visuals, Quit",
             "[V] Visuals  [Tab] Cycle views  [Up/Down or j/k] Navigate",
             "[Enter] Select / details  [Esc] Back  [PgUp/PgDn] Page scroll",
             "[h/l] Previous/next project in detail; h opens Help on the list",
@@ -249,7 +249,7 @@ impl App {
 
         let sections = [
             ("KEYBOARD SHORTCUTS:", vec![
-                "[P/H/S/V/Q]      Projects, Help, cycle System, Visuals, Quit",
+                "[P/L/H/S/V/Q]      Projects, Links, Help, cycle System, Visuals, Quit",
                 "[?]                Toggle this Help Reference from any tab",
                 "[Tab]              Cycle forward to next tab / switch links in detail",
                 "[S]               Cycle display systems with native font and colors",

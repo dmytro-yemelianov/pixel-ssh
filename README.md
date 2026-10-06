@@ -8,7 +8,7 @@ The web client supports SVGA 800×600, SGA 640×480, VGA 640×400, EGA 640×350,
 
 The framebuffer uses 8-bit color indices. WebGL2 looks up the active 256-color palette from a 256×1 RGBA texture, then applies optional CRT effects. VGA-sized layouts use an 8×16 CP437-ordered bitmap and compact layouts use 8×8 bitmaps. EGA uses a separately sourced 8×14 CP437 bitmap, licensed under CC BY-SA 4.0; see [its attribution](crates/framebuffer/assets/README.md). The provenance status for every bundled font and named palette is documented in [the asset audit](docs/font-palette-provenance.md).
 
-The Projects screen starts with CV, Contacts, and About, then the numbered portfolio entries. The bottom menu is `Prj Hlp Sys Vis Qut`: its first letters open Projects, Help, cycle display systems, Visuals, and Quit. Numbers have no global assignment; `1`–`6` select presets only inside Visuals. `v` opens Visuals. Arrow keys and `j`/`k` navigate lists, Enter activates the selected item, and Escape closes a dialog or returns to Projects. On touch screens, tap the canvas menu and swipe to navigate.
+The Projects screen starts with CV, Contacts, and About, then the numbered portfolio entries. The bottom menu is `Prj Hlp Sys Vis Qut Lnk`: its first letters open Projects, Help, cycle display systems, Visuals, and Quit. L opens the separate project links screen within the canvas. Numbers have no global assignment; `1`–`6` select presets only inside Visuals. `v` opens Visuals. Arrow keys and `j`/`k` navigate lists, Enter activates the selected item, and Escape closes a dialog or returns to Projects. On touch screens, tap the canvas menu and swipe to navigate.
 
 The terminal uses the same content and ANSI rendering. `S` cycles display systems, each with its own font and colors.
 
