@@ -509,11 +509,12 @@ fn test_native_zx_content_stays_above_bottom_navigation() {
 
     let projects = app.render();
     let nav_y = projects.height - 20;
+    let project_count = format!("/{}", PROJECTS.len());
     assert!(projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y == 152 && t.text.contains("/19")
+        Element::Text(t) if t.y == 152 && t.text.contains(&project_count)
     )));
     assert!(!projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y > 152 && t.y < nav_y && t.text.contains("/19")
+        Element::Text(t) if t.y > 152 && t.y < nav_y && t.text.contains(&project_count)
     )));
 
     app.current_tab = Tab::Resume;
@@ -713,10 +714,10 @@ fn test_clock_colon_steady_cadence() {
 }
 
 #[test]
-fn test_all_19_projects_have_detailed_specs_and_subsystems() {
+fn test_all_20_projects_have_detailed_specs_and_subsystems() {
     use crate::data::details::get_project_detail;
 
-    assert_eq!(PROJECTS.len(), 19, "Expected exactly 19 portfolio projects");
+    assert_eq!(PROJECTS.len(), 20, "Expected exactly 20 portfolio projects");
 
     for p in PROJECTS {
         let detail = get_project_detail(p.slug);
@@ -1197,8 +1198,9 @@ fn wide_project_list_can_scroll_to_the_last_card() {
         let view = app.render();
         let last_row = PROJECTS.len() - 1 - app.scroll_offset;
         let y = (3 + last_row as u16 * 2) * resolution.line_height();
+        let last_card = format!("[{}] {}", PROJECTS.len(), PROJECTS.last().unwrap().title);
         assert!(view.elements.iter().any(|element| matches!(element,
-            Element::Text(text) if text.x == 16 && text.y == y && text.text.contains("[19] NetHackED")
+            Element::Text(text) if text.x == 16 && text.y == y && text.text.contains(&last_card)
         )));
         assert!(y + 2 * resolution.line_height() <= view.height - 3 * resolution.line_height());
     }

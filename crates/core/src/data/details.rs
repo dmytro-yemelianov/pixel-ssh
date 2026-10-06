@@ -862,6 +862,51 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
                 "Corpus bytes never ship: the browser loads your own 1.4 files",
             ],
         },
+        "pixel-ssh" => ProjectDetail {
+            overview: "Pixel SSH presents an interactive portfolio through a browser canvas and an SSH terminal. Both front ends use the same Rust application core and project content. The browser renders indexed-color frames with WebGL2 and optional CRT effects; the SSH server renders ANSI output with independent state for each channel.",
+            subsystems: &[
+                "core and view: shared navigation, project content, and render elements",
+                "framebuffer: indexed-color rasterizer, bitmap fonts, and retro palettes",
+                "web-client and render-web: WebAssembly input and WebGL2 rendering",
+                "ssh-server and render-ansi: guest sessions and ANSI terminal output",
+                "web: installable PWA with service-worker caching for offline use",
+            ],
+            specs: &[
+                ("Language", "Rust 1.88; eight workspace crates"),
+                ("Browser", "WebAssembly and WebGL2"),
+                ("Terminal", "ANSI over SSH; guest-only sessions"),
+                ("Displays", "Eight retro layouts, from SVGA to ZX Spectrum"),
+                ("Offline", "Installable PWA with cached interface and WASM"),
+            ],
+            diagram_80: &[
+                "Keyboard / pointer / SSH input",
+                "              │",
+                "              ▼",
+                "       shared Rust application ──► view elements",
+                "              ├─► framebuffer ──► WebGL2 browser canvas",
+                "              └─► ANSI renderer ──► SSH terminal",
+            ],
+            diagram_40: &[
+                "Browser / SSH input",
+                "        ▼",
+                "Shared Rust core -> view",
+                "        ├─ framebuffer -> WebGL2",
+                "        └─ ANSI -> SSH",
+            ],
+            diagram_32: &[
+                "Browser / SSH input",
+                "        ▼",
+                "Rust core -> view",
+                "        ├─ WebGL2 canvas",
+                "        └─ ANSI terminal",
+            ],
+            highlights: &[
+                "One application core serves the browser and SSH front ends",
+                "Eight display systems select native layouts, fonts, and colors",
+                "Keyboard, pointer, and touch controls share portfolio navigation",
+                "The browser app caches its interface and WASM for offline use",
+            ],
+        },
         unknown => panic!("No project detail for slug: {unknown}"),
     }
 }
