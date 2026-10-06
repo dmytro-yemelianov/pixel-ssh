@@ -860,37 +860,12 @@ impl App {
                 let list = self.current_tab == Tab::Projects
                     && !self.show_detail
                     && self.active_modal == ActiveModal::None;
-                if !list {
-                    // Everywhere else a drag scrolls content, which is what the wheel does.
-                    return self.update(InputEvent::Wheel { dx: 0, dy });
-                }
-                let max = self.projects_max_scroll();
-                let offset = if dy > 0 {
-                    (self.scroll_offset + 1).min(max)
-                } else if dy < 0 {
-                    self.scroll_offset.saturating_sub(1)
-                } else {
-                    self.scroll_offset
-                };
-                if offset == self.scroll_offset {
-                    return false;
-                }
-                self.scroll_offset = offset;
-                // Keep the highlight on a visible row instead of moving it
-                // against the finger.
-                let visible = self.projects_visible_at(offset).max(1);
-                let last = (offset + visible - 1).min(PROJECTS.len() - 1);
-                if self.selected_list_item < PROJECT_LIST_PREFIX_ITEMS {
-                    if offset > 0 {
-                        self.selected_project = offset;
-                        self.selected_list_item = offset + PROJECT_LIST_PREFIX_ITEMS;
-                    }
-                } else {
-                    let p = self.selected_project.clamp(offset, last);
-                    self.selected_project = p;
-                    self.selected_list_item = p + PROJECT_LIST_PREFIX_ITEMS;
-                }
-                true
+                // TouchDrag uses the wheel convention: positive means finger up.
+                // Lists move the selector with the finger; articles scroll content.
+                self.update(InputEvent::Wheel {
+                    dx: 0,
+                    dy: if list { dy.saturating_neg() } else { dy },
+                })
             }
             InputEvent::Wheel { dy, .. } => {
                 // If modal is active, swallow wheel event so it never leaks into background

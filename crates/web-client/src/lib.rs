@@ -611,8 +611,8 @@ pub fn start() -> Result<(), JsValue> {
                             *touch_dragged.borrow_mut() = true;
                             *touch_last_y.borrow_mut() = cy;
 
-                            // Content follows the finger on every page: dragging up
-                            // (dy < 0) sends TouchDrag +1, dragging down sends -1.
+                            // TouchDrag uses the wheel sign; the core maps it to
+                            // selector motion on lists and content scrolling elsewhere.
                             let scroll_step: i16 = if dy > 0.0 { -1 } else { 1 };
                             let mut s = state.borrow_mut();
                             if s.app.update(InputEvent::TouchDrag { dy: scroll_step }) {

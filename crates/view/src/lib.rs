@@ -792,8 +792,8 @@ pub enum InputEvent {
         dx: i16,
         dy: i16,
     },
-    /// Touch drag by one step: `dy > 0` when the finger moved up. Lists scroll
-    /// with the finger (content follows it), like the detail pages.
+    /// Touch drag: `dy > 0` when the finger moved up. Lists move their row
+    /// selector with the finger; articles scroll their content with it.
     TouchDrag {
         dy: i16,
     },

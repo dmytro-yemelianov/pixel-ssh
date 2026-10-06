@@ -1624,9 +1624,7 @@ fn wide_detail_shows_live_demo_link_and_tab_cycles_three_items() {
 }
 
 #[test]
-fn touch_drag_scrolls_the_project_list_with_the_finger() {
-    // Finger moving up (dy > 0) moves the list content up, like the detail
-    // pages; it scrolls the viewport instead of moving the highlight down.
+fn touch_drag_moves_the_row_selector_in_the_finger_direction() {
     for resolution in [
         ResolutionMode::Vga,
         ResolutionMode::Cga,
@@ -1635,25 +1633,27 @@ fn touch_drag_scrolls_the_project_list_with_the_finger() {
         let mut app = App::new_web();
         app.set_resolution(resolution);
         assert_eq!(app.scroll_offset, 0);
+        assert!(!app.update(InputEvent::TouchDrag { dy: 1 }));
+        assert!(!app.update(InputEvent::TouchDrag { dy: 0 }));
+        assert!(app.update(InputEvent::TouchDrag { dy: -1 }));
+        assert_eq!(app.selected_list_item, 1, "drag down selects Contacts");
+        assert_eq!(app.scroll_offset, 0, "{resolution:?}");
         assert!(app.update(InputEvent::TouchDrag { dy: 1 }));
-        assert_eq!(app.scroll_offset, 1, "{resolution:?}");
-        let visible = app.projects_visible_at(app.scroll_offset);
+        assert_eq!(app.selected_list_item, 0, "drag up selects CV");
+        for _ in 0..100 {
+            app.update(InputEvent::TouchDrag { dy: -1 });
+        }
+        assert_eq!(app.selected_list_item, PROJECTS.len() + 2);
+        assert_eq!(app.selected_project, PROJECTS.len() - 1);
+        assert_eq!(app.scroll_offset, app.projects_max_scroll());
         assert!(
-            app.selected_project >= app.scroll_offset
-                && app.selected_project < app.scroll_offset + visible,
-            "highlight stays on screen"
+            !app.update(InputEvent::TouchDrag { dy: -1 }),
+            "stops at the end"
         );
         for _ in 0..100 {
             app.update(InputEvent::TouchDrag { dy: 1 });
         }
-        assert_eq!(app.scroll_offset, app.projects_max_scroll());
-        assert!(
-            !app.update(InputEvent::TouchDrag { dy: 1 }),
-            "stops at the end"
-        );
-        for _ in 0..100 {
-            app.update(InputEvent::TouchDrag { dy: -1 });
-        }
+        assert_eq!(app.selected_list_item, 0);
         assert_eq!(app.scroll_offset, 0);
     }
 }
@@ -1670,4 +1670,8 @@ fn touch_drag_on_a_detail_page_scrolls_like_the_wheel() {
     b.update(InputEvent::Wheel { dx: 0, dy: 1 });
     assert_eq!(a.detail_scroll, b.detail_scroll);
     assert_eq!(a.detail_scroll, 1);
+    a.update(InputEvent::TouchDrag { dy: -1 });
+    b.update(InputEvent::Wheel { dx: 0, dy: -1 });
+    assert_eq!(a.detail_scroll, b.detail_scroll);
+    assert_eq!(a.detail_scroll, 0);
 }
