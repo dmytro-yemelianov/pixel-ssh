@@ -25,6 +25,7 @@ impl App {
             1 => self.current_tab = Tab::Contact,
             2 => {
                 self.document = None;
+                self.about_scroll = 0;
                 self.current_tab = Tab::About;
             }
             _ => {
@@ -292,6 +293,7 @@ impl App {
                             self.current_tab = match self.current_tab {
                                 Tab::Resume => {
                                     self.document = None;
+                                    self.about_scroll = 0;
                                     Tab::About
                                 }
                                 Tab::About => Tab::Contact,

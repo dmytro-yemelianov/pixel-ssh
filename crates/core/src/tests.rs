@@ -1795,4 +1795,5 @@ fn native_routes_select_projects_and_embedded_chapters_without_html() {
     }
     app.open_route("/?tab=about");
     assert_eq!(app.document, None);
+    assert_eq!(app.about_scroll, 0);
 }

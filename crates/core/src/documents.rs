@@ -79,6 +79,7 @@ impl App {
             };
             self.document = None;
             self.current_tab = tab;
+            self.about_scroll = 0;
             self.show_detail = false;
             if tab == Tab::Links {
                 self.select_link(self.selected_link);
