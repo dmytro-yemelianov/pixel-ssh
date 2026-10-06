@@ -351,6 +351,11 @@ pub fn start() -> Result<(), JsValue> {
                     if s.app.update(InputEvent::KeyDown(k)) {
                         s.dirty = true;
                     }
+                    if let Some(url) = s.app.take_link_activation() {
+                        if let Some(window) = web_sys::window() {
+                            let _ = window.open_with_url_and_target(&url, "_blank");
+                        }
+                    }
                 }
             },
         );

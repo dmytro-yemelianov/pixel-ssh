@@ -1,3 +1,8 @@
+mod input;
+#[cfg(test)]
+mod tests;
+
+use input::InputParser;
 use log::info;
 use rand::rngs::OsRng;
 use russh::keys::{Algorithm, PrivateKey};
@@ -19,10 +24,44 @@ struct ClientHandler {
     cols: u16,
     rows: u16,
     tx: Option<Sender<Vec<u8>>>,
+    input: InputParser,
+    pty_allocated: bool,
+}
+
+type ClientKey = (usize, ChannelId);
+type SharedClients = Arc<Mutex<HashMap<ClientKey, Arc<Mutex<ClientHandler>>>>>;
+
+impl ClientHandler {
+    fn new() -> Self {
+        Self {
+            app: App::new_terminal(),
+            renderer: AnsiRenderer::new(80, 25),
+            cols: 80,
+            rows: 25,
+            tx: None,
+            input: InputParser::default(),
+            pty_allocated: false,
+        }
+    }
+
+    fn resize(&mut self, cols: u32, rows: u32) {
+        self.cols = if cols == 0 {
+            80
+        } else {
+            cols.clamp(40, 300) as u16
+        };
+        self.rows = if rows == 0 {
+            25
+        } else {
+            rows.clamp(20, 150) as u16
+        };
+        self.app.set_terminal_size(self.cols, self.rows);
+        self.renderer.resize(self.cols, self.rows);
+    }
 }
 
 struct AppServer {
-    clients: Arc<Mutex<HashMap<usize, Arc<Mutex<ClientHandler>>>>>,
+    clients: SharedClients,
     next_id: usize,
 }
 
@@ -41,7 +80,7 @@ impl Server for AppServer {
 
 struct AppSession {
     id: usize,
-    clients: Arc<Mutex<HashMap<usize, Arc<Mutex<ClientHandler>>>>>,
+    clients: SharedClients,
 }
 
 impl Drop for AppSession {
@@ -49,7 +88,10 @@ impl Drop for AppSession {
         let clients = self.clients.clone();
         let id = self.id;
         tokio::spawn(async move {
-            clients.lock().await.remove(&id);
+            clients
+                .lock()
+                .await
+                .retain(|(connection, _), _| *connection != id);
         });
     }
 }
@@ -89,22 +131,24 @@ impl Handler for AppSession {
 
     async fn channel_open_session(
         &mut self,
-        _channel: Channel<Msg>,
+        channel: Channel<Msg>,
         _session: &mut Session,
     ) -> Result<bool, Self::Error> {
         info!("Channel open session for client {}", self.id);
-        let mut clients = self.clients.lock().await;
-        clients.insert(
-            self.id,
-            Arc::new(Mutex::new(ClientHandler {
-                app: App::new_terminal(),
-                renderer: AnsiRenderer::new(80, 50),
-                cols: 80,
-                rows: 50,
-                tx: None,
-            })),
+        self.clients.lock().await.insert(
+            (self.id, channel.id()),
+            Arc::new(Mutex::new(ClientHandler::new())),
         );
         Ok(true)
+    }
+
+    async fn channel_close(
+        &mut self,
+        channel: ChannelId,
+        _session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        self.clients.lock().await.remove(&(self.id, channel));
+        Ok(())
     }
 
     async fn pty_request(
@@ -119,23 +163,30 @@ impl Handler for AppSession {
         session: &mut Session,
     ) -> Result<(), Self::Error> {
         info!("PTY request: term={term}, cols={col_width}, rows={row_height}");
-        let client = self.clients.lock().await.get(&self.id).cloned();
+        let client = self.clients.lock().await.get(&(self.id, channel)).cloned();
         if let Some(client) = client {
             let mut client = client.lock().await;
-            client.cols = if col_width >= 40 {
-                (col_width as u16).clamp(40, 300)
-            } else {
-                80
-            };
-            client.rows = if row_height >= 10 {
-                (row_height as u16).clamp(10, 150)
-            } else {
-                25
-            };
-            let (cols, rows) = (client.cols, client.rows);
-            client.app.set_terminal_size(cols, rows);
-            client.renderer.resize(cols, rows);
+            if !client.pty_allocated && client.tx.is_none() {
+                client.resize(col_width, row_height);
+                client.pty_allocated = true;
+                return session.channel_success(channel);
+            }
+        }
+        session.channel_failure(channel)
+    }
 
+    async fn shell_request(
+        &mut self,
+        channel: ChannelId,
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        let client = self.clients.lock().await.get(&(self.id, channel)).cloned();
+        if let Some(client) = client {
+            let mut client = client.lock().await;
+            if client.tx.is_some() {
+                return session.channel_failure(channel);
+            }
+            session.channel_success(channel)?;
             let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(2);
             let handle = session.handle();
             tokio::spawn(async move {
@@ -145,16 +196,42 @@ impl Handler for AppSession {
                     }
                 }
             });
-
-            // Enter alternate screen buffer (\x1b[?1049h), clear screen, move to (1,1)
             let mut init_seq = String::from("\x1b[?1049h\x1b[2J\x1b[H");
             let view = client.app.render();
-            let ansi = client.renderer.render_view(&view);
-            init_seq.push_str(&ansi);
+            init_seq.push_str(&client.renderer.render_view(&view));
             let _ = tx.try_send(init_seq.into_bytes());
             client.tx = Some(tx);
+            return Ok(());
         }
-        Ok(())
+        session.channel_failure(channel)
+    }
+
+    async fn exec_request(
+        &mut self,
+        channel: ChannelId,
+        _command: &[u8],
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        session.channel_failure(channel)
+    }
+
+    async fn subsystem_request(
+        &mut self,
+        channel: ChannelId,
+        _name: &str,
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        session.channel_failure(channel)
+    }
+
+    async fn env_request(
+        &mut self,
+        channel: ChannelId,
+        _name: &str,
+        _value: &str,
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        session.channel_failure(channel)
     }
 
     async fn window_change_request(
@@ -166,22 +243,13 @@ impl Handler for AppSession {
         _pix_height: u32,
         session: &mut Session,
     ) -> Result<(), Self::Error> {
-        let client = self.clients.lock().await.get(&self.id).cloned();
+        let client = self.clients.lock().await.get(&(self.id, channel)).cloned();
         if let Some(client) = client {
             let mut client = client.lock().await;
-            client.cols = if col_width >= 40 {
-                (col_width as u16).clamp(40, 300)
-            } else {
-                80
-            };
-            client.rows = if row_height >= 10 {
-                (row_height as u16).clamp(10, 150)
-            } else {
-                25
-            };
-            let (cols, rows) = (client.cols, client.rows);
-            client.app.set_terminal_size(cols, rows);
-            client.renderer.resize(cols, rows);
+            client.resize(col_width, row_height);
+            if client.tx.is_none() {
+                return session.channel_success(channel);
+            }
 
             // Re-render and send with clear to avoid any artifacts on resize
             let mut redraw = String::from("\x1b[2J\x1b[H");
@@ -205,210 +273,46 @@ impl Handler for AppSession {
         data: &[u8],
         session: &mut Session,
     ) -> Result<(), Self::Error> {
-        let client = self.clients.lock().await.get(&self.id).cloned();
+        let client = self.clients.lock().await.get(&(self.id, channel)).cloned();
         if let Some(client) = client {
             let mut client = client.lock().await;
-            // Parse ANSI terminal key sequences
-            let mut i = 0;
+            if client.tx.is_none() {
+                return Ok(());
+            }
+            let keys = client.input.feed(data, tokio::time::Instant::now());
             let mut dirty = false;
-
-            while i < data.len() {
-                // Ctrl+C: exit session cleanly
-                if data[i] == 0x03 {
-                    if let Some(tx) = &client.tx {
-                        let _ = tx.try_send(
-                            "\x1b[?1049l\x1b[?25h\r\nConnection closed.\r\n"
-                                .as_bytes()
-                                .to_vec(),
-                        );
+            for key in keys {
+                let interrupt = key == Key::Char('\u{3}');
+                let quit = matches!(key, Key::Char('q' | 'Q'))
+                    && !client.app.show_detail
+                    && client.app.current_tab == Tab::Projects
+                    && client.app.active_modal == ActiveModal::None
+                    && !client.app.screensaver_active;
+                if interrupt || quit {
+                    let farewell = if interrupt {
+                        "Connection closed."
                     } else {
-                        let _ = session.data(
-                            channel,
-                            "\x1b[?1049l\x1b[?25h\r\nConnection closed.\r\n"
-                                .as_bytes()
-                                .to_vec()
-                                .into(),
-                        );
-                    }
-                    let _ = session.close(channel);
+                        "Goodbye!"
+                    };
+                    // Queue the final output before closing, without dropping it when
+                    // the background renderer's bounded queue is full.
+                    session.data(
+                        channel,
+                        format!("\x1b[?1049l\x1b[?25h\r\n{farewell}\r\n")
+                            .into_bytes()
+                            .into(),
+                    )?;
+                    session.exit_status_request(channel, 0)?;
+                    session.eof(channel)?;
+                    session.close(channel)?;
+                    drop(client);
+                    self.clients.lock().await.remove(&(self.id, channel));
                     return Ok(());
                 }
-
-                let key = if data[i] == b'\x1b' {
-                    if i + 1 >= data.len() {
-                        i += 1;
-                        Some(Key::Escape)
-                    } else if data[i + 1] == b'[' {
-                        if i + 2 < data.len() {
-                            match data[i + 2] {
-                                b'A' => {
-                                    i += 3;
-                                    Some(Key::Up)
-                                }
-                                b'B' => {
-                                    i += 3;
-                                    Some(Key::Down)
-                                }
-                                b'C' => {
-                                    i += 3;
-                                    Some(Key::Right)
-                                }
-                                b'D' => {
-                                    i += 3;
-                                    Some(Key::Left)
-                                }
-                                b'H' => {
-                                    i += 3;
-                                    Some(Key::Home)
-                                }
-                                b'F' => {
-                                    i += 3;
-                                    Some(Key::End)
-                                }
-                                b'1'..=b'6' if i + 3 < data.len() && data[i + 3] == b'~' => {
-                                    let digit = data[i + 2];
-                                    i += 4;
-                                    match digit {
-                                        b'1' => Some(Key::Home),
-                                        b'4' => Some(Key::End),
-                                        b'5' => Some(Key::PageUp),
-                                        b'6' => Some(Key::PageDown),
-                                        b'3' => Some(Key::Backspace),
-                                        _ => None,
-                                    }
-                                }
-                                b'1' if i + 4 < data.len() && data[i + 4] == b'~' => {
-                                    let second = data[i + 3];
-                                    i += 5;
-                                    match second {
-                                        b'5' => Some(Key::F(5)),
-                                        b'7' => Some(Key::F(6)),
-                                        b'8' => Some(Key::F(7)),
-                                        b'9' => Some(Key::F(8)),
-                                        _ => None,
-                                    }
-                                }
-                                b'2' if i + 4 < data.len() && data[i + 4] == b'~' => {
-                                    let second = data[i + 3];
-                                    i += 5;
-                                    match second {
-                                        b'0' => Some(Key::F(9)),
-                                        b'1' => Some(Key::F(10)),
-                                        _ => None,
-                                    }
-                                }
-                                _ => {
-                                    i += 3;
-                                    while i < data.len() && (data[i] < 0x40 || data[i] > 0x7E) {
-                                        i += 1;
-                                    }
-                                    if i < data.len() {
-                                        i += 1;
-                                    }
-                                    None
-                                }
-                            }
-                        } else {
-                            i += 2;
-                            None
-                        }
-                    } else if data[i + 1] == b'O' && i + 2 < data.len() {
-                        match data[i + 2] {
-                            b'H' => {
-                                i += 3;
-                                Some(Key::Home)
-                            }
-                            b'F' => {
-                                i += 3;
-                                Some(Key::End)
-                            }
-                            b'A' => {
-                                i += 3;
-                                Some(Key::Up)
-                            }
-                            b'B' => {
-                                i += 3;
-                                Some(Key::Down)
-                            }
-                            b'C' => {
-                                i += 3;
-                                Some(Key::Right)
-                            }
-                            b'D' => {
-                                i += 3;
-                                Some(Key::Left)
-                            }
-                            b'P' => {
-                                i += 3;
-                                Some(Key::F(1))
-                            }
-                            b'Q' => {
-                                i += 3;
-                                Some(Key::F(2))
-                            }
-                            b'R' => {
-                                i += 3;
-                                Some(Key::F(3))
-                            }
-                            b'S' => {
-                                i += 3;
-                                Some(Key::F(4))
-                            }
-                            _ => {
-                                i += 3;
-                                None
-                            }
-                        }
-                    } else {
-                        i += 1;
-                        Some(Key::Escape)
-                    }
-                } else if data[i] == b'\r' || data[i] == b'\n' {
-                    i += 1;
-                    Some(Key::Enter)
-                } else if data[i] == b'\t' {
-                    i += 1;
-                    Some(Key::Tab)
-                } else if data[i] == 0x7f || data[i] == 0x08 {
-                    i += 1;
-                    Some(Key::Backspace)
-                } else if data[i] >= 32 {
-                    let ch = data[i] as char;
-                    i += 1;
-                    Some(Key::Char(ch))
-                } else {
-                    i += 1;
-                    None
-                };
-
-                if let Some(k) = key {
-                    // Quit the SSH session only from the plain Projects screen.
-                    // In a modal or detail view, Q first returns through the app.
-                    if (k == Key::Char('q') || k == Key::Char('Q'))
-                        && !client.app.show_detail
-                        && client.app.current_tab == Tab::Projects
-                        && client.app.active_modal == ActiveModal::None
-                    {
-                        if let Some(tx) = &client.tx {
-                            let _ = tx.try_send(
-                                "\x1b[?1049l\x1b[?25h\r\nGoodbye!\r\n".as_bytes().to_vec(),
-                            );
-                        } else {
-                            let _ = session.data(
-                                channel,
-                                "\x1b[?1049l\x1b[?25h\r\nGoodbye!\r\n"
-                                    .as_bytes()
-                                    .to_vec()
-                                    .into(),
-                            );
-                        }
-                        let _ = session.close(channel);
-                        return Ok(());
-                    }
-
-                    if client.app.update(InputEvent::KeyDown(k)) {
-                        dirty = true;
-                    }
+                dirty |= client.app.update(InputEvent::KeyDown(key));
+                // Terminal users follow the rendered OSC 8 link in their own client.
+                if let Some(url) = client.app.take_link_activation() {
+                    client.app.status = format!("Open link in your terminal: {url}");
                 }
             }
 
@@ -469,8 +373,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = format!("0.0.0.0:{port}");
     info!("SSH Server listening on ssh://guest@{addr} (No password required)");
 
-    let clients: Arc<Mutex<HashMap<usize, Arc<Mutex<ClientHandler>>>>> =
-        Arc::new(Mutex::new(HashMap::new()));
+    let clients: SharedClients = Arc::new(Mutex::new(HashMap::new()));
     let ticker_clients = clients.clone();
 
     // Spawn background marquee and clock ticker loop (10 Hz = 100ms interval, matching Web client)
@@ -488,6 +391,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             for (id, client) in snapshot {
                 let mut client = client.lock().await;
                 if let Some(tx) = client.tx.clone() {
+                    if let Some(key) = client.input.expire(tokio::time::Instant::now()) {
+                        client.app.update(InputEvent::KeyDown(key));
+                    }
                     client.app.tick();
                     let view = client.app.render();
                     let ansi = client.renderer.render_view(&view);
