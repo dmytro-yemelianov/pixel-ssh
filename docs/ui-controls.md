@@ -32,6 +32,6 @@ The footer contains `Prj Hlp Sys Vis Qut`, in that order. `P`, `H`, `S`, `V`, an
 | Atari 320×192 | 40×24 | Compact list, five abbreviated footer slots | Compact Visuals controls |
 | ZX Spectrum 256×192 | 32×24 | Two-line project rows, five abbreviated footer slots | Compact Visuals controls; labels fit 32 columns |
 
-The portrait touch deck offers the same five footer actions, Visuals presets, arrows, Enter, and Escape. Long project titles and tags scroll horizontally within their assigned columns; article and detail content scroll vertically. Compact modal labels fit within their frame.
+The portrait touch deck offers the same five footer actions, Visuals presets, arrows, Enter, and Escape. Dragging up or down on the project list moves the row selector in the same direction, scrolling the list as needed to keep it visible. Long project titles and tags scroll horizontally within their assigned columns; article and detail content scroll vertically. Compact modal labels fit within their frame.
 
 Project detail viewers fill the area above the bottom menu. SVGA uses its 100-column width for wrapped text and specification tables; the return and scroll controls follow the viewer's actual height.
