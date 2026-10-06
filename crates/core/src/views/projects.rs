@@ -779,7 +779,7 @@ impl App {
 
         if self.show_detail {
             let p = &PROJECTS[self.selected_project];
-            let lines = project_detail_lines(p, (cols as usize).min(80), self.tick);
+            let lines = project_detail_lines(p, self.detail_content_columns() as usize, self.tick);
 
             // Row 3: Title Header (y = 48)
             let title_header = format!("PROJECT // {}  [h/l: Prev/Next]", p.title);
@@ -848,7 +848,7 @@ impl App {
             }));
 
             // Content area: rows 7 to rows - 4
-            let visible_rows = (rows as usize).saturating_sub(11).max(6);
+            let visible_rows = self.terminal_detail_visible_rows();
             for row_idx in 0..visible_rows {
                 let line_idx = self.detail_scroll + row_idx;
                 if line_idx < lines.len() {

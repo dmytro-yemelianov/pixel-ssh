@@ -210,6 +210,7 @@ impl App {
 
             // About and CV (Resume) are reader articles overlaying on top of Projects
             if self.current_tab == Tab::Resume || self.current_tab == Tab::About {
+                view.begin_overlay();
                 self.render_article_overlay(&mut view, width, height, cols);
             }
         } else {
@@ -225,6 +226,7 @@ impl App {
 
         // Active Modal dialog overlay (Visuals, Help)
         if self.active_modal != ActiveModal::None {
+            view.begin_overlay();
             match self.active_modal {
                 ActiveModal::Visuals => self.render_visuals_modal(&mut view, width, height, cols),
                 ActiveModal::Help => self.render_help_modal(&mut view, width, height, cols),

@@ -545,6 +545,7 @@ pub struct View {
     pub system_mode: SystemMode,
     pub visual_effects: VisualEffects,
     pub platform: Platform,
+    link_layer_start: usize,
 }
 
 impl View {
@@ -562,24 +563,43 @@ impl View {
             system_mode: SystemMode::default(),
             visual_effects: VisualEffects::default(),
             platform: Platform::default(),
+            link_layer_start: 0,
         }
     }
 
-    pub fn add(&mut self, element: Element) {
+    pub fn add(&mut self, mut element: Element) {
+        if let Element::Link(link) = &mut element {
+            link.height = self.resolution.line_height();
+        }
         self.elements.push(element);
     }
 
-    /// Finds any clickable link at coordinate (x, y)
+    /// Prevents an overlay's pointer events from reaching earlier content.
+    pub fn begin_overlay(&mut self) {
+        self.link_layer_start = self.elements.len();
+    }
+
+    /// Finds a visible link in the active input layer, following paint order.
     pub fn link_at(&self, x: u16, y: u16) -> Option<&LinkElement> {
-        for element in &self.elements {
-            if let Element::Link(link) = element {
-                if x >= link.x
-                    && x < link.x + link.width
-                    && y >= link.y
-                    && y <= link.y + link.height + 2
+        let contains = |left: u16, top: u16, width: u16, height: u16| {
+            x >= left
+                && (x as u32) < left as u32 + width as u32
+                && y >= top
+                && (y as u32) < top as u32 + height as u32
+        };
+        for element in self.elements[self.link_layer_start..].iter().rev() {
+            match element {
+                Element::Link(link)
+                    if contains(link.x, link.y, link.width, self.resolution.line_height()) =>
                 {
                     return Some(link);
                 }
+                Element::Rect(rect)
+                    if rect.filled && contains(rect.x, rect.y, rect.width, rect.height) =>
+                {
+                    return None;
+                }
+                _ => {}
             }
         }
         None
@@ -684,7 +704,7 @@ impl LinkElement {
         style: TextStyle,
     ) -> Self {
         let text = text.into();
-        let width = (text.len() as u16) * 8;
+        let width = (text.chars().count().min(u16::MAX as usize / 8) as u16) * 8;
         let height = 8;
         Self {
             x,

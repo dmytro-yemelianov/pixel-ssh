@@ -53,6 +53,7 @@ pub struct App {
     pub terminal_rows: u16,
     /// Extra logical rows for a tall browser viewport; display system width stays native.
     pub web_height: Option<u16>,
+    pub(crate) link_activation: Option<String>,
 }
 
 impl Default for App {
@@ -99,6 +100,7 @@ impl App {
             terminal_cols: 80,
             terminal_rows: 25,
             web_height: None,
+            link_activation: None,
         }
     }
 
@@ -135,6 +137,7 @@ impl App {
             terminal_cols: 80,
             terminal_rows: 25,
             web_height: None,
+            link_activation: None,
         }
     }
 
@@ -393,9 +396,9 @@ impl App {
     }
 
     pub fn detail_max_scroll(&self) -> usize {
-        let (cols, _) = self.resolution.char_grid();
+        let cols = self.detail_content_columns();
         let visible = if self.platform == Platform::Terminal {
-            (self.terminal_rows as usize).saturating_sub(11).max(8)
+            self.terminal_detail_visible_rows()
         } else {
             match cols {
                 100 | 80 => self.detail_wide_visible_rows(),
@@ -406,6 +409,23 @@ impl App {
         let p = &PROJECTS[self.selected_project.min(PROJECTS.len() - 1)];
         let lines = project_detail_lines(p, cols as usize, self.tick);
         lines.len().saturating_sub(visible)
+    }
+
+    pub(crate) fn detail_content_columns(&self) -> u16 {
+        if self.platform == Platform::Terminal {
+            self.terminal_cols.min(80)
+        } else {
+            self.resolution.char_grid().0
+        }
+    }
+
+    pub(crate) fn terminal_detail_visible_rows(&self) -> usize {
+        (self.terminal_rows as usize).saturating_sub(11).max(6)
+    }
+
+    /// Consumes a link requested by keyboard activation. The host opens it.
+    pub fn take_link_activation(&mut self) -> Option<String> {
+        self.link_activation.take()
     }
 
     /// Content rows between the fixed detail header and the bottom menu.

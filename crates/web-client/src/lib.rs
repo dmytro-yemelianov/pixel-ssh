@@ -64,6 +64,7 @@ pub fn start() -> Result<(), JsValue> {
         .get_element_by_id("screen")
         .ok_or("Canvas element #screen not found")?
         .dyn_into::<web_sys::HtmlCanvasElement>()?;
+    canvas.set_tab_index(0);
 
     let win_w = window
         .inner_width()
@@ -280,9 +281,21 @@ pub fn start() -> Result<(), JsValue> {
     // Keyboard event listener
     {
         let state = Rc::clone(&state);
+        let document = document.clone();
+        let canvas_element: web_sys::Element = canvas.clone().into();
         let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(
             move |event: web_sys::KeyboardEvent| {
                 let key = event.key();
+                // Leave page navigation and browser shortcuts alone. Shift+Tab
+                // exits the canvas even when Tab cycles application controls.
+                if document.active_element().as_ref() != Some(&canvas_element)
+                    || event.ctrl_key()
+                    || event.meta_key()
+                    || event.alt_key()
+                    || (key == "Tab" && event.shift_key())
+                {
+                    return;
+                }
                 let parsed_key = match key.as_str() {
                     "ArrowUp" => Some(Key::Up),
                     "ArrowDown" => Some(Key::Down),
@@ -351,6 +364,11 @@ pub fn start() -> Result<(), JsValue> {
                     if s.app.update(InputEvent::KeyDown(k)) {
                         s.dirty = true;
                     }
+                    if let Some(url) = s.app.take_link_activation() {
+                        if let Some(window) = web_sys::window() {
+                            let _ = window.open_with_url_and_target(&url, "_blank");
+                        }
+                    }
                 }
             },
         );
@@ -369,6 +387,7 @@ pub fn start() -> Result<(), JsValue> {
                 if event.pointer_type() == "touch" {
                     return;
                 }
+                let _ = canvas_clone.focus();
                 let rect = canvas_clone.get_bounding_client_rect();
                 let rect_width = rect.width();
                 let rect_height = rect.height();

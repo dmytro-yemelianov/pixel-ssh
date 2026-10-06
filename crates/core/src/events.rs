@@ -810,11 +810,21 @@ impl App {
                     }
                     Key::Enter => {
                         if self.current_tab == Tab::Projects {
-                            if self.show_detail
-                                && self.selected_detail_item == self.detail_item_count() - 1
-                            {
-                                self.show_detail = false;
-                                self.detail_scroll = 0;
+                            if self.show_detail {
+                                if self.selected_detail_item == self.detail_item_count() - 1 {
+                                    self.show_detail = false;
+                                    self.detail_scroll = 0;
+                                } else {
+                                    let project = &PROJECTS[self.selected_project];
+                                    self.link_activation = if self.selected_detail_item == 0 {
+                                        Some(format!(
+                                            "https://github.com/dmytro-yemelianov/{}",
+                                            project.slug
+                                        ))
+                                    } else {
+                                        project.demo.map(str::to_owned)
+                                    };
+                                }
                             } else {
                                 self.activate_selected_list_item();
                             }

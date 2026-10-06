@@ -164,6 +164,14 @@ pub static PROJECTS: &[Project] = &[
         wip: true,
         demo: Some("https://nethacked.yemelianov.dev"),
     },
+    Project {
+        title: "Pixel SSH",
+        slug: "pixel-ssh",
+        tldr: "An interactive retro portfolio with one Rust application core, a WebAssembly/WebGL2 browser canvas, and an ANSI terminal over SSH.",
+        tags: &["rust", "wasm", "webgl", "ssh", "retro"],
+        wip: false,
+        demo: Some("https://yemelianov.dev/"),
+    },
 ];
 
 pub const RESUME_MAX_SCROLL: usize = 80;

@@ -4,6 +4,130 @@ use super::*;
 use pixel_ssh_view::*;
 
 #[test]
+fn detail_enter_activates_links_without_reopening_or_resetting_the_page() {
+    let mut app = App::new_web();
+    app.selected_project = PROJECTS.iter().position(|p| p.demo.is_some()).unwrap();
+    app.selected_list_item = app.selected_project + 3;
+    app.show_detail = true;
+    app.detail_scroll = 2;
+    let project = &PROJECTS[app.selected_project];
+    app.update(InputEvent::KeyDown(Key::Enter));
+    assert_eq!(
+        app.take_link_activation(),
+        Some(format!(
+            "https://github.com/dmytro-yemelianov/{}",
+            project.slug
+        ))
+    );
+    assert_eq!(app.take_link_activation(), None);
+    assert!(app.show_detail);
+    assert_eq!(app.detail_scroll, 2);
+    app.update(InputEvent::KeyDown(Key::Tab));
+    app.update(InputEvent::KeyDown(Key::Enter));
+    assert_eq!(app.take_link_activation().as_deref(), project.demo);
+    assert_eq!(app.selected_detail_item, 1);
+    app.update(InputEvent::KeyDown(Key::Tab));
+    app.update(InputEvent::KeyDown(Key::Enter));
+    assert!(!app.show_detail);
+    assert_eq!(app.take_link_activation(), None);
+}
+
+#[test]
+fn overlays_capture_links_both_inside_and_outside_their_frame() {
+    let mut app = App::new_web();
+    app.set_resolution(ResolutionMode::Vga);
+    app.current_tab = Tab::Contact;
+    assert!(app.render().link_at(32, 100).is_some());
+    for modal in [ActiveModal::Help, ActiveModal::Visuals] {
+        app.active_modal = modal;
+        let view = app.render();
+        assert!(
+            view.link_at(32, 100).is_none(),
+            "covered email link: {modal:?}"
+        );
+        assert!(
+            view.link_at(460, 4).is_none(),
+            "header outside modal: {modal:?}"
+        );
+        let close = view
+            .elements
+            .iter()
+            .find_map(|e| match e {
+                Element::Link(l) if l.url.starts_with("#close") => Some(l),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(
+            view.link_at(close.x + 4, close.y + 4).map(|l| &l.url),
+            Some(&close.url)
+        );
+    }
+}
+
+#[test]
+fn links_use_all_font_rows_and_character_widths() {
+    for resolution in ResolutionMode::ALL {
+        let (width, height) = resolution.resolution();
+        let mut view = View::new(width, height);
+        view.resolution = resolution;
+        view.add(Element::Link(LinkElement::new(
+            8,
+            32,
+            "ї",
+            "https://example.com",
+            TextStyle::new(Color::from_palette(7)),
+        )));
+        let cell_height = resolution.line_height();
+        for dy in 0..cell_height {
+            assert!(
+                view.link_at(12, 32 + dy).is_some(),
+                "{resolution:?}, row {dy}"
+            );
+        }
+        assert!(view.link_at(12, 32 + cell_height).is_none());
+        assert!(
+            view.link_at(16, 32).is_none(),
+            "one Cyrillic character occupies one cell"
+        );
+        view.add(Element::Rect(RectElement {
+            x: 8,
+            y: 32,
+            width: 8,
+            height: cell_height,
+            color: Color::from_palette(0),
+            filled: true,
+        }));
+        assert!(
+            view.link_at(12, 32).is_none(),
+            "later paint covers the link"
+        );
+    }
+}
+
+#[test]
+fn terminal_detail_scroll_reaches_the_last_rendered_line_at_each_width() {
+    for cols in [40, 60, 80, 120] {
+        for resolution in [
+            ResolutionMode::Vga,
+            ResolutionMode::Cga,
+            ResolutionMode::Svga,
+        ] {
+            let mut app = App::new_terminal();
+            app.set_resolution(resolution);
+            app.set_terminal_size(cols, 25);
+            app.show_detail = true;
+            for (index, project) in PROJECTS.iter().enumerate() {
+                app.selected_project = index;
+                app.detail_scroll = app.detail_max_scroll();
+                let lines = project_detail_lines(project, cols.min(80) as usize, app.tick);
+                let last = &lines.last().unwrap().0;
+                assert!(app.render().elements.iter().any(|e| matches!(e, Element::Text(t) if t.y >= 7 * 16 && t.y < 21 * 16 && &t.text == last)), "project {index}, terminal {cols}, {resolution:?}");
+            }
+        }
+    }
+}
+
+#[test]
 fn test_all_systems_and_tabs_render_within_bounds() {
     for mode in SystemMode::ALL {
         let (w, h) = mode.resolution();
@@ -385,11 +509,12 @@ fn test_native_zx_content_stays_above_bottom_navigation() {
 
     let projects = app.render();
     let nav_y = projects.height - 20;
+    let project_count = format!("/{}", PROJECTS.len());
     assert!(projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y == 152 && t.text.contains("/19")
+        Element::Text(t) if t.y == 152 && t.text.contains(&project_count)
     )));
     assert!(!projects.elements.iter().any(|elem| matches!(elem,
-        Element::Text(t) if t.y > 152 && t.y < nav_y && t.text.contains("/19")
+        Element::Text(t) if t.y > 152 && t.y < nav_y && t.text.contains(&project_count)
     )));
 
     app.current_tab = Tab::Resume;
@@ -589,10 +714,10 @@ fn test_clock_colon_steady_cadence() {
 }
 
 #[test]
-fn test_all_19_projects_have_detailed_specs_and_subsystems() {
+fn test_all_20_projects_have_detailed_specs_and_subsystems() {
     use crate::data::details::get_project_detail;
 
-    assert_eq!(PROJECTS.len(), 19, "Expected exactly 19 portfolio projects");
+    assert_eq!(PROJECTS.len(), 20, "Expected exactly 20 portfolio projects");
 
     for p in PROJECTS {
         let detail = get_project_detail(p.slug);
@@ -1073,8 +1198,9 @@ fn wide_project_list_can_scroll_to_the_last_card() {
         let view = app.render();
         let last_row = PROJECTS.len() - 1 - app.scroll_offset;
         let y = (3 + last_row as u16 * 2) * resolution.line_height();
+        let last_card = format!("[{}] {}", PROJECTS.len(), PROJECTS.last().unwrap().title);
         assert!(view.elements.iter().any(|element| matches!(element,
-            Element::Text(text) if text.x == 16 && text.y == y && text.text.contains("[19] NetHackED")
+            Element::Text(text) if text.x == 16 && text.y == y && text.text.contains(&last_card)
         )));
         assert!(y + 2 * resolution.line_height() <= view.height - 3 * resolution.line_height());
     }
