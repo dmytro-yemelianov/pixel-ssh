@@ -51,7 +51,9 @@ fn links_menu_and_last_link_remain_accessible_in_every_display_size() {
                 .elements
                 .iter()
                 .find_map(|element| match element {
-                    Element::Link(link) if link.url == "https://yemelianov.dev/catalog/" => {
+                    Element::Link(link)
+                        if link.url == "https://yemelianov.dev/?doc=06-roadmap-and-milestones" =>
+                    {
                         Some(link)
                     }
                     _ => None,
@@ -61,12 +63,12 @@ fn links_menu_and_last_link_remain_accessible_in_every_display_size() {
             assert_eq!(
                 view.link_at(last.x + 4, last.y + 2)
                     .map(|link| link.url.as_str()),
-                Some("https://yemelianov.dev/catalog/")
+                Some("https://yemelianov.dev/?doc=06-roadmap-and-milestones")
             );
             app.update(InputEvent::KeyDown(Key::Enter));
             assert_eq!(
                 app.take_link_activation().as_deref(),
-                Some("https://yemelianov.dev/catalog/")
+                Some("https://yemelianov.dev/?doc=06-roadmap-and-milestones")
             );
             app.update(InputEvent::KeyDown(Key::Home));
             assert_eq!(app.links_scroll, 0);
@@ -1750,4 +1752,48 @@ fn touch_drag_on_a_detail_page_scrolls_like_the_wheel() {
     b.update(InputEvent::Wheel { dx: 0, dy: -1 });
     assert_eq!(a.detail_scroll, b.detail_scroll);
     assert_eq!(a.detail_scroll, 0);
+}
+
+#[test]
+fn native_routes_select_projects_and_embedded_chapters_without_html() {
+    let mut app = App::new_web();
+    assert!(app.open_route("/?project=vpa&detail=1"));
+    assert_eq!(PROJECTS[app.selected_project].slug, "vpa");
+    assert_eq!(app.selected_list_item, app.selected_project + 3);
+    assert!(app.show_detail);
+    assert!(app.open_route("/?tab=projects"));
+    assert!(!app.show_detail);
+    assert!(!app.open_route("/?project=missing"));
+    assert!(!app.open_route("/?doc=missing"));
+    assert!(!app.open_route("https://yemelianov.dev.evil/?tab=projects"));
+    for resolution in ResolutionMode::ALL {
+        app.set_resolution(resolution);
+        for (i, (id, _, _)) in crate::documents::DOCUMENTS.iter().enumerate() {
+            assert!(app.open_route(&format!("https://yemelianov.dev/?doc={id}")));
+            assert_eq!(app.document, Some(i));
+            assert_eq!(app.current_tab, Tab::About);
+            assert!(!app.document_lines.is_empty());
+            assert!(app
+                .document_lines
+                .iter()
+                .all(|(s, _, _)| s.chars().count() <= resolution.char_grid().0 as usize - 8));
+            app.update(InputEvent::KeyDown(Key::End));
+            assert_eq!(app.about_scroll, app.about_max_scroll());
+            let view = app.render();
+            let tail = &app.document_lines.last().unwrap().0;
+            assert!(view
+                .elements
+                .iter()
+                .any(|e| matches!(e, Element::Text(t) if &t.text == tail)));
+            assert!(!view
+                .elements
+                .iter()
+                .any(|e| matches!(e, Element::Sprite(_))));
+            app.update(InputEvent::KeyDown(Key::Escape));
+            assert_eq!(app.current_tab, Tab::Projects);
+        }
+    }
+    app.open_route("/?tab=about");
+    assert_eq!(app.document, None);
+    assert_eq!(app.about_scroll, 0);
 }

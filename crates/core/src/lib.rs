@@ -5,6 +5,7 @@
 //! project architectures, resume content, and session orchestration.
 
 pub mod data;
+pub mod documents;
 pub mod events;
 pub mod state;
 pub mod views;

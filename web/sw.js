@@ -41,6 +41,12 @@ self.addEventListener('fetch', event => {
     const cache = await caches.open(CACHE_NAME);
     try {
       const response = await fetch(request);
+      // Preserve the visible URL change for retired HTML routes. Fetch follows
+      // redirects internally; returning its final HTML would leave /catalog/
+      // in the address bar and lose the native view's query parameters.
+      if (request.mode === 'navigate' && response.redirected) {
+        return Response.redirect(response.url, 302);
+      }
       if (response.ok) await cache.put(request, response.clone());
       return response;
     } catch {

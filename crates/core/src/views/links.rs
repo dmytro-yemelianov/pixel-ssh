@@ -41,8 +41,35 @@ pub(crate) const PROJECT_LINKS: &[(&str, &str)] = &[
         "https://github.com/dmytro-yemelianov/verbacorpus",
     ),
     ("Barvinca / open", "https://barvinca.com/"),
-    ("VPA / documentation", "https://yemelianov.dev/vpa/"),
-    ("Full project catalog", "https://yemelianov.dev/catalog/"),
+    (
+        "VPA / documentation",
+        "https://yemelianov.dev/?project=vpa&detail=1",
+    ),
+    ("All projects", "https://yemelianov.dev/?tab=projects"),
+    (
+        "VPA: Vision",
+        "https://yemelianov.dev/?doc=01-vision-and-paradigms",
+    ),
+    (
+        "VPA: Language",
+        "https://yemelianov.dev/?doc=02-language-and-verification",
+    ),
+    (
+        "VPA: Devices",
+        "https://yemelianov.dev/?doc=03-device-interaction",
+    ),
+    (
+        "VPA: Compilation",
+        "https://yemelianov.dev/?doc=04-compilation-and-lowering",
+    ),
+    (
+        "VPA: AI Harness",
+        "https://yemelianov.dev/?doc=05-agent-harness-and-llm",
+    ),
+    (
+        "VPA: Roadmap",
+        "https://yemelianov.dev/?doc=06-roadmap-and-milestones",
+    ),
 ];
 
 impl App {

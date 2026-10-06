@@ -6,6 +6,27 @@ use pixel_ssh_view::{Color, Element, Platform, RectElement, TextElement, TextSty
 
 impl App {
     pub(crate) fn render_about(&self, view: &mut View) {
+        if self.document.is_some() {
+            for (i, (text, palette, bold)) in self
+                .document_lines
+                .iter()
+                .skip(self.about_scroll)
+                .take(self.terminal_rows.saturating_sub(7) as usize)
+                .enumerate()
+            {
+                let mut style = TextStyle::new(Color::from_palette(*palette));
+                if *bold {
+                    style = style.bold();
+                }
+                view.add(Element::Text(TextElement {
+                    x: 16,
+                    y: 48 + i as u16 * 16,
+                    text: text.clone(),
+                    style,
+                }));
+            }
+            return;
+        }
         if self.platform == Platform::Terminal {
             self.render_about_terminal(view);
             return;
