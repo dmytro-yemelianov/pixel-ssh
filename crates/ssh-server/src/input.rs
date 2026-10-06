@@ -108,6 +108,12 @@ fn parse_key(bytes: &[u8]) -> Option<(usize, Option<Key>)> {
                 0xf0..=0xf4 => 4,
                 _ => return Some((1, None)),
             };
+            if bytes[1..bytes.len().min(length)]
+                .iter()
+                .any(|byte| !(0x80..=0xbf).contains(byte))
+            {
+                return Some((1, None));
+            }
             if bytes.len() < length {
                 return None;
             }
@@ -181,5 +187,22 @@ mod tests {
             parser.feed(b"\x1b[99~q\x03", Instant::now()),
             vec![Key::Char('q'), Key::Char('\u{3}')]
         );
+    }
+
+    #[test]
+    fn malformed_utf8_preserves_following_keys_across_packet_boundaries() {
+        for bytes in [
+            b"\xe9q\x03".as_slice(),
+            b"\xe9\x80q\x03",
+            b"\xf0\x80\x80q\x03",
+        ] {
+            for split in 0..=bytes.len() {
+                let now = Instant::now();
+                let mut parser = InputParser::default();
+                let mut keys = parser.feed(&bytes[..split], now);
+                keys.extend(parser.feed(&bytes[split..], now + Duration::from_millis(20)));
+                assert_eq!(keys, vec![Key::Char('q'), Key::Char('\u{3}')]);
+            }
+        }
     }
 }

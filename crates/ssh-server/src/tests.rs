@@ -131,22 +131,10 @@ async fn channel_input_and_closing_do_not_change_another_channel() {
     let (server, client) = TestServer::connect().await;
     let mut first = start_shell(&client).await;
     let second = start_shell(&client).await;
-    first.data(b"\x1b".as_slice()).await.unwrap();
+    // Packet fragmentation is tested with controlled time in input.rs.
+    first.data(b"\x1b[B".as_slice()).await.unwrap();
     // A request reply is a barrier: earlier channel data has been processed.
     first.set_env(true, "BARRIER", "1").await.unwrap();
-    assert!(!reply(&mut first).await);
-    assert_eq!(
-        server
-            .state(first.id())
-            .await
-            .lock()
-            .await
-            .app
-            .selected_list_item,
-        0
-    );
-    first.data(b"[B".as_slice()).await.unwrap();
-    first.set_env(true, "BARRIER", "2").await.unwrap();
     assert!(!reply(&mut first).await);
     assert_eq!(
         server
