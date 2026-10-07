@@ -26,6 +26,7 @@ pub struct App {
     pub active_modal: ActiveModal,
     pub screensaver_active: bool,
     pub screensaver_tick: usize,
+    pub screensaver_mode: crate::views::screensaver::Screensaver,
     /// Focused row in the Projects list: CV, Contacts, About, then projects.
     pub selected_list_item: usize,
     pub selected_project: usize,
@@ -83,6 +84,7 @@ impl App {
             active_modal: ActiveModal::None,
             screensaver_active: false,
             screensaver_tick: 0,
+            screensaver_mode: crate::views::screensaver::Screensaver::default(),
             selected_list_item: 0,
             selected_project: 0,
             selected_link: 0,
@@ -124,6 +126,7 @@ impl App {
             active_modal: ActiveModal::None,
             screensaver_active: false,
             screensaver_tick: 0,
+            screensaver_mode: crate::views::screensaver::Screensaver::default(),
             selected_list_item: 0,
             selected_project: 0,
             selected_link: 0,
@@ -335,9 +338,20 @@ impl App {
     }
 
     pub fn tick(&mut self) {
-        self.tick = self.tick.wrapping_add(1);
+        self.advance_ticks(1);
+    }
+
+    /// Count elapsed animation ticks without replaying intermediate frames.
+    pub fn advance_ticks(&mut self, ticks: usize) {
+        self.tick = self.tick.wrapping_add(ticks);
         if self.screensaver_active {
-            self.screensaver_tick = self.screensaver_tick.wrapping_add(1);
+            let remainder = self.screensaver_tick + ticks % 300;
+            let rotations =
+                (ticks / 300 + remainder / 300) % crate::views::screensaver::Screensaver::ALL.len();
+            self.screensaver_tick = remainder % 300;
+            for _ in 0..rotations {
+                self.screensaver_mode = self.screensaver_mode.next();
+            }
         }
     }
 

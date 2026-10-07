@@ -897,7 +897,7 @@ impl App {
                             self.current_tab = Tab::Projects;
                             true
                         } else {
-                            self.screensaver_active = true;
+                            self.start_screensaver();
                             true
                         }
                     }
@@ -986,7 +986,7 @@ impl App {
 
                 // 1. Hot corner clicked: launches CRT screensaver
                 if x >= width.saturating_sub(64) && y <= 24 {
-                    self.screensaver_active = true;
+                    self.start_screensaver();
                     return true;
                 }
 
@@ -1025,7 +1025,7 @@ impl App {
                                 self.current_tab = Tab::Projects;
                                 self.show_detail = false;
                             } else {
-                                self.screensaver_active = true;
+                                self.start_screensaver();
                             }
                             return true;
                         }
@@ -1689,7 +1689,7 @@ impl App {
                 let in_hot_corner = x >= width.saturating_sub(64) && y <= 24;
                 if in_hot_corner {
                     if !self.screensaver_active {
-                        self.screensaver_active = true;
+                        self.start_screensaver();
                         return true;
                     }
                 } else if self.screensaver_active {

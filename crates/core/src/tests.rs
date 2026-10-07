@@ -1797,3 +1797,97 @@ fn native_routes_select_projects_and_embedded_chapters_without_html() {
     assert_eq!(app.document, None);
     assert_eq!(app.about_scroll, 0);
 }
+
+#[test]
+fn header_link_title_and_clock_do_not_overlap_at_any_width() {
+    for resolution in ResolutionMode::ALL {
+        for platform in [Platform::Web, Platform::Terminal] {
+            let mut app = App::new_web();
+            app.platform = platform;
+            app.set_resolution(resolution);
+            if platform == Platform::Terminal {
+                app.set_terminal_size(40, 25);
+            }
+            app.set_time(23, 59, 0);
+            let view = app.render();
+            let link = view
+                .elements
+                .iter()
+                .find_map(|e| match e {
+                    Element::Link(l) if l.y <= 1 && l.url == "https://yemelianov.dev" => Some(l),
+                    _ => None,
+                })
+                .unwrap();
+            let end = link.x + link.text.chars().count() as u16 * 8;
+            let clock = view
+                .elements
+                .iter()
+                .find_map(|e| match e {
+                    Element::Text(t) if t.y <= 1 && t.text.contains("23:59") => Some(t),
+                    _ => None,
+                })
+                .unwrap();
+            assert!(end + 8 <= clock.x, "{resolution:?} {platform:?}");
+            for element in &view.elements {
+                if let Element::Rect(r) = element {
+                    if r.y == 0 && r.color.palette_index == 13 {
+                        assert!(end <= r.x);
+                    }
+                }
+                if let Element::Text(t) = element {
+                    if t.y <= 1 && t.text.contains("DMYTRO") {
+                        assert!(t.x + t.text.chars().count() as u16 * 8 <= link.x);
+                    }
+                }
+            }
+            assert_eq!(view.link_at(link.x + 4, link.y + 2).unwrap().url, link.url);
+        }
+    }
+}
+
+#[test]
+fn delayed_screensaver_ticks_match_regular_frames() {
+    let mut delayed = App::new_web();
+    let mut regular = App::new_web();
+    delayed.start_screensaver();
+    regular.start_screensaver();
+    for ticks in [1, 299, 601, 18007] {
+        delayed.advance_ticks(ticks);
+        for _ in 0..ticks {
+            regular.tick();
+        }
+        assert_eq!(delayed.tick, regular.tick);
+        assert_eq!(delayed.screensaver_tick, regular.screensaver_tick);
+        assert_eq!(delayed.screensaver_mode, regular.screensaver_mode);
+    }
+}
+
+#[test]
+fn screensaver_rotates_and_wakes_without_changing_the_saved_view_or_effects() {
+    use crate::views::screensaver::Screensaver;
+    let mut app = App::new_web();
+    app.selected_project = 5;
+    app.show_detail = true;
+    app.visual_effects = VisualEffects::retro_glitch();
+    let effects = app.visual_effects;
+    app.start_screensaver();
+    assert_eq!(app.screensaver_mode, Screensaver::Rain);
+    for _ in 0..300 {
+        app.tick();
+    }
+    assert_eq!(app.screensaver_mode, Screensaver::Clock);
+    assert_eq!(app.screensaver_tick, 0);
+    app.update(InputEvent::KeyDown(Key::Escape));
+    assert!(!app.screensaver_active);
+    assert_eq!(app.selected_project, 5);
+    assert!(app.show_detail);
+    assert_eq!(app.visual_effects, effects);
+    app.start_screensaver();
+    assert_eq!(app.screensaver_mode, Screensaver::Orbits);
+    app.update(InputEvent::PointerDown {
+        x: 80,
+        y: 80,
+        button: Button::Left,
+    });
+    assert!(!app.screensaver_active);
+}

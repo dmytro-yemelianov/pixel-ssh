@@ -30,6 +30,20 @@ canvas#screen:focus-visible {
   outline: 2px solid #fff;
   outline-offset: -2px;
 }
+html:has(#screen[data-screensaver="true"]),
+body:has(#screen[data-screensaver="true"]),
+#screen-shell:has(#screen[data-screensaver="true"]) {
+  background: #000;
+}
+canvas#screen[data-screensaver="true"] {
+  outline: none;
+  border-radius: 0;
+  box-shadow: none;
+  cursor: none;
+}
+#screen-shell:has(#screen[data-screensaver="true"]) .accessible-link {
+  visibility: hidden;
+}
 .accessible-link {
   position: absolute;
   left: -9999px;

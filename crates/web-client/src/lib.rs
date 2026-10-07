@@ -106,7 +106,7 @@ pub fn start() -> Result<(), JsValue> {
             .split('&')
             .filter_map(|part| part.split_once('='))
             .collect();
-        for (key, value) in params {
+        for &(key, value) in &params {
             if ["system", "mode", "resolution"].contains(&key) {
                 let resolution = match value {
                     "svga" => Some(pixel_ssh_view::ResolutionMode::Svga),
@@ -132,6 +132,21 @@ pub fn start() -> Result<(), JsValue> {
         }
         if search.contains("screensaver=1") {
             app.screensaver_active = true;
+            app.screensaver_mode = params
+                .iter()
+                .find(|(key, _)| *key == "saver")
+                .and_then(|(_, name)| {
+                    use pixel_ssh_core::views::screensaver::Screensaver;
+                    match *name {
+                        "starfield" => Some(Screensaver::Starfield),
+                        "rain" => Some(Screensaver::Rain),
+                        "clock" => Some(Screensaver::Clock),
+                        "orbits" => Some(Screensaver::Orbits),
+                        "swarm" => Some(Screensaver::Swarm),
+                        _ => None,
+                    }
+                })
+                .unwrap_or_default();
         }
         if let Some(idx_str) = search.split("project=").nth(1) {
             let num_str: String = idx_str.chars().take_while(|c| c.is_ascii_digit()).collect();
@@ -268,23 +283,8 @@ pub fn start() -> Result<(), JsValue> {
         start_time_ms,
     }));
 
-    // Initial render
-    {
-        let mut state_guard = state.borrow_mut();
-        let s = &mut *state_guard;
-        let view = s.app.render();
-        s.framebuffer.draw_view(&view);
-        let init_time = init_time_offset;
-        s.renderer.render_frame_with_effects(
-            &s.framebuffer,
-            &s.app.visual_effects,
-            init_time,
-            s.mouse_uv,
-            s.mouse_active,
-            true,
-        );
-        s.dirty = false;
-    }
+    // The first animation frame uses the same metadata and clean-effects path
+    // as every later frame; state starts dirty so it renders before drawing UI.
 
     // Keyboard event listener
     {
@@ -294,6 +294,16 @@ pub fn start() -> Result<(), JsValue> {
         let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(
             move |event: web_sys::KeyboardEvent| {
                 let key = event.key();
+                // A saver launched by hovering the hot corner may have no
+                // keyboard focus. Any key wakes it, without consuming browser shortcuts.
+                {
+                    let mut s = state.borrow_mut();
+                    if s.app.screensaver_active {
+                        s.app.screensaver_active = false;
+                        s.dirty = true;
+                        return;
+                    }
+                }
                 // Leave page navigation and browser shortcuts alone. Shift+Tab
                 // exits the canvas even when Tab cycles application controls.
                 if document.active_element().as_ref() != Some(&canvas_element)
@@ -775,19 +785,21 @@ pub fn start() -> Result<(), JsValue> {
     {
         let state = Rc::clone(&state);
         let canvas_render = canvas.clone();
-        let mut frame_count: u32 = 0;
+        let mut last_tick_ms = js_sys::Date::now();
         let f: Rc<RefCell<Option<Closure<dyn FnMut()>>>> = Rc::new(RefCell::new(None));
         let g = f.clone();
 
         *g.borrow_mut() = Some(Closure::<dyn FnMut()>::new(move || {
-            frame_count = (frame_count + 1) % 6;
             {
                 let mut state_guard = state.borrow_mut();
                 let s = &mut *state_guard;
 
                 // Periodic marquee ticker for horizontal auto-scrolling & live clock
-                if frame_count == 0 {
-                    s.app.tick();
+                let now = js_sys::Date::now();
+                if now - last_tick_ms >= 100.0 {
+                    let elapsed_ticks = ((now - last_tick_ms) / 100.0).floor() as usize;
+                    last_tick_ms += elapsed_ticks as f64 * 100.0;
+                    s.app.advance_ticks(elapsed_ticks);
                     let date = js_sys::Date::new_0();
                     s.app.set_time(
                         date.get_hours() as u8,
@@ -798,10 +810,11 @@ pub fn start() -> Result<(), JsValue> {
                 }
 
                 // Animate jitter, magnetic flux oscillation, RF white noise, antenna hum, or screensaver dynamically if active
-                let shader_animated = s.app.visual_effects.jitter > 0.001
-                    || (s.app.visual_effects.magnet > 0.001 && s.mouse_active)
-                    || s.app.visual_effects.noise > 0.001
-                    || s.app.visual_effects.antenna_hum > 0.001;
+                let shader_animated = !s.app.screensaver_active
+                    && (s.app.visual_effects.jitter > 0.001
+                        || (s.app.visual_effects.magnet > 0.001 && s.mouse_active)
+                        || s.app.visual_effects.noise > 0.001
+                        || s.app.visual_effects.antenna_hum > 0.001);
 
                 if s.dirty || shader_animated {
                     let content_dirty = s.dirty;
@@ -812,7 +825,9 @@ pub fn start() -> Result<(), JsValue> {
                             canvas_render.client_height(),
                         ));
                         let view = s.app.render();
-                        let title = if s.app.current_tab == pixel_ssh_core::Tab::About {
+                        let title = if s.app.screensaver_active {
+                            format!("Screensaver: {}", s.app.screensaver_mode.name())
+                        } else if s.app.current_tab == pixel_ssh_core::Tab::About {
                             s.app
                                 .document
                                 .map(|i| pixel_ssh_core::documents::DOCUMENTS[i].1)
@@ -828,9 +843,20 @@ pub fn start() -> Result<(), JsValue> {
                         } else {
                             format!("{:?}", s.app.current_tab)
                         };
-                        let _ = canvas_render.set_attribute("aria-label", &format!(
-                            "{title}. Interactive pixel portfolio. H: controls; P: projects; L: links; S: system; V: visuals. Tab: app controls; Shift+Tab: leave canvas."
-                        ));
+                        let description = if s.app.screensaver_active {
+                            format!("{title}. Press any key, click, or move out of the top-right corner to return.")
+                        } else {
+                            format!("{title}. Interactive pixel portfolio. H: controls; P: projects; L: links; S: system; V: visuals. Tab: app controls; Shift+Tab: leave canvas.")
+                        };
+                        let _ = canvas_render.set_attribute("aria-label", &description);
+                        let _ = canvas_render.set_attribute(
+                            "data-screensaver",
+                            if s.app.screensaver_active {
+                                "true"
+                            } else {
+                                "false"
+                            },
+                        );
                         let (target_w, target_h) = (view.width, view.height);
                         let scale: u32 = if target_w <= 320 && target_h <= 400 {
                             4
@@ -848,9 +874,15 @@ pub fn start() -> Result<(), JsValue> {
 
                     let time = ((js_sys::Date::now() - s.start_time_ms) / 1000.0) as f32;
 
+                    let saver_effects = pixel_ssh_view::VisualEffects::clean();
+                    let effects = if s.app.screensaver_active {
+                        &saver_effects
+                    } else {
+                        &s.app.visual_effects
+                    };
                     s.renderer.render_frame_with_effects(
                         &s.framebuffer,
-                        &s.app.visual_effects,
+                        effects,
                         time,
                         s.mouse_uv,
                         s.mouse_active,
@@ -879,4 +911,69 @@ fn console_error_panic_hook_init() {
     std::panic::set_hook(Box::new(|info| {
         web_sys::console::error_1(&JsValue::from_str(&info.to_string()));
     }));
+}
+
+#[cfg(test)]
+mod screensaver_tests {
+    use pixel_ssh_core::{views::screensaver::Screensaver, App};
+    use pixel_ssh_framebuffer::Framebuffer;
+    use pixel_ssh_view::{Element, ResolutionMode, VisualEffects};
+
+    #[test]
+    fn every_saver_replaces_old_pixels_with_black_and_moves_without_fixed_chrome() {
+        for resolution in ResolutionMode::ALL {
+            for portrait in [false, true] {
+                let mut app = App::new_web();
+                app.set_resolution(resolution);
+                if portrait {
+                    app.set_web_height(Some(720));
+                }
+                let mut dirty = Framebuffer::new(1, 1);
+                dirty.draw_view(&app.render());
+                app.screensaver_active = true;
+                for mode in Screensaver::ALL {
+                    app.screensaver_mode = mode;
+                    app.screensaver_tick = 0;
+                    let view = app.render();
+                    assert_eq!(view.visual_effects, VisualEffects::clean());
+                    assert!(view.cursor.is_none());
+                    assert!(view.mouse_pos.is_none());
+                    assert!(!view
+                        .elements
+                        .iter()
+                        .any(|e| matches!(e, Element::Link(_) | Element::Sprite(_))));
+                    assert_eq!(
+                        view.elements
+                            .iter()
+                            .filter(|e| matches!(e, Element::Rect(_)))
+                            .count(),
+                        1
+                    );
+                    let mut clean = Framebuffer::new(view.width, view.height);
+                    clean.draw_view(&view);
+                    dirty.draw_view(&view);
+                    assert_eq!(
+                        dirty.pixels, clean.pixels,
+                        "{resolution:?} {mode:?}: stale pixels"
+                    );
+                    assert_eq!(clean.palette[13], [0, 0, 0, 255]);
+                    assert!(
+                        clean.pixels.iter().filter(|p| **p == 13).count() * 2 > clean.pixels.len()
+                    );
+                    for e in &view.elements {
+                        if let Element::Text(t) = e {
+                            assert!(t.x + t.text.chars().count() as u16 * 8 <= view.width);
+                            assert!(t.y + resolution.line_height() <= view.height);
+                        }
+                    }
+                    app.screensaver_tick = 25;
+                    dirty.draw_view(&app.render());
+                    assert_ne!(
+                        dirty.pixels, clean.pixels,
+                        "{resolution:?} {mode:?}: frozen animation"
+                    );
+                }
+            }
+        }
+    }
 }
