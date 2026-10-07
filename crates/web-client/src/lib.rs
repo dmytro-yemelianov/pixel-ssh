@@ -309,6 +309,16 @@ pub fn start() -> Result<(), JsValue> {
         let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(
             move |event: web_sys::KeyboardEvent| {
                 let key = event.key();
+                // A saver launched by hovering the hot corner may have no
+                // keyboard focus. Any key wakes it, without consuming browser shortcuts.
+                {
+                    let mut s = state.borrow_mut();
+                    if s.app.screensaver_active {
+                        s.app.screensaver_active = false;
+                        s.dirty = true;
+                        return;
+                    }
+                }
                 // Leave page navigation and browser shortcuts alone. Shift+Tab
                 // exits the canvas even when Tab cycles application controls.
                 if document.active_element().as_ref() != Some(&canvas_element)
@@ -857,6 +867,14 @@ pub fn start() -> Result<(), JsValue> {
                             format!("{title}. Interactive pixel portfolio. H: controls; P: projects; L: links; S: system; V: visuals. Tab: app controls; Shift+Tab: leave canvas.")
                         };
                         let _ = canvas_render.set_attribute("aria-label", &description);
+                        let _ = canvas_render.set_attribute(
+                            "data-screensaver",
+                            if s.app.screensaver_active {
+                                "true"
+                            } else {
+                                "false"
+                            },
+                        );
                         let (target_w, target_h) = (view.width, view.height);
                         let scale: u32 = if target_w <= 320 && target_h <= 400 {
                             4
