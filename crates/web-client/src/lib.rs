@@ -283,23 +283,8 @@ pub fn start() -> Result<(), JsValue> {
         start_time_ms,
     }));
 
-    // Initial render
-    {
-        let mut state_guard = state.borrow_mut();
-        let s = &mut *state_guard;
-        let view = s.app.render();
-        s.framebuffer.draw_view(&view);
-        let init_time = init_time_offset;
-        s.renderer.render_frame_with_effects(
-            &s.framebuffer,
-            &s.app.visual_effects,
-            init_time,
-            s.mouse_uv,
-            s.mouse_active,
-            true,
-        );
-        s.dirty = false;
-    }
+    // The first animation frame uses the same metadata and clean-effects path
+    // as every later frame; state starts dirty so it renders before drawing UI.
 
     // Keyboard event listener
     {
@@ -812,12 +797,9 @@ pub fn start() -> Result<(), JsValue> {
                 // Periodic marquee ticker for horizontal auto-scrolling & live clock
                 let now = js_sys::Date::now();
                 if now - last_tick_ms >= 100.0 {
-                    last_tick_ms = if now - last_tick_ms > 1000.0 {
-                        now
-                    } else {
-                        last_tick_ms + 100.0
-                    };
-                    s.app.tick();
+                    let elapsed_ticks = ((now - last_tick_ms) / 100.0).floor() as usize;
+                    last_tick_ms += elapsed_ticks as f64 * 100.0;
+                    s.app.advance_ticks(elapsed_ticks);
                     let date = js_sys::Date::new_0();
                     s.app.set_time(
                         date.get_hours() as u8,

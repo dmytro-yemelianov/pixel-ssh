@@ -338,11 +338,18 @@ impl App {
     }
 
     pub fn tick(&mut self) {
-        self.tick = self.tick.wrapping_add(1);
+        self.advance_ticks(1);
+    }
+
+    /// Count elapsed animation ticks without replaying intermediate frames.
+    pub fn advance_ticks(&mut self, ticks: usize) {
+        self.tick = self.tick.wrapping_add(ticks);
         if self.screensaver_active {
-            self.screensaver_tick = self.screensaver_tick.wrapping_add(1);
-            if self.screensaver_tick >= 300 {
-                self.screensaver_tick = 0;
+            let remainder = self.screensaver_tick + ticks % 300;
+            let rotations =
+                (ticks / 300 + remainder / 300) % crate::views::screensaver::Screensaver::ALL.len();
+            self.screensaver_tick = remainder % 300;
+            for _ in 0..rotations {
                 self.screensaver_mode = self.screensaver_mode.next();
             }
         }

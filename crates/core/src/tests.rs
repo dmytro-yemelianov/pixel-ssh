@@ -1846,6 +1846,23 @@ fn header_link_title_and_clock_do_not_overlap_at_any_width() {
 }
 
 #[test]
+fn delayed_screensaver_ticks_match_regular_frames() {
+    let mut delayed = App::new_web();
+    let mut regular = App::new_web();
+    delayed.start_screensaver();
+    regular.start_screensaver();
+    for ticks in [1, 299, 601, 18007] {
+        delayed.advance_ticks(ticks);
+        for _ in 0..ticks {
+            regular.tick();
+        }
+        assert_eq!(delayed.tick, regular.tick);
+        assert_eq!(delayed.screensaver_tick, regular.screensaver_tick);
+        assert_eq!(delayed.screensaver_mode, regular.screensaver_mode);
+    }
+}
+
+#[test]
 fn screensaver_rotates_and_wakes_without_changing_the_saved_view_or_effects() {
     use crate::views::screensaver::Screensaver;
     let mut app = App::new_web();
