@@ -35,3 +35,9 @@ The footer contains `Prj Hlp Sys Vis Qut Lnk`, in that order. `P`, `H`, `S`, `V`
 The portrait touch deck offers the same five footer actions, Visuals presets, arrows, Enter, and Escape. Dragging up or down on the project list moves the row selector in the same direction, scrolling the list as needed to keep it visible. Long project titles and tags scroll horizontally within their assigned columns; article and detail content scroll vertically. Compact modal labels fit within their frame.
 
 Project detail viewers fill the area above the bottom menu. SVGA uses its 100-column width for wrapped text and specification tables; the return and scroll controls follow the viewer's actual height.
+
+## Screensavers
+
+From the main Projects list, Q/Qut or the top-right hot corner starts the next screensaver. Starfield, digital rain, bouncing clock, orbital trails and fireflies rotate every 30 seconds. They clear the entire display to black each frame, with no fixed clock frame, labels, application chrome or CRT effects. Any key, click, or movement out of the hot corner wakes the application and restores the configured visual effects.
+
+For a direct preview use `?screensaver=1&saver=starfield` (or `rain`, `clock`, `orbits`, `swarm`).

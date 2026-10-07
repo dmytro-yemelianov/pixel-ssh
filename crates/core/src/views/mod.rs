@@ -7,6 +7,7 @@ pub mod links;
 pub mod modals;
 pub mod projects;
 pub mod resume;
+pub mod screensaver;
 pub mod visuals;
 
 use crate::state::{App, Tab};
@@ -73,10 +74,13 @@ impl App {
             }));
 
             // Header link to personal website
+            let site_label = "[ yemelianov.dev ]";
+            let site_width = site_label.chars().count() as u16 * 8;
+            let site_x = (width.saturating_sub(60 + 8 + site_width) / 8) * 8;
             view.add(Element::Link(LinkElement::new(
-                width.saturating_sub(188),
+                site_x,
                 0,
-                "[ yemelianov.dev ]",
+                site_label,
                 "https://yemelianov.dev",
                 TextStyle::new(Color::from_palette(12)),
             )));
@@ -125,7 +129,7 @@ impl App {
 
             // Link [dev]
             view.add(Element::Link(LinkElement::new(
-                width.saturating_sub(92),
+                width.saturating_sub(112),
                 1,
                 "[dev]",
                 "https://yemelianov.dev",
@@ -176,7 +180,7 @@ impl App {
 
             // Link [dev]
             view.add(Element::Link(LinkElement::new(
-                width.saturating_sub(92),
+                width.saturating_sub(112),
                 1,
                 "[dev]",
                 "https://yemelianov.dev",
@@ -368,7 +372,7 @@ impl App {
         view
     }
 
-    fn render_chrome_terminal(&self, view: &mut View, width: u16, _height: u16, cols: u16) {
+    fn render_chrome_terminal(&self, view: &mut View, width: u16, _height: u16, _cols: u16) {
         // Row 0: Top Header (y = 0)
         view.add(Element::Rect(RectElement {
             x: 0,
@@ -385,7 +389,7 @@ impl App {
             2 => 14,
             _ => 7,
         };
-        let title_w = (cols as usize).saturating_sub(38).max(24);
+        let title_w = (width.saturating_sub(148) / 8) as usize;
         let title = horizontal_scroll(
             "DMYTRO YEMELIANOV - SYSTEMS & AI ARCHITECT",
             title_w,

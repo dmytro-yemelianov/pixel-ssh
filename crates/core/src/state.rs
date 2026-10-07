@@ -26,6 +26,7 @@ pub struct App {
     pub active_modal: ActiveModal,
     pub screensaver_active: bool,
     pub screensaver_tick: usize,
+    pub screensaver_mode: crate::views::screensaver::Screensaver,
     /// Focused row in the Projects list: CV, Contacts, About, then projects.
     pub selected_list_item: usize,
     pub selected_project: usize,
@@ -83,6 +84,7 @@ impl App {
             active_modal: ActiveModal::None,
             screensaver_active: false,
             screensaver_tick: 0,
+            screensaver_mode: crate::views::screensaver::Screensaver::default(),
             selected_list_item: 0,
             selected_project: 0,
             selected_link: 0,
@@ -124,6 +126,7 @@ impl App {
             active_modal: ActiveModal::None,
             screensaver_active: false,
             screensaver_tick: 0,
+            screensaver_mode: crate::views::screensaver::Screensaver::default(),
             selected_list_item: 0,
             selected_project: 0,
             selected_link: 0,
@@ -338,6 +341,10 @@ impl App {
         self.tick = self.tick.wrapping_add(1);
         if self.screensaver_active {
             self.screensaver_tick = self.screensaver_tick.wrapping_add(1);
+            if self.screensaver_tick >= 300 {
+                self.screensaver_tick = 0;
+                self.screensaver_mode = self.screensaver_mode.next();
+            }
         }
     }
 
