@@ -52,7 +52,7 @@ fn links_menu_and_last_link_remain_accessible_in_every_display_size() {
                 .iter()
                 .find_map(|element| match element {
                     Element::Link(link)
-                        if link.url == "https://yemelianov.dev/?doc=06-roadmap-and-milestones" =>
+                        if link.url == "https://yemelianov.dev/?project=bited&detail=1" =>
                     {
                         Some(link)
                     }
@@ -63,12 +63,12 @@ fn links_menu_and_last_link_remain_accessible_in_every_display_size() {
             assert_eq!(
                 view.link_at(last.x + 4, last.y + 2)
                     .map(|link| link.url.as_str()),
-                Some("https://yemelianov.dev/?doc=06-roadmap-and-milestones")
+                Some("https://yemelianov.dev/?project=bited&detail=1")
             );
             app.update(InputEvent::KeyDown(Key::Enter));
             assert_eq!(
                 app.take_link_activation().as_deref(),
-                Some("https://yemelianov.dev/?doc=06-roadmap-and-milestones")
+                Some("https://yemelianov.dev/?project=bited&detail=1")
             );
             app.update(InputEvent::KeyDown(Key::Home));
             assert_eq!(app.links_scroll, 0);

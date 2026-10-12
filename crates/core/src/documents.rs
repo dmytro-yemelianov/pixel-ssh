@@ -4,6 +4,11 @@ use pixel_ssh_view::{word_wrap, ActiveModal};
 
 pub const DOCUMENTS: &[(&str, &str, &str)] = &[
     (
+        "bited",
+        "bited: Varint + ZigZag",
+        include_str!("data/documents/bited.md"),
+    ),
+    (
         "01-vision-and-paradigms",
         "VPA: Vision",
         include_str!("data/documents/01-vision-and-paradigms.md"),

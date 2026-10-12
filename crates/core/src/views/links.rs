@@ -70,6 +70,11 @@ pub(crate) const PROJECT_LINKS: &[(&str, &str)] = &[
         "VPA: Roadmap",
         "https://yemelianov.dev/?doc=06-roadmap-and-milestones",
     ),
+    ("bited / article", "https://yemelianov.dev/?doc=bited"),
+    (
+        "bited / project",
+        "https://yemelianov.dev/?project=bited&detail=1",
+    ),
 ];
 
 impl App {
