@@ -31,6 +31,24 @@ struct ClientState {
 
 #[cfg(target_arch = "wasm32")]
 impl ClientState {
+    fn update_app(&mut self, event: InputEvent) -> bool {
+        self.sync_url();
+        let changed = self.app.update(event);
+        if changed {
+            self.sync_url();
+        }
+        changed
+    }
+
+    fn open_route(&mut self, url: &str) -> bool {
+        self.sync_url();
+        let opened = self.app.open_route(url);
+        if opened {
+            self.sync_url();
+        }
+        opened
+    }
+
     fn sync_url(&mut self) {
         let route = Route::capture(&self.app);
         let previous = self.observed_route.replace(route.clone());
@@ -253,7 +271,9 @@ pub fn start() -> Result<(), JsValue> {
                 {
                     let mut s = state.borrow_mut();
                     if s.app.screensaver_active {
+                        s.sync_url();
                         s.app.screensaver_active = false;
+                        s.sync_url();
                         s.dirty = true;
                         return;
                     }
@@ -333,11 +353,11 @@ pub fn start() -> Result<(), JsValue> {
 
                 if let Some(k) = parsed_key {
                     let mut s = state.borrow_mut();
-                    if s.app.update(InputEvent::KeyDown(k)) {
+                    if s.update_app(InputEvent::KeyDown(k)) {
                         s.dirty = true;
                     }
                     if let Some(url) = s.app.take_link_activation() {
-                        if s.app.open_route(&url) {
+                        if s.open_route(&url) {
                             s.dirty = true;
                         } else if let Some(window) = web_sys::window() {
                             let _ = window.open_with_url_and_target(&url, "_blank");
@@ -382,7 +402,7 @@ pub fn start() -> Result<(), JsValue> {
 
                 // Check if user clicked on a link
                 if let Some(link) = view.link_at(fb_x, fb_y) {
-                    if s.app.open_route(&link.url) {
+                    if s.open_route(&link.url) {
                         s.dirty = true;
                         return;
                     }
@@ -394,7 +414,7 @@ pub fn start() -> Result<(), JsValue> {
                 }
 
                 // Also update app state (e.g. tabs, project selection, back button)
-                if s.app.update(InputEvent::PointerDown {
+                if s.update_app(InputEvent::PointerDown {
                     x: fb_x,
                     y: fb_y,
                     button: Button::Left,
@@ -437,7 +457,7 @@ pub fn start() -> Result<(), JsValue> {
                 let fb_y =
                     ((client_y / rect_height) * fb_h as f64).clamp(0.0, (fb_h - 1) as f64) as u16;
 
-                if s.app.update(InputEvent::PointerMove { x: fb_x, y: fb_y }) {
+                if s.update_app(InputEvent::PointerMove { x: fb_x, y: fb_y }) {
                     s.dirty = true;
                 }
                 if s.app.visual_effects.magnet > 0.001 {
@@ -458,7 +478,7 @@ pub fn start() -> Result<(), JsValue> {
             Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |_event: web_sys::MouseEvent| {
                 let mut s = state.borrow_mut();
                 s.mouse_active = false;
-                if s.app.update(InputEvent::PointerLeave) {
+                if s.update_app(InputEvent::PointerLeave) {
                     s.dirty = true;
                 }
                 if s.app.visual_effects.magnet > 0.001 {
@@ -506,7 +526,7 @@ pub fn start() -> Result<(), JsValue> {
                 };
                 if dy != 0 {
                     let mut s = state.borrow_mut();
-                    if s.app.update(InputEvent::Wheel { dx: 0, dy }) {
+                    if s.update_app(InputEvent::Wheel { dx: 0, dy }) {
                         s.dirty = true;
                     }
                 }
@@ -593,7 +613,7 @@ pub fn start() -> Result<(), JsValue> {
                             // selector motion on lists and content scrolling elsewhere.
                             let scroll_step: i16 = if dy > 0.0 { -1 } else { 1 };
                             let mut s = state.borrow_mut();
-                            if s.app.update(InputEvent::TouchDrag { dy: scroll_step }) {
+                            if s.update_app(InputEvent::TouchDrag { dy: scroll_step }) {
                                 s.dirty = true;
                             }
                         }
@@ -611,7 +631,7 @@ pub fn start() -> Result<(), JsValue> {
                         let fb_y = (((cy - rect.top()) / rect.height()) * fb_h as f64)
                             .clamp(0.0, (fb_h - 1) as f64)
                             as u16;
-                        if s.app.update(InputEvent::PointerMove { x: fb_x, y: fb_y }) {
+                        if s.update_app(InputEvent::PointerMove { x: fb_x, y: fb_y }) {
                             s.dirty = true;
                         }
 
@@ -657,7 +677,7 @@ pub fn start() -> Result<(), JsValue> {
                                 } else {
                                     Key::Left
                                 };
-                                if s.app.update(InputEvent::KeyDown(direction)) {
+                                if s.update_app(InputEvent::KeyDown(direction)) {
                                     s.dirty = true;
                                 }
                                 return;
@@ -685,7 +705,7 @@ pub fn start() -> Result<(), JsValue> {
                                     let view = s.app.render();
 
                                     if let Some(link) = view.link_at(fb_x, fb_y) {
-                                        if s.app.open_route(&link.url) {
+                                        if s.open_route(&link.url) {
                                             s.mouse_active = false;
                                             s.dirty = true;
                                             return;
@@ -698,7 +718,7 @@ pub fn start() -> Result<(), JsValue> {
                                         }
                                     }
 
-                                    if s.app.update(InputEvent::PointerDown {
+                                    if s.update_app(InputEvent::PointerDown {
                                         x: fb_x,
                                         y: fb_y,
                                         button: Button::Left,
