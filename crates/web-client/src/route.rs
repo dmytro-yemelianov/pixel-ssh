@@ -8,6 +8,7 @@ pub const OWNED_PARAMS: &[&str] = &[
     "project",
     "detail",
     "row",
+    "offset",
     "link",
     "item",
     "scroll",
