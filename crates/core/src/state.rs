@@ -430,10 +430,9 @@ impl App {
     }
 
     /// Focusable links on the open project detail page: the repository, the
-    /// live demo where the wide web layout shows one, then Return.
+    /// browser destination when available, then Return.
     pub fn detail_item_count(&self) -> usize {
-        let wide_web = self.platform != Platform::Terminal && self.resolution.char_grid().0 >= 80;
-        if wide_web && PROJECTS[self.selected_project].demo.is_some() {
+        if self.platform == Platform::Web && PROJECTS[self.selected_project].demo.is_some() {
             3
         } else {
             2

@@ -7,7 +7,7 @@ pub struct Project {
     pub tldr: &'static str,
     pub tags: &'static [&'static str],
     pub wip: bool,
-    /// Live demo URL, shown as a second link on wide web detail pages.
+    /// Browser destination, shown on every web detail layout.
     pub demo: Option<&'static str>,
 }
 
@@ -26,7 +26,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A typed, units-aware multi-level IR and Rust engine for algorithmic machine toolpaths (FFF/CNC/laser/robot) — LLVM/MLIR for machine motion.",
         tags: &["rust", "compilers", "cnc", "3d-printing"],
         wip: false,
-        demo: None,
+        demo: Some("https://dry-public-docs.pages.dev/"),
     },
     Project {
         title: "Glueball",
@@ -66,7 +66,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A Cloudflare Workers control plane for edge workloads, combining routing, state, and deployment tools.",
         tags: &["typescript", "cloudflare-workers", "turborepo"],
         wip: false,
-        demo: None,
+        demo: Some("https://barvinca.com/"),
     },
     Project {
         title: "Upyr",
@@ -74,7 +74,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A local keyboard layout fixer that detects mistyped text and suggests the intended layout without sending keystrokes to a server.",
         tags: &["rust", "nlp", "privacy"],
         wip: false,
-        demo: None,
+        demo: Some("https://upyr.org/"),
     },
     Project {
         title: "Dryer",
@@ -90,7 +90,7 @@ pub static PROJECTS: &[Project] = &[
         tldr: "A searchable corpus of Ukrainian proverbs and sayings with structured metadata and an API.",
         tags: &["typescript", "pwa", "api"],
         wip: false,
-        demo: None,
+        demo: Some("https://verbacorpus.org/"),
     },
     Project {
         title: "Ukrainian Pattern Archive",

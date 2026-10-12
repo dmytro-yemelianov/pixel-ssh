@@ -103,9 +103,13 @@ impl App {
                     16 + (status_badge.chars().count() as u16 + 3) * cell,
                     4 * lh,
                     format!(
-                        "{} [ Live demo: {} ]",
+                        "{} [ {} ]",
                         if demo_active { "►" } else { " " },
-                        demo.trim_start_matches("https://")
+                        match p.slug {
+                            "bited" => "Read article",
+                            "dry" => "Documentation",
+                            _ => "Open web app",
+                        }
                     ),
                     demo,
                     if demo_active {
@@ -472,6 +476,8 @@ impl App {
                 style: TextStyle::new(Color::from_palette(7)).bold(),
             }));
 
+            self.render_compact_detail_links(view, 4, content_bottom);
+
             view.add(Element::Text(TextElement {
                 x: 4,
                 y: summary_y,
@@ -655,6 +661,8 @@ impl App {
                 style: TextStyle::new(Color::from_palette(7)).bold(),
             }));
 
+            self.render_compact_detail_links(view, 2, content_bottom);
+
             view.add(Element::Text(TextElement {
                 x: 2,
                 y: summary_y,
@@ -769,6 +777,33 @@ impl App {
                 text: format!("{:02}-{:02}/{} j/k ENTER", start + 1, end, PROJECTS.len()),
                 style: TextStyle::new(Color::from_palette(4)),
             }));
+        }
+    }
+
+    fn render_compact_detail_links(&self, view: &mut View, mut x: u16, y: u16) {
+        let project = &PROJECTS[self.selected_project];
+        let repo = format!("https://github.com/dmytro-yemelianov/{}", project.slug);
+        let mut links = vec![("Repo", repo.as_str())];
+        if let Some(destination) = project.demo {
+            let label = match project.slug {
+                "bited" => "Article",
+                "dry" => "Docs",
+                _ => "Web app",
+            };
+            links.push((label, destination));
+        }
+        links.push(("Back", "#back"));
+        for (index, (label, url)) in links.into_iter().enumerate() {
+            let selected = self.selected_detail_item == index;
+            let text = format!("{}[{label}]", if selected { "►" } else { " " });
+            let advance = (text.chars().count() as u16 + 1) * 8;
+            let style = if selected {
+                TextStyle::new(Color::from_palette(14)).bold().underline()
+            } else {
+                TextStyle::new(Color::from_palette(7))
+            };
+            view.add(Element::Link(LinkElement::new(x, y, text, url, style)));
+            x += advance;
         }
     }
 
