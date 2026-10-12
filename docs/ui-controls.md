@@ -41,3 +41,9 @@ Project detail viewers fill the area above the bottom menu. SVGA uses its 100-co
 From the main Projects list, Q/Qut or the top-right hot corner starts the next screensaver. Starfield, digital rain, bouncing clock, orbital trails and fireflies rotate every 30 seconds. They clear the entire display to black each frame, with no fixed clock frame, labels, application chrome or CRT effects. Any key, click, or movement out of the hot corner wakes the application and restores the configured visual effects.
 
 For a direct preview use `?screensaver=1&saver=starfield` (or `rain`, `clock`, `orbits`, `swarm`).
+
+## Browser address and history
+
+The address follows the native WASM screen. Projects use stable slugs (`?project=bited&detail=1`), embedded articles use `?doc=bited`, and the other views use `?tab=links`, `resume`, `about`, `contact` or `projects`. Overlays add `modal=help` or `modal=visuals` to the underlying view.
+
+Opening a view, article, project detail, overlay or screensaver adds a browser history entry. Back and Forward restore it without reloading WASM. Cursor selection, scroll position, display system, visual settings and automatic screensaver rotation update the current entry, so navigating back does not replay every scroll step. Reloading or sharing the address restores the visible state, including custom visual settings. Unrelated query parameters are preserved.

@@ -3,10 +3,13 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+mod route;
+
 use pixel_ssh_core::App;
 use pixel_ssh_framebuffer::Framebuffer;
 use pixel_ssh_render_web::WebGlRenderer;
 use pixel_ssh_view::{Button, InputEvent, Key, ResolutionMode};
+use route::{Route, OWNED_PARAMS};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -21,6 +24,83 @@ struct ClientState {
     mouse_uv: (f32, f32),
     mouse_active: bool,
     start_time_ms: f64,
+    observed_route: Option<Route>,
+    written_route: Option<Route>,
+    last_url_write_ms: f64,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl ClientState {
+    fn update_app(&mut self, event: InputEvent) -> bool {
+        self.sync_url();
+        let changed = self.app.update(event);
+        if changed {
+            self.sync_url();
+        }
+        changed
+    }
+
+    fn open_route(&mut self, url: &str) -> bool {
+        self.sync_url();
+        let opened = self.app.open_route(url);
+        if opened {
+            self.sync_url();
+        }
+        opened
+    }
+
+    fn sync_url(&mut self) {
+        let route = Route::capture(&self.app);
+        let previous = self.observed_route.replace(route.clone());
+        if self.written_route.as_ref() == Some(&route) {
+            return;
+        }
+        let push = previous
+            .as_ref()
+            .is_some_and(|old| route.changes_screen(old));
+        let now = js_sys::Date::now();
+        // Avoid browser history rate limits during long drags and slider edits.
+        // Periodic dirty ticks flush the final position even after input stops.
+        if !push && self.written_route.is_some() && now - self.last_url_write_ms < 350.0 {
+            return;
+        }
+        if push {
+            if let Some(old) = previous.filter(|old| self.written_route.as_ref() != Some(old)) {
+                if write_url(&old, false).is_err() {
+                    return;
+                }
+            }
+        }
+        if write_url(&route, push).is_ok() {
+            self.written_route = Some(route);
+            self.last_url_write_ms = now;
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn write_url(route: &Route, push: bool) -> Result<(), JsValue> {
+    let window = web_sys::window().ok_or("No window")?;
+    let location = window.location();
+    let params = web_sys::UrlSearchParams::new_with_str(&location.search()?)?;
+    for key in OWNED_PARAMS {
+        params.delete(key);
+    }
+    for (key, value) in route.params() {
+        params.set(key, &value);
+    }
+    let url = format!(
+        "{}?{}{}",
+        location.pathname()?,
+        params.to_string(),
+        location.hash()?
+    );
+    let history = window.history()?;
+    if push {
+        history.push_state_with_url(&JsValue::NULL, "", Some(&url))
+    } else {
+        history.replace_state_with_url(&JsValue::NULL, "", Some(&url))
+    }
 }
 
 fn portrait_view_height(mode: ResolutionMode, css_width: i32, css_height: i32) -> Option<u16> {
@@ -77,182 +157,39 @@ pub fn start() -> Result<(), JsValue> {
         .and_then(|h| h.as_f64())
         .unwrap_or(800.0);
     let is_portrait = win_w < win_h;
-    let mut has_explicit_system = false;
-
+    let default_resolution = if is_portrait {
+        ResolutionMode::C64
+    } else {
+        ResolutionMode::default()
+    };
+    let params = web_sys::UrlSearchParams::new_with_str(&window.location().search()?)?;
+    let initial_route = Route::read(|key| params.get(key), default_resolution);
     let mut app = App::new();
+    initial_route.apply(
+        &mut app,
+        portrait_view_height(
+            initial_route.resolution(),
+            canvas.client_width(),
+            canvas.client_height(),
+        ),
+    );
+    let finite_number = |key: &str| {
+        params
+            .get(key)
+            .and_then(|v| v.parse::<f32>().ok())
+            .filter(|v| v.is_finite())
+    };
     let mut init_mouse_uv = (0.5f32, 0.5f32);
     let mut init_mouse_active = false;
-    let mut init_time_offset = 0.0f32;
-
-    if let Ok(search) = window.location().search() {
-        if search.contains("tab=resume") {
-            app.current_tab = pixel_ssh_core::Tab::Resume;
-        } else if search.contains("tab=about") {
-            app.current_tab = pixel_ssh_core::Tab::About;
-        } else if search.contains("tab=visuals") {
-            app.active_modal = pixel_ssh_view::ActiveModal::Visuals;
-        } else if search.contains("tab=contact") {
-            app.current_tab = pixel_ssh_core::Tab::Contact;
-        } else if search.contains("tab=help") {
-            app.active_modal = pixel_ssh_view::ActiveModal::Help;
-        } else if search.contains("tab=links") {
-            app.current_tab = pixel_ssh_core::Tab::Links;
-        }
-        if search.contains("detail=1") {
-            app.show_detail = true;
-        }
-        let params: Vec<(&str, &str)> = search
-            .trim_start_matches('?')
-            .split('&')
-            .filter_map(|part| part.split_once('='))
-            .collect();
-        for &(key, value) in &params {
-            if ["system", "mode", "resolution"].contains(&key) {
-                let resolution = match value {
-                    "svga" => Some(pixel_ssh_view::ResolutionMode::Svga),
-                    "sga" => Some(pixel_ssh_view::ResolutionMode::Sga),
-                    "vga" => Some(pixel_ssh_view::ResolutionMode::Vga),
-                    "ega" => Some(pixel_ssh_view::ResolutionMode::Ega),
-                    "cga" => Some(pixel_ssh_view::ResolutionMode::Cga),
-                    "c64" => Some(pixel_ssh_view::ResolutionMode::C64),
-                    "atari" => Some(pixel_ssh_view::ResolutionMode::Atari),
-                    "zx" => Some(pixel_ssh_view::ResolutionMode::ZxSpectrum),
-                    _ => None,
-                };
-                if let Some(resolution) = resolution {
-                    app.set_resolution(resolution);
-                    has_explicit_system = true;
-                }
-            }
-        }
-        if search.contains("modal=visuals") {
-            app.active_modal = pixel_ssh_view::ActiveModal::Visuals;
-        } else if search.contains("modal=help") {
-            app.active_modal = pixel_ssh_view::ActiveModal::Help;
-        }
-        if search.contains("screensaver=1") {
-            app.screensaver_active = true;
-            app.screensaver_mode = params
-                .iter()
-                .find(|(key, _)| *key == "saver")
-                .and_then(|(_, name)| {
-                    use pixel_ssh_core::views::screensaver::Screensaver;
-                    match *name {
-                        "starfield" => Some(Screensaver::Starfield),
-                        "rain" => Some(Screensaver::Rain),
-                        "clock" => Some(Screensaver::Clock),
-                        "orbits" => Some(Screensaver::Orbits),
-                        "swarm" => Some(Screensaver::Swarm),
-                        _ => None,
-                    }
-                })
-                .unwrap_or_default();
-        }
-        if let Some(idx_str) = search.split("project=").nth(1) {
-            let num_str: String = idx_str.chars().take_while(|c| c.is_ascii_digit()).collect();
-            if let Ok(idx) = num_str.parse::<usize>() {
-                if idx < pixel_ssh_core::PROJECTS.len() {
-                    app.selected_project = idx;
-                }
-            }
-        }
-        let native_route = search.contains("doc=")
-            || search.contains("project=")
-            || search.contains("tab=projects");
-        if native_route {
-            app.open_route(&format!("/{search}"));
-        }
-        if let Some(scroll_str) = search.split("scroll=").nth(1) {
-            let num_str: String = scroll_str
-                .chars()
-                .take_while(|c| c.is_ascii_digit())
-                .collect();
-            if let Ok(s) = num_str.parse::<usize>() {
-                app.detail_scroll = s.min(app.detail_max_scroll());
-                app.resume_scroll = s.min(app.resume_max_scroll());
-                app.about_scroll = s.min(app.about_max_scroll());
-            }
-        }
-        if search.contains("preset=clean") {
-            app.visual_effects = pixel_ssh_view::VisualEffects::clean();
-        } else if search.contains("preset=arcade") {
-            app.visual_effects = pixel_ssh_view::VisualEffects::crt_arcade();
-        } else if search.contains("preset=bloom") {
-            app.visual_effects = pixel_ssh_view::VisualEffects::phosphor_bloom();
-        } else if search.contains("preset=glitch") {
-            app.visual_effects = pixel_ssh_view::VisualEffects::retro_glitch();
-        } else if search.contains("preset=crt") || search.contains("preset=trinitron") {
-            app.visual_effects = pixel_ssh_view::VisualEffects::crt_trinitron();
-        }
-
-        if let Some(m_str) = search.split("magnet=").nth(1) {
-            let num_str: String = m_str
-                .chars()
-                .take_while(|c| c.is_ascii_digit() || *c == '.')
-                .collect();
-            if let Ok(m) = num_str.parse::<f32>() {
-                app.visual_effects.magnet = m.clamp(0.0, 1.0);
-            }
-        }
-        if let Some(n_str) = search.split("noise=").nth(1) {
-            let num_str: String = n_str
-                .chars()
-                .take_while(|c| c.is_ascii_digit() || *c == '.')
-                .collect();
-            if let Ok(n) = num_str.parse::<f32>() {
-                app.visual_effects.noise = n.clamp(0.0, 1.0);
-            }
-        }
-        if let Some(h_str) = search.split("hum=").nth(1) {
-            let num_str: String = h_str
-                .chars()
-                .take_while(|c| c.is_ascii_digit() || *c == '.')
-                .collect();
-            if let Ok(h) = num_str.parse::<f32>() {
-                app.visual_effects.antenna_hum = h.clamp(0.0, 1.0);
-            }
-        }
-        if let Some(t_str) = search.split("time=").nth(1) {
-            let num_str: String = t_str
-                .chars()
-                .take_while(|c| c.is_ascii_digit() || *c == '.')
-                .collect();
-            if let Ok(t) = num_str.parse::<f32>() {
-                init_time_offset = t;
-            }
-        }
-        if let Some(mx_str) = search.split("mouse_x=").nth(1) {
-            let num_str: String = mx_str
-                .chars()
-                .take_while(|c| c.is_ascii_digit() || *c == '.')
-                .collect();
-            if let Ok(mx) = num_str.parse::<f32>() {
-                init_mouse_uv.0 = mx.clamp(0.0, 1.0);
-                init_mouse_active = true;
-            }
-        }
-        if let Some(my_str) = search.split("mouse_y=").nth(1) {
-            let num_str: String = my_str
-                .chars()
-                .take_while(|c| c.is_ascii_digit() || *c == '.')
-                .collect();
-            if let Ok(my) = num_str.parse::<f32>() {
-                init_mouse_uv.1 = my.clamp(0.0, 1.0);
-                init_mouse_active = true;
-            }
-        }
+    let init_time_offset = finite_number("time").unwrap_or(0.0);
+    if let Some(x) = finite_number("mouse_x") {
+        init_mouse_uv.0 = x.clamp(0.0, 1.0);
+        init_mouse_active = true;
     }
-
-    // In portrait, use a readable 40-column grid without changing palette or theme.
-    if is_portrait && !has_explicit_system {
-        app.set_resolution(pixel_ssh_view::ResolutionMode::C64);
+    if let Some(y) = finite_number("mouse_y") {
+        init_mouse_uv.1 = y.clamp(0.0, 1.0);
+        init_mouse_active = true;
     }
-
-    app.set_web_height(portrait_view_height(
-        app.resolution,
-        canvas.client_width(),
-        canvas.client_height(),
-    ));
     if init_mouse_active {
         let (fb_w, fb_h) = app.view_dimensions();
         let fb_x = ((init_mouse_uv.0 * fb_w as f32).round() as u16).min(fb_w.saturating_sub(1));
@@ -281,10 +218,45 @@ pub fn start() -> Result<(), JsValue> {
         mouse_uv: init_mouse_uv,
         mouse_active: init_mouse_active,
         start_time_ms,
+        observed_route: None,
+        written_route: None,
+        last_url_write_ms: 0.0,
     }));
 
     // The first animation frame uses the same metadata and clean-effects path
     // as every later frame; state starts dirty so it renders before drawing UI.
+
+    // Browser history restores the native view without reloading WASM.
+    {
+        let state = Rc::clone(&state);
+        let canvas = canvas.clone();
+        let closure = Closure::<dyn FnMut(web_sys::Event)>::new(move |_event| {
+            let Some(window) = web_sys::window() else {
+                return;
+            };
+            let Ok(search) = window.location().search() else {
+                return;
+            };
+            let Ok(params) = web_sys::UrlSearchParams::new_with_str(&search) else {
+                return;
+            };
+            let route = Route::read(|key| params.get(key), default_resolution);
+            let mut s = state.borrow_mut();
+            route.apply(
+                &mut s.app,
+                portrait_view_height(
+                    route.resolution(),
+                    canvas.client_width(),
+                    canvas.client_height(),
+                ),
+            );
+            s.observed_route = None;
+            s.written_route = None;
+            s.dirty = true;
+        });
+        window.add_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())?;
+        closure.forget();
+    }
 
     // Keyboard event listener
     {
@@ -299,7 +271,9 @@ pub fn start() -> Result<(), JsValue> {
                 {
                     let mut s = state.borrow_mut();
                     if s.app.screensaver_active {
+                        s.sync_url();
                         s.app.screensaver_active = false;
+                        s.sync_url();
                         s.dirty = true;
                         return;
                     }
@@ -379,11 +353,11 @@ pub fn start() -> Result<(), JsValue> {
 
                 if let Some(k) = parsed_key {
                     let mut s = state.borrow_mut();
-                    if s.app.update(InputEvent::KeyDown(k)) {
+                    if s.update_app(InputEvent::KeyDown(k)) {
                         s.dirty = true;
                     }
                     if let Some(url) = s.app.take_link_activation() {
-                        if s.app.open_route(&url) {
+                        if s.open_route(&url) {
                             s.dirty = true;
                         } else if let Some(window) = web_sys::window() {
                             let _ = window.open_with_url_and_target(&url, "_blank");
@@ -428,7 +402,7 @@ pub fn start() -> Result<(), JsValue> {
 
                 // Check if user clicked on a link
                 if let Some(link) = view.link_at(fb_x, fb_y) {
-                    if s.app.open_route(&link.url) {
+                    if s.open_route(&link.url) {
                         s.dirty = true;
                         return;
                     }
@@ -440,7 +414,7 @@ pub fn start() -> Result<(), JsValue> {
                 }
 
                 // Also update app state (e.g. tabs, project selection, back button)
-                if s.app.update(InputEvent::PointerDown {
+                if s.update_app(InputEvent::PointerDown {
                     x: fb_x,
                     y: fb_y,
                     button: Button::Left,
@@ -483,7 +457,7 @@ pub fn start() -> Result<(), JsValue> {
                 let fb_y =
                     ((client_y / rect_height) * fb_h as f64).clamp(0.0, (fb_h - 1) as f64) as u16;
 
-                if s.app.update(InputEvent::PointerMove { x: fb_x, y: fb_y }) {
+                if s.update_app(InputEvent::PointerMove { x: fb_x, y: fb_y }) {
                     s.dirty = true;
                 }
                 if s.app.visual_effects.magnet > 0.001 {
@@ -504,7 +478,7 @@ pub fn start() -> Result<(), JsValue> {
             Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |_event: web_sys::MouseEvent| {
                 let mut s = state.borrow_mut();
                 s.mouse_active = false;
-                if s.app.update(InputEvent::PointerLeave) {
+                if s.update_app(InputEvent::PointerLeave) {
                     s.dirty = true;
                 }
                 if s.app.visual_effects.magnet > 0.001 {
@@ -552,7 +526,7 @@ pub fn start() -> Result<(), JsValue> {
                 };
                 if dy != 0 {
                     let mut s = state.borrow_mut();
-                    if s.app.update(InputEvent::Wheel { dx: 0, dy }) {
+                    if s.update_app(InputEvent::Wheel { dx: 0, dy }) {
                         s.dirty = true;
                     }
                 }
@@ -639,7 +613,7 @@ pub fn start() -> Result<(), JsValue> {
                             // selector motion on lists and content scrolling elsewhere.
                             let scroll_step: i16 = if dy > 0.0 { -1 } else { 1 };
                             let mut s = state.borrow_mut();
-                            if s.app.update(InputEvent::TouchDrag { dy: scroll_step }) {
+                            if s.update_app(InputEvent::TouchDrag { dy: scroll_step }) {
                                 s.dirty = true;
                             }
                         }
@@ -657,7 +631,7 @@ pub fn start() -> Result<(), JsValue> {
                         let fb_y = (((cy - rect.top()) / rect.height()) * fb_h as f64)
                             .clamp(0.0, (fb_h - 1) as f64)
                             as u16;
-                        if s.app.update(InputEvent::PointerMove { x: fb_x, y: fb_y }) {
+                        if s.update_app(InputEvent::PointerMove { x: fb_x, y: fb_y }) {
                             s.dirty = true;
                         }
 
@@ -703,7 +677,7 @@ pub fn start() -> Result<(), JsValue> {
                                 } else {
                                     Key::Left
                                 };
-                                if s.app.update(InputEvent::KeyDown(direction)) {
+                                if s.update_app(InputEvent::KeyDown(direction)) {
                                     s.dirty = true;
                                 }
                                 return;
@@ -731,7 +705,7 @@ pub fn start() -> Result<(), JsValue> {
                                     let view = s.app.render();
 
                                     if let Some(link) = view.link_at(fb_x, fb_y) {
-                                        if s.app.open_route(&link.url) {
+                                        if s.open_route(&link.url) {
                                             s.mouse_active = false;
                                             s.dirty = true;
                                             return;
@@ -744,7 +718,7 @@ pub fn start() -> Result<(), JsValue> {
                                         }
                                     }
 
-                                    if s.app.update(InputEvent::PointerDown {
+                                    if s.update_app(InputEvent::PointerDown {
                                         x: fb_x,
                                         y: fb_y,
                                         button: Button::Left,
@@ -824,6 +798,7 @@ pub fn start() -> Result<(), JsValue> {
                             canvas_render.client_width(),
                             canvas_render.client_height(),
                         ));
+                        s.sync_url();
                         let view = s.app.render();
                         let title = if s.app.screensaver_active {
                             format!("Screensaver: {}", s.app.screensaver_mode.name())

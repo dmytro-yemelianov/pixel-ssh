@@ -100,7 +100,7 @@ impl App {
         (top, lh, visible.clamp(1, PROJECT_LINKS.len()))
     }
 
-    pub(crate) fn select_link(&mut self, selected: usize) {
+    pub fn select_link(&mut self, selected: usize) {
         self.selected_link = selected.min(PROJECT_LINKS.len() - 1);
         let visible = self.links_geometry().2;
         self.links_scroll = self
