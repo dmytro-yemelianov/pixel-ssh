@@ -1616,6 +1616,14 @@ impl App {
                 // 4. Project list interaction
                 if self.current_tab == Tab::Projects {
                     if self.show_detail {
+                        if self
+                            .render()
+                            .link_at(x, y)
+                            .is_some_and(|link| link.url == "#back")
+                        {
+                            self.show_detail = false;
+                            return true;
+                        }
                         let back_y = if cols >= 80 {
                             let y = (8 + self.detail_wide_visible_rows() as u16)
                                 * self.resolution.line_height();

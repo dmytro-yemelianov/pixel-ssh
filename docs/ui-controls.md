@@ -36,6 +36,8 @@ The portrait touch deck offers the same five footer actions, Visuals presets, ar
 
 Project detail viewers fill the area above the bottom menu. SVGA uses its 100-column width for wrapped text and specification tables; the return and scroll controls follow the viewer's actual height.
 
+Browser project details include a destination link when one is available. Compact displays use `[Repo]`, `[Web app]` (or `[Docs]` / `[Article]`) and `[Back]` in the native canvas. Tab cycles these controls and Enter opens the selected link; all are clickable or tappable. Wide displays use a short launcher label so the link fits beside the status badge.
+
 ## Screensavers
 
 From the main Projects list, Q/Qut or the top-right hot corner starts the next screensaver. Starfield, digital rain, bouncing clock, orbital trails and fireflies rotate every 30 seconds. They clear the entire display to black each frame, with no fixed clock frame, labels, application chrome or CRT effects. Any key, click, or movement out of the hot corner wakes the application and restores the configured visual effects.

@@ -1670,7 +1670,7 @@ fn wide_detail_shows_live_demo_link_and_tab_cycles_three_items() {
     assert!(shown
         .iter()
         .any(|(text, url)| url == "https://autocaded.yemelianov.dev"
-            && text.contains("Live demo: autocaded.yemelianov.dev")));
+            && text.contains("Open web app")));
     assert!(shown
         .iter()
         .any(|(_, url)| url == "https://github.com/dmytro-yemelianov/autocaded"));
@@ -1698,7 +1698,7 @@ fn wide_detail_shows_live_demo_link_and_tab_cycles_three_items() {
     app.selected_project = 0;
     assert_eq!(PROJECTS[0].demo, None);
     assert_eq!(app.detail_item_count(), 2);
-    assert!(!links(&app).iter().any(|(t, _)| t.contains("Live demo")));
+    assert!(!links(&app).iter().any(|(t, _)| t.contains("Open web app")));
 }
 
 #[test]
@@ -1890,4 +1890,70 @@ fn screensaver_rotates_and_wakes_without_changing_the_saved_view_or_effects() {
         button: Button::Left,
     });
     assert!(!app.screensaver_active);
+}
+
+#[test]
+fn every_browser_destination_is_visible_focusable_and_bounded_in_all_detail_layouts() {
+    for resolution in ResolutionMode::ALL {
+        for height in [None, Some(720)] {
+            for (index, project) in PROJECTS
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| p.demo.is_some())
+            {
+                let mut app = App::new_web();
+                app.set_resolution(resolution);
+                app.set_web_height(height);
+                app.selected_project = index;
+                app.selected_list_item = index + 3;
+                app.show_detail = true;
+                assert_eq!(app.detail_item_count(), 3);
+                let view = app.render();
+                let destination = project.demo.unwrap();
+                let launcher = view
+                    .elements
+                    .iter()
+                    .find_map(|element| match element {
+                        Element::Link(link) if link.url == destination => Some(link),
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| {
+                        panic!("{} {resolution:?}: destination omitted", project.slug)
+                    });
+                assert!(
+                    launcher.x as usize + launcher.text.chars().count() * 8 <= view.width as usize,
+                    "{} {resolution:?}: launcher clipped",
+                    project.slug
+                );
+                assert_eq!(
+                    view.link_at(launcher.x + 4, launcher.y + 3).unwrap().url,
+                    destination
+                );
+                app.update(InputEvent::KeyDown(Key::Tab));
+                app.update(InputEvent::KeyDown(Key::Enter));
+                assert_eq!(app.take_link_activation().as_deref(), Some(destination));
+                app.update(InputEvent::KeyDown(Key::Tab));
+                assert_eq!(app.selected_detail_item, 2);
+                let view = app.render();
+                let back = view
+                    .elements
+                    .iter()
+                    .find_map(|element| match element {
+                        Element::Link(link) if link.url == "#back" => Some(link),
+                        _ => None,
+                    })
+                    .unwrap();
+                app.update(InputEvent::PointerDown {
+                    x: back.x + 4,
+                    y: back.y + 3,
+                    button: Button::Left,
+                });
+                assert!(
+                    !app.show_detail,
+                    "{} {resolution:?}: Back not clickable",
+                    project.slug
+                );
+            }
+        }
+    }
 }
