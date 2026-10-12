@@ -17,7 +17,7 @@ pub struct ProjectDetail {
 pub fn get_project_detail(slug: &str) -> ProjectDetail {
     match slug {
         "bited" => ProjectDetail {
-            overview: "bited: small integers, explicit contracts, and a faster verified encoder. One no_std Rust library covers u32/u64 base-128 varints and i32/i64 ZigZag with a corresponding Lean 4 proof package. It has no runtime dependencies, forbids unsafe code, and allocates no heap memory. All 18 specified proof obligations are proved. Version 0.1.0 is a release candidate; its repository and draft release remain private and crates.io publication is pending. The full illustrated article is available through the Live link.",
+            overview: "bited: small integers, explicit contracts, and a faster verified encoder. One no_std Rust library covers u32/u64 base-128 varints and i32/i64 ZigZag with a corresponding Lean 4 proof package. It has no runtime dependencies, forbids unsafe code, and allocates no heap memory. All 18 specified proof obligations are proved. Version 0.1.0 is published on crates.io with a public GitHub release and hash-bound verification assets. Install with cargo add bited@0.1.0. The full illustrated article is available through the Live link.",
             subsystems: &[
                 "FORMAT: seven payload bits per byte; 300 = ac 02; u32 <= 5 bytes, u64 <= 10",
                 "ZIGZAG: 0 -> 0, -1 -> 1, 1 -> 2, -2 -> 3; full signed ranges covered",
