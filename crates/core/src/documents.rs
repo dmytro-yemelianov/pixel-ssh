@@ -109,8 +109,16 @@ impl App {
             self.resolution.char_grid().0
         };
         let width = cols.saturating_sub(8) as usize;
+        let mut preformatted = false;
         for line in DOCUMENTS[index].2.lines() {
             if line.starts_with("```") {
+                preformatted = !preformatted;
+                continue;
+            }
+            // Keep compact diagrams and chart columns aligned when they fit.
+            // Narrow displays still wrap long lines through the bounded path.
+            if preformatted && line.chars().count() <= width {
+                self.document_lines.push((line.to_owned(), 7, false));
                 continue;
             }
             let heading = line.starts_with('#');
