@@ -172,6 +172,15 @@ pub static PROJECTS: &[Project] = &[
         wip: false,
         demo: Some("https://yemelianov.dev/"),
     },
+    Project {
+        title: "bited",
+        slug: "bited",
+        tldr: "Varint + ZigZag in safe no_std Rust, with 18 Lean 4 proof obligations completed and measured full-width encoder gains. Version 0.1.0 release candidate.",
+        tags: &["rust", "lean-4", "codecs", "verification"],
+        wip: true,
+        demo: Some("https://yemelianov.dev/?doc=bited"),
+
+    },
 ];
 
 pub const RESUME_MAX_SCROLL: usize = 80;

@@ -476,7 +476,7 @@ impl App {
                 x: 4,
                 y: summary_y,
                 text: format!(
-                    "[h/l]Prj {}-{} of {} [k/j] | [ESC]Back",
+                    "[h/l]Prj {}-{}/{} [k/j] [ESC]",
                     self.detail_scroll + 1,
                     (self.detail_scroll + visible_rows as usize).min(lines.len()),
                     lines.len()

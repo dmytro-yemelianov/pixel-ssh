@@ -791,10 +791,10 @@ fn test_clock_colon_steady_cadence() {
 }
 
 #[test]
-fn test_all_20_projects_have_detailed_specs_and_subsystems() {
+fn test_all_21_projects_have_detailed_specs_and_subsystems() {
     use crate::data::details::get_project_detail;
 
-    assert_eq!(PROJECTS.len(), 20, "Expected exactly 20 portfolio projects");
+    assert_eq!(PROJECTS.len(), 21, "Expected exactly 21 portfolio projects");
 
     for p in PROJECTS {
         let detail = get_project_detail(p.slug);

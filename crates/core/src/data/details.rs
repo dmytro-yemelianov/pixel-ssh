@@ -16,6 +16,72 @@ pub struct ProjectDetail {
 
 pub fn get_project_detail(slug: &str) -> ProjectDetail {
     match slug {
+        "bited" => ProjectDetail {
+            overview: "bited: small integers, explicit contracts, and a faster verified encoder. One no_std Rust library covers u32/u64 base-128 varints and i32/i64 ZigZag with a corresponding Lean 4 proof package. It has no runtime dependencies, forbids unsafe code, and allocates no heap memory. All 18 specified proof obligations are proved. Version 0.1.0 is a release candidate; its repository and draft release remain private and crates.io publication is pending. The full illustrated article is available through the Live link.",
+            subsystems: &[
+                "FORMAT: seven payload bits per byte; 300 = ac 02; u32 <= 5 bytes, u64 <= 10",
+                "ZIGZAG: 0 -> 0, -1 -> 1, 1 -> 2, -2 -> 3; full signed ranges covered",
+                "API: stack arrays, atomic caller buffers, prefix/exact and incremental decoding",
+                "POLICY: canonical-only or explicitly bounded noncanonical; 80 00 is redundant zero",
+                "PROOFS: bijection, correctness, uniqueness, shortest length, streaming and source refinement",
+                "OPTIMIZATION: expose a ten-byte subview when capacity permits; preserve the whole suffix",
+            ],
+            specs: &[
+                ("Tools", "Rust 1.88.0; Lean 4.31.0"),
+                ("Contract", "351 fixtures; 18 proof obligations proved"),
+                ("Fuzz evidence", "200,000 seeded ASan executions"),
+                ("Timing scope", "Apple M5; 15 rotating repetitions; CPU ns/value"),
+                ("One-byte encode", "bited 1.086; previous 1.059; +2.7% time"),
+                ("Full-width encode", "bited 2.657; previous 5.593; -52.5% time"),
+                ("Large encode", "bited 3.754; previous 6.281; -40.2% time"),
+                ("Full-width peers", "Encode: leb128 18.233; integer-encoding 5.320 ns"),
+                ("Full-width decode", "bited 8.159; leb128 7.365 ns (peer faster)"),
+                ("Weighted crossover", "~99.08% one-byte; remainder full-width"),
+                ("Portability", "Host/WASI execution; RISC-V compilation"),
+                ("Proof boundary", "Apple ARM source / 64-bit usize; not compiler correctness"),
+            ],
+            diagram_80: &[
+                "values / bytes -> thin adapters -> deterministic Rust codec",
+                "                                         |",
+                "                       Charon -> Aeneas -> Lean model + contracts",
+                "                                         |",
+                "                             proof replay and axiom audit",
+                "ENCODE CPU ns/value (Apple M5; shorter bars are faster)",
+                "Full-width bited    ###                2.657",
+                "           previous ######             5.593",
+                "           leb128   ################## 18.233",
+                "           int-enc  #####              5.320",
+            ],
+            diagram_40: &[
+                "values -> adapters -> codec",
+                "                  |",
+                "Charon -> Aeneas -> Lean",
+                "encode ns/value, Apple M5:",
+                "bited    ###    2.657",
+                "previous ###### 5.593",
+            ],
+            diagram_32: &[
+                "values -> safe codec",
+                "Rust -> Aeneas -> Lean",
+                "M5 encode ns/value:",
+                "bited    ###    2.657",
+                "previous ###### 5.593",
+            ],
+            highlights: &[
+                "WEIGHT THE WORKLOAD: T(p)=p*short+(1-p)*long; do not average speedup percentages",
+                "Using measured one-byte and full-width means, crossover is about 108 short values per long value",
+                "Uniform random u64 has one-byte probability 128/2^64 = 6.94e-18; real counters and deltas differ",
+                "One-byte encode regresses 2.7%; short 80/15/5 mixture has an inconclusive interval",
+                "Peers differ in malformed-input policies; valid-input speed is not a universal quality ranking",
+                "9,306,112 canonical byte/value/consumption checks precede timing; 12 stack profiles locate hot code",
+                "Shared-host frequency/cache uncertainty remains; no WASM, other-CPU or cycle-per-value speed claim",
+                "Shortest base-128 length is proved; fixed eight-byte integers can be smaller for full-width data",
+                "Fits protocol payloads, logs, storage, deltas, firmware and WASM; caller handles message framing",
+                "Source refinement excludes compiler/machine correctness; fresh replay uses the same pinned Lean kernel",
+                "Frozen v0.1.0 evidence belongs to d9af05c; later CI/article edits need a new gate before release",
+                "Portable Rust CI passes on bited-ci-x64 at raps-ci; full formal verification stays a separate gate",
+            ],
+        },
         "raps" => ProjectDetail {
             overview: "RAPS combines a Rust CLI, a small HTTP kernel, and an MCP server around Autodesk Platform Services. Its typed tool contracts let agents run CAD cloud operations through the same commands used by people. The local credential vault and repeatable CLI flow address the manual provisioning work that motivated the project.",
             subsystems: &[
@@ -1027,11 +1093,9 @@ pub fn project_detail_lines(p: &Project, cols: usize, tick: usize) -> Vec<(Strin
         ));
         lines.push((rule('├', '┼', '┤'), 7, false));
         for (k, v) in detail.specs {
-            lines.push((
-                format!("│ {k:<19} │ {v:<width$} │", width = right_col - 2),
-                5,
-                false,
-            ));
+            for row in compact_spec_rows(k, v, 19, right_col - 2) {
+                lines.push((row, 5, false));
+            }
         }
         lines.push((rule('└', '┴', '┘'), 7, false));
 
