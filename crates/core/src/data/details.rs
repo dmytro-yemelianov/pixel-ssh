@@ -78,7 +78,7 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
                 "Shortest base-128 length is proved; fixed eight-byte integers can be smaller for full-width data",
                 "Fits protocol payloads, logs, storage, deltas, firmware and WASM; caller handles message framing",
                 "Source refinement excludes compiler/machine correctness; fresh replay uses the same pinned Lean kernel",
-                "Frozen v0.1.0 evidence belongs to d9af05c; later CI/article edits need a new gate before release",
+                "v0.1.1 inlines one/two-byte u64 decodes; Lean proves the fast path equals the verified scan",
                 "Portable Rust CI passes on bited-ci-x64 at raps-ci; full formal verification stays a separate gate",
             ],
         },

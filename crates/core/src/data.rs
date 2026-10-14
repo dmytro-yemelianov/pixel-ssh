@@ -175,7 +175,7 @@ pub static PROJECTS: &[Project] = &[
     Project {
         title: "bited",
         slug: "bited",
-        tldr: "Varint + ZigZag in safe no_std Rust, with 18 Lean 4 proof obligations completed and measured full-width encoder gains. Version 0.1.0 published on crates.io.",
+        tldr: "Varint + ZigZag in safe no_std Rust, with 18 Lean 4 proof obligations completed and measured encoder and decoder gains. Version 0.1.1 published on crates.io.",
         tags: &["rust", "lean-4", "codecs", "verification"],
         wip: false,
         demo: Some("https://yemelianov.dev/?doc=bited"),

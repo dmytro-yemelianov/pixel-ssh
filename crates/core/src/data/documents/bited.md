@@ -214,7 +214,7 @@ The smallest base-128 representation is the encoder's proved format-level optimu
 
 ## Status and reproducibility
 
-Version 0.1.0 is published on [crates.io](https://crates.io/crates/bited/0.1.0), with a public [GitHub release](https://github.com/dmytro-yemelianov/bited/releases/tag/v0.1.0). Install it with `cargo add bited@0.1.0`. The strict Rust/Lean release gate passed on source commit `5b7ef6eaa2ebb4b0bad123630348c7c9f02d3724`; the release assets bind that exact commit, both packages and their evidence through recorded SHA-256 digests. Later documentation changes do not alter the frozen release evidence.
+Version 0.1.1 is published on [crates.io](https://crates.io/crates/bited/0.1.1), with a public [GitHub release](https://github.com/dmytro-yemelianov/bited/releases/tag/v0.1.1). Install it with `cargo add bited@0.1.1`. It adds an inline one- and two-byte u64 decoder fast path that Lean proves equal to the verified scan; on the recorded Apple M5 comparison against 0.1.0 source, short-weighted decoding uses about 81% less CPU time per value and full-width decoding about 17% less, with every dataset and interval in the [decoder comparison](https://github.com/dmytro-yemelianov/bited/blob/main/verification/performance/RESULTS.md). The measurements in this article describe 0.1.0. The strict Rust/Lean release gate passed on source commit `b46480e1e2cf400a40276ffabfffae44cf7df87c`; the release assets bind that exact commit, both packages and their evidence through recorded SHA-256 digests. Later documentation changes do not alter the frozen release evidence.
 
 Portable Rust checks now pass on the repository-scoped `bited-ci-x64` runner on `raps-ci`. Full formal release verification remains a separate pinned local workflow.
 
