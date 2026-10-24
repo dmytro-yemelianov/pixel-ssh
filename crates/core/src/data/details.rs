@@ -974,7 +974,7 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
             ],
         },
         "globe-switch" => ProjectDetail {
-            overview: "globe-switch makes every tap of the Globe (fn) key switch keyboard layouts on macOS. The system routes that key through TextInputSwitcher, an on-demand helper that launchd idle-kills about six minutes after use, even with ~10 GB of memory available; 53 relaunches were observed in 3 days. The next press only relaunches the helper and is lost, and its picker HUD grabs the keyboard and swallowed letters typed right after a switch. globe-switch runs as a KeepAlive LaunchAgent, so it is never idle-killed. It ships as GlobeSwitch.app, installs from source or Homebrew, rechecks its Input Monitoring access every 30 s, and a doctor command explains any broken piece. After each switch every layout's flag slides into a row with the active one centred, and a soft click plays at a pitch of its own for each layout. Version 0.4.0 is a public source release under MIT.",
+            overview: "globe-switch makes every tap of the Globe (fn) key switch keyboard layouts on macOS. The system routes that key through TextInputSwitcher, an on-demand helper that launchd idle-kills about six minutes after use, even with ~10 GB of memory available; 53 relaunches were observed in 3 days. The next press only relaunches the helper and is lost, and its picker HUD grabs the keyboard and swallowed letters typed right after a switch. globe-switch runs as a KeepAlive LaunchAgent, so it is never idle-killed. It ships as GlobeSwitch.app, installs from source or Homebrew, rechecks its Input Monitoring access every 30 s, and a doctor command explains any broken piece. After each switch every layout's flag, drawn as pixel art, slides into a row with the active one centred, and a soft click plays at a pitch of its own for each layout. Version 0.5.0 is a public source release under MIT.",
             subsystems: &[
                 "tap: listen-only CGEventTap; observes keys, can never block typing",
                 "detector: fn/Globe released within 600 ms with nothing else pressed",
@@ -984,19 +984,19 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
                 "self-check: Input Monitoring every 30 s; restarts if it was revoked",
                 "doctor: asks the live agent; checks access, Globe setting, layouts",
                 "install: copies the app, sets Globe to Do Nothing; uninstall undoes it",
-                "flags: every layout in a row; the active one centred and glowing",
+                "flags: pixel art in a row; the active one centred and glowing",
                 "click: synthesized; a major-chord pitch for each layout",
                 "settings: tap window, skipped layouts, recent order, flags, sound",
             ],
             specs: &[
-                ("Language", "Swift package; ~1,200 lines; no dependencies"),
-                ("Footprint", "650 KB app; 8-17 MB physical memory"),
+                ("Language", "Swift package; ~1,300 lines; no dependencies"),
+                ("Footprint", "660 KB app; 8-15 MB physical memory"),
                 ("Idle cost", "0% CPU; no network, no telemetry"),
                 ("Platform", "macOS 13+; Apple keyboards with a Globe key"),
                 ("Tested", "macOS 27.2 on Apple Silicon"),
                 ("Install", "Homebrew or ./install.sh; Input Monitoring"),
-                ("Tests", "36 Swift Testing tests; CI builds arm64 and x86_64"),
-                ("Release", "v0.4.0 source release, MIT"),
+                ("Tests", "40 Swift Testing tests; CI builds arm64 and x86_64"),
+                ("Release", "v0.5.0 source release, MIT"),
             ],
             diagram_80: &[
                 "fn / Globe key ──► CGEventTap (listen-only, never blocks typing)",
