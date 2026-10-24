@@ -184,7 +184,7 @@ pub static PROJECTS: &[Project] = &[
     Project {
         title: "globe-switch",
         slug: "globe-switch",
-        tldr: "Tap the Globe key to switch keyboard layouts on macOS instantly: a tiny always-on LaunchAgent that replaces the system Globe-key handler. Version 0.1.0 source release.",
+        tldr: "Tap the Globe key to switch keyboard layouts on macOS instantly: a tiny always-on LaunchAgent that replaces the system Globe-key handler. Version 0.1.1 source release.",
         tags: &["swift", "macos", "event-taps", "carbon", "launchd"],
         wip: false,
         demo: None,
