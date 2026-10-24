@@ -973,6 +973,52 @@ pub fn get_project_detail(slug: &str) -> ProjectDetail {
                 "The browser app caches its interface and WASM for offline use",
             ],
         },
+        "globe-switch" => ProjectDetail {
+            overview: "globe-switch makes every tap of the Globe (fn) key switch keyboard layouts on macOS. The system routes that key through TextInputSwitcher, an on-demand helper that launchd idle-kills about six minutes after use, even with ~10 GB of memory available; 53 relaunches were observed in 3 days. The next press only relaunches the helper and is lost, and its picker HUD grabs the keyboard and swallowed letters typed right after a switch. globe-switch runs as a KeepAlive LaunchAgent, so it is never idle-killed. Version 0.1.0 is a public source release under MIT.",
+            subsystems: &[
+                "tap: listen-only CGEventTap; observes keys, can never block typing",
+                "detector: fn/Globe released within 600 ms with nothing else pressed",
+                "guards: another key, modifier, media key or click cancels the tap",
+                "switch: TISSelectInputSource cycles the enabled keyboard layouts",
+                "agent: KeepAlive LaunchAgent; launchd never idle-kills it",
+                "install.sh: swiftc build; sets Globe to Do Nothing; restarts helpers",
+            ],
+            specs: &[
+                ("Language", "Swift; ~160 lines; no dependencies"),
+                ("Footprint", "83 KB binary; ~5.4 MB physical memory"),
+                ("Idle cost", "0% CPU; no network, no telemetry"),
+                ("Platform", "macOS; Apple keyboards with a Globe key"),
+                ("Tested", "macOS 27.2 on Apple Silicon"),
+                ("Install", "./install.sh with swiftc; Input Monitoring"),
+                ("Release", "v0.1.0 source release, MIT"),
+            ],
+            diagram_80: &[
+                "fn / Globe key ──► CGEventTap (listen-only, never blocks typing)",
+                "                        │",
+                "   clean tap: up within 600 ms; no key, modifier, media key or click",
+                "                        ▼",
+                "TISSelectInputSource ──► next enabled layout   (KeepAlive LaunchAgent)",
+            ],
+            diagram_40: &[
+                "Globe key ─► CGEventTap (listen)",
+                "     │ clean tap within 600 ms?",
+                "     ▼",
+                "TISSelectInputSource ─► next layout",
+            ],
+            diagram_32: &[
+                "Globe ─► event tap",
+                "   │ clean tap?",
+                "   ▼",
+                "TIS ─► next layout",
+            ],
+            highlights: &[
+                "Kernel log: memorystatus idle-exit with ~10 GB of memory available",
+                "A listen-only tap observes events and can never swallow keystrokes",
+                "fn chords such as fn+arrows and fn+E still reach macOS untouched",
+                "TextInput agents cache the Globe setting; install.sh restarts them",
+                "Unrestarted, the first tap after a pause bounces back in 30-110 ms",
+            ],
+        },
         unknown => panic!("No project detail for slug: {unknown}"),
     }
 }

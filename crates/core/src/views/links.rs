@@ -75,6 +75,10 @@ pub(crate) const PROJECT_LINKS: &[(&str, &str)] = &[
         "bited / project",
         "https://yemelianov.dev/?project=bited&detail=1",
     ),
+    (
+        "globe-switch / repository",
+        "https://github.com/dmytro-yemelianov/globe-switch",
+    ),
 ];
 
 impl App {
